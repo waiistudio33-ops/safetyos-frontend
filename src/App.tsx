@@ -4,7 +4,7 @@ import {
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, Table, Tag, ConfigProvider, Space,
   Button, Modal, Form, Input, Select, DatePicker, message, Badge, Upload, Divider, Checkbox, InputNumber, Descriptions,
-  Radio, List, Popconfirm, Drawer, Grid, Spin // 🚀 เพิ่ม Spin สำหรับหมุนรอโหลด
+  Radio, List, Popconfirm, Drawer, Grid, Spin 
 } from 'antd';
 import { 
   DashboardOutlined, SafetyCertificateOutlined, WarningOutlined,
@@ -37,7 +37,6 @@ export default function App() {
   const isMobile = !screens.md; 
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // 🚀 เพิ่ม state: กำลังเช็คว่าเคยล็อกอินไหม (เพื่อไม่ให้หน้า Login เด้งมาแวบหนึ่ง)
   const [isAuthChecking, setIsAuthChecking] = useState(true); 
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -72,13 +71,11 @@ export default function App() {
   const [confinedForm] = Form.useForm();
   const [currentTime, setCurrentTime] = useState(dayjs());
 
-  // --- 🚀 แก้ไข useEffect ให้เช็ค LocalStorage แบบละเอียดขึ้น และปิด Loading เมื่อเสร็จ ---
   useEffect(() => {
     const checkAuth = () => {
       const savedUser = localStorage.getItem('safetyos_user');
       if (savedUser) {
         try {
-          // ลองแปลงข้อมูล ถ้าพังให้ลบทิ้ง (กัน Error)
           const parsedUser = JSON.parse(savedUser);
           setCurrentUser(parsedUser);
           setIsAuthenticated(true);
@@ -86,9 +83,8 @@ export default function App() {
           localStorage.removeItem('safetyos_user');
         }
       }
-      setIsAuthChecking(false); // ✅ เช็คเสร็จแล้ว เลิกหมุนได้
+      setIsAuthChecking(false); 
     };
-    
     checkAuth();
   }, []);
 
@@ -157,10 +153,7 @@ export default function App() {
     setIsLoggingIn(true);
     try {
       const response = await axios.post('https://safetyos-backend.onrender.com/login', values);
-      
-      // 🚀 บันทึก User ลง LocalStorage
       localStorage.setItem('safetyos_user', JSON.stringify(response.data.user));
-      
       setCurrentUser(response.data.user); 
       setIsAuthenticated(true); 
       message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
@@ -168,9 +161,7 @@ export default function App() {
   };
 
   const handleLogout = () => { 
-    // 🚀 ลบ User ออกจาก LocalStorage
     localStorage.removeItem('safetyos_user');
-    
     setIsAuthenticated(false); 
     setCurrentUser(null); 
     message.info('ออกจากระบบเรียบร้อย'); 
@@ -270,7 +261,6 @@ export default function App() {
     },
   ];
 
-  // 🚀 ถ้ากำลังเช็ค Auth ให้โชว์หน้าหมุนๆ ไปก่อน (คนใช้จะได้ไม่ตกใจว่าหลุด)
   if (isAuthChecking) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}>
@@ -281,25 +271,111 @@ export default function App() {
     );
   }
 
+  // 🔥🔥🔥 ปรับหน้า Login ให้เป็นสไตล์ Facebook (Split Screen) 🔥🔥🔥
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#007AFF', borderRadius: 12, fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
-        <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 50%, rgb(18, 43, 79) 0%, rgb(6, 17, 38) 100%)', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-            <Card style={{ width: '100%', maxWidth: 400, background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', padding: isMobile ? '12px' : '24px', border: 'none' }}>
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <div style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', width: '64px', height: '64px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><SafetyCertificateOutlined style={{ fontSize: '32px', color: '#fff' }} /></div>
-                <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#1d1d1f' }}>SafetyOS</Title>
-                <Text type="secondary">Enterprise Safety Management</Text>
+        {/* Container พื้นหลังสีเทาอ่อนเหมือน Facebook */}
+        <div style={{ 
+          minHeight: '100vh', 
+          width: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          background: '#f0f2f5', 
+          padding: '20px',
+          overflow: 'hidden'
+        }}>
+          {/* Grid Layout: ซ้าย = Logo, ขวา = Login Box */}
+          <Row style={{ width: '100%', maxWidth: '980px' }} gutter={[40, 40]} align="middle">
+            
+            {/* ฝั่งซ้าย: Logo & Branding (โชว์เฉพาะจอใหญ่ หรืออยู่ด้านบนในมือถือ) */}
+            <Col xs={24} md={14} style={{ textAlign: isMobile ? 'center' : 'left' }}>
+              <div style={{ marginBottom: isMobile ? '24px' : '0' }}>
+                <Space align="center" size={16} style={{ marginBottom: '16px', justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                  <div style={{ 
+                    background: '#007AFF', 
+                    width: '60px', 
+                    height: '60px', 
+                    borderRadius: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 15px rgba(0,122,255,0.3)' 
+                  }}>
+                    <SafetyCertificateOutlined style={{ fontSize: '36px', color: '#fff' }} />
+                  </div>
+                  <Title level={1} style={{ margin: 0, fontWeight: 800, color: '#007AFF', fontSize: isMobile ? '36px' : '48px', letterSpacing: '-1px' }}>
+                    SafetyOS
+                  </Title>
+                </Space>
+                <Title level={3} style={{ fontWeight: 400, color: '#1d1d1f', marginTop: 0, fontSize: isMobile ? '20px' : '28px' }}>
+                  Enterprise Safety Management System
+                </Title>
+                <Text type="secondary" style={{ fontSize: '16px' }}>
+                  เชื่อมต่อการทำงานด้านความปลอดภัยที่ Map Ta Phut ไว้ในที่เดียว
+                </Text>
               </div>
-              <Form layout="vertical" onFinish={handleLogin}>
-                <Form.Item name="username" label={<Text strong>รหัสพนักงาน (Username)</Text>} rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]}><Input prefix={<UserOutlined style={{ color: '#8E8E93' }} />} size="large" placeholder="เช่น somchai" /></Form.Item>
-                <Form.Item name="password" label={<Text strong>รหัสผ่าน (Password)</Text>} rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]}><Input.Password prefix={<LockOutlined style={{ color: '#8E8E93' }} />} size="large" placeholder="รหัสผ่าน: 1234" /></Form.Item>
-                <Button type="primary" htmlType="submit" size="large" block loading={isLoggingIn} style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', border: 'none', height: '48px', fontSize: '16px', fontWeight: 'bold', marginTop: '16px' }}>เข้าสู่ระบบ (Login)</Button>
-              </Form>
-              <div style={{ textAlign: 'center', marginTop: '24px' }}><Text type="secondary" style={{ fontSize: '12px' }}>บัญชีสำหรับทดสอบ:<br/>somchai (ผู้รับเหมา) | somsak (เจ้าของพื้นที่) | view (จป.)<br/>รหัสผ่านทั้งหมดคือ: 1234</Text></div>
-            </Card>
-          </div>
+            </Col>
+
+            {/* ฝั่งขวา: Login Card (ขาวสะอาด มีเงา) */}
+            <Col xs={24} md={10}>
+              <Card 
+                style={{ 
+                  borderRadius: '12px', 
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0,0,0,0.05)', // เงาสไตล์ Facebook
+                  border: 'none',
+                  padding: '12px',
+                  background: '#fff'
+                }}
+                bodyStyle={{ padding: '24px' }}
+              >
+                <Form layout="vertical" onFinish={handleLogin} size="large">
+                  <Form.Item name="username" rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]} style={{ marginBottom: '16px' }}>
+                    <Input 
+                      placeholder="รหัสพนักงาน (เช่น somchai)" 
+                      style={{ borderRadius: '8px', padding: '10px 12px' }} 
+                    />
+                  </Form.Item>
+                  <Form.Item name="password" rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]} style={{ marginBottom: '24px' }}>
+                    <Input.Password 
+                      placeholder="รหัสผ่าน" 
+                      style={{ borderRadius: '8px', padding: '10px 12px' }} 
+                    />
+                  </Form.Item>
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    block 
+                    loading={isLoggingIn} 
+                    style={{ 
+                      background: '#007AFF', // สีฟ้าเฟสบุ๊ค (ใกล้เคียง)
+                      border: 'none', 
+                      height: '48px', 
+                      fontSize: '18px', 
+                      fontWeight: 'bold', 
+                      borderRadius: '8px' 
+                    }}
+                  >
+                    เข้าสู่ระบบ
+                  </Button>
+                </Form>
+                
+                <Divider plain><Text type="secondary" style={{ fontSize: '12px' }}>หรือ</Text></Divider>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: '13px' }}>บัญชีทดสอบ: somchai, somsak, view (pass: 1234)</Text>
+                </div>
+              </Card>
+              
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                <Text type="secondary" style={{ fontSize: '13px' }}>
+                  <strong>Create a Page</strong> for a celebrity, brand or business.
+                </Text>
+              </div>
+            </Col>
+
+          </Row>
         </div>
       </ConfigProvider>
     );
