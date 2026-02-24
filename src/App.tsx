@@ -14,7 +14,7 @@ import {
   BuildOutlined, EnvironmentOutlined, TeamOutlined, RetweetOutlined, UploadOutlined,
   IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, SafetyOutlined, BellOutlined,
   DownOutlined, DownloadOutlined, EyeOutlined, FilePdfOutlined, LogoutOutlined, LockOutlined,
-  CheckCircleOutlined, StopOutlined, LoginOutlined, MenuOutlined 
+  CheckCircleOutlined, StopOutlined, LoginOutlined, MenuOutlined, RocketOutlined 
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -31,6 +31,46 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker; 
 const { useBreakpoint } = Grid; 
+
+// ☁️ Component ก้อนเมฆสำหรับตกแต่งรอยต่อ
+const CloudSeparator = ({ isMobile }: { isMobile: boolean }) => {
+  return (
+    <div style={{
+      position: 'absolute',
+      right: isMobile ? '0' : '-1px', // Desktop: ชิดขวาของกล่องน้ำเงิน
+      bottom: isMobile ? '-1px' : '0', // Mobile: ชิดล่างของกล่องน้ำเงิน
+      width: isMobile ? '100%' : '100px',
+      height: isMobile ? '60px' : '100%',
+      zIndex: 2,
+      pointerEvents: 'none',
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: isMobile ? 'center' : 'flex-end',
+      flexDirection: isMobile ? 'row' : 'column',
+      overflow: 'hidden'
+    }}>
+      {/* ใช้ SVG วาดรูปคลื่นก้อนเมฆสีขาว */}
+      <svg 
+        viewBox={isMobile ? "0 0 1440 320" : "0 0 100 100"} 
+        preserveAspectRatio="none"
+        style={{
+          width: '100%',
+          height: '100%',
+          fill: '#ffffff',
+          transform: isMobile ? 'none' : 'scaleX(-1)' // กลับด้านสำหรับ Desktop ให้โค้งกินเข้ามา
+        }}
+      >
+        {isMobile ? (
+          // SVG สำหรับแนวนอน (Mobile)
+          <path d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        ) : (
+          // SVG สำหรับแนวตั้ง (Desktop) - รูปทรงก้อนเมฆซ้อนกัน
+          <path d="M0,0 C30,10 50,30 50,50 C50,70 30,90 0,100 L100,100 L100,0 Z" />
+        )}
+      </svg>
+    </div>
+  );
+};
 
 export default function App() {
   const screens = useBreakpoint(); 
@@ -275,140 +315,159 @@ export default function App() {
     );
   }
 
-  // 🔥🔥🔥 Refined Login UI based on the reference image 🔥🔥🔥
+  // 🔥🔥🔥 NEW LOGIN SCREEN DESIGN (Split Screen & Clouds) 🔥🔥🔥
   if (!isAuthenticated) {
+    // Custom Style for Bottom-Border-Only Inputs
+    const customInputStyle = {
+      border: 'none',
+      borderBottom: '1px solid #d9d9d9',
+      borderRadius: '0',
+      boxShadow: 'none',
+      background: 'transparent',
+      paddingLeft: '0',
+      fontSize: '16px'
+    };
+
     return (
-      <ConfigProvider theme={{ token: { colorPrimary: '#007AFF', fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
+      <ConfigProvider theme={{ token: { colorPrimary: '#0061ff', fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
         <div style={{ 
           height: '100vh', 
           width: '100%', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          background: isMobile ? '#fff' : '#f0f2f5', // Mobile: White bg, Desktop: Grey bg
-          overflow: 'hidden' 
+          background: '#f5f7fb',
+          overflow: 'hidden'
         }}>
           
-          {/* Main Card Container - Responsive */}
+          {/* Main Card */}
           <div style={{
-            width: isMobile ? '100%' : '900px',
-            height: isMobile ? '100%' : '600px',
+            width: isMobile ? '100%' : '960px',
+            height: isMobile ? '100%' : '640px',
             background: '#fff',
-            borderRadius: isMobile ? '0' : '20px',
-            boxShadow: isMobile ? 'none' : '0 20px 50px rgba(0,0,0,0.1)',
-            overflow: 'hidden',
+            borderRadius: isMobile ? '0' : '24px',
+            boxShadow: isMobile ? 'none' : '0 20px 40px rgba(0,0,0,0.1)',
             display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
+            overflow: 'hidden',
             position: 'relative'
           }}>
 
-            {/* Left Side (Desktop) / Top Side (Mobile) - The Blue Area */}
+            {/* Left Side (Blue Gradient) */}
             <div style={{
-              width: isMobile ? '100%' : '40%',
+              width: isMobile ? '100%' : '45%',
               height: isMobile ? '35%' : '100%',
-              background: 'linear-gradient(135deg, #0061ff 0%, #60efff 100%)', // Blue Gradient
+              background: 'linear-gradient(135deg, #0061ff 0%, #00aaff 100%)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
               color: '#fff',
-              position: 'relative',
-              padding: '20px',
-              // Add a curve for mobile view
-              borderBottomRightRadius: isMobile ? '80px' : '0',
-              zIndex: 1
+              position: 'relative'
             }}>
-              {/* Decorative Circles (Optional, to match "Space" theme) */}
-              <div style={{
-                position: 'absolute', top: '-50px', left: '-50px', width: '150px', height: '150px',
-                background: 'rgba(255,255,255,0.1)', borderRadius: '50%'
-              }} />
               
-              <div style={{ textAlign: 'center', zIndex: 2 }}>
+              <div style={{ position: 'relative', zIndex: 10, textAlign: 'center' }}>
                 <div style={{ 
                   background: 'rgba(255,255,255,0.2)', 
-                  width: isMobile ? '60px' : '80px', 
-                  height: isMobile ? '60px' : '80px', 
-                  borderRadius: '20px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  margin: '0 auto 16px',
-                  backdropFilter: 'blur(5px)'
+                  width: 80, height: 80, borderRadius: '50%', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 20px', backdropFilter: 'blur(10px)'
                 }}>
-                  <SafetyCertificateOutlined style={{ fontSize: isMobile ? '32px' : '40px', color: '#fff' }} />
+                  <RocketOutlined style={{ fontSize: '40px', color: '#fff' }} />
                 </div>
-                <Title level={isMobile ? 3 : 2} style={{ margin: 0, fontWeight: 800, color: '#fff', letterSpacing: '1px' }}>SafetyOS</Title>
-                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: isMobile ? '14px' : '16px' }}>Enterprise Safety Management</Text>
+                <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 700 }}>SafetyOS</Title>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: '16px' }}>Enterprise Safety Management</Text>
               </div>
+
+              {/* ☁️ Cloud Separator */}
+              <CloudSeparator isMobile={isMobile} />
             </div>
 
-            {/* Right Side (Desktop) / Bottom Side (Mobile) - The Form Area */}
+            {/* Right Side (White Form) */}
             <div style={{
-              width: isMobile ? '100%' : '60%',
+              width: isMobile ? '100%' : '55%',
               height: isMobile ? '65%' : '100%',
-              padding: isMobile ? '40px 24px' : '60px',
+              padding: isMobile ? '40px 30px' : '0 80px',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              background: '#fff'
+              background: '#fff',
+              position: 'relative',
+              zIndex: 5
             }}>
-              <div style={{ width: '100%', maxWidth: '360px', margin: '0 auto' }}>
-                <div style={{ marginBottom: '32px' }}>
-                  <Title level={3} style={{ marginBottom: '8px', color: '#1d1d1f' }}>ยินดีต้อนรับ</Title>
-                  <Text type="secondary">กรุณาเข้าสู่ระบบเพื่อจัดการงานความปลอดภัย</Text>
+              <div style={{ width: '100%' }}>
+                <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+                  <Title level={3} style={{ marginBottom: '8px', color: '#0061ff' }}>Welcome to SafetyOS</Title>
+                  <Text type="secondary">Login to your account</Text>
                 </div>
 
                 <Form layout="vertical" onFinish={handleLogin} size="large">
                   <Form.Item 
                     name="username" 
-                    label={<span style={{fontWeight: 600, color: '#666'}}>รหัสพนักงาน</span>}
-                    rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]}
+                    rules={[{ required: true, message: 'Please enter username' }]}
+                    style={{ marginBottom: '24px' }}
                   >
                     <Input 
-                      placeholder="Enter your username" 
-                      style={{ borderRadius: '8px', background: '#f9f9f9', border: '1px solid #eee' }} 
+                      placeholder="Username" 
+                      bordered={false} // AntD prop to remove default border
+                      style={customInputStyle}
                     />
                   </Form.Item>
                   
                   <Form.Item 
                     name="password" 
-                    label={<span style={{fontWeight: 600, color: '#666'}}>รหัสผ่าน</span>}
-                    rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]}
+                    rules={[{ required: true, message: 'Please enter password' }]}
+                    style={{ marginBottom: '32px' }}
                   >
                     <Input.Password 
-                      placeholder="Enter your password" 
-                      style={{ borderRadius: '8px', background: '#f9f9f9', border: '1px solid #eee' }} 
+                      placeholder="Password" 
+                      bordered={false} 
+                      style={customInputStyle}
                     />
                   </Form.Item>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                    <Checkbox><span style={{fontSize: '12px'}}>จดจำฉัน</span></Checkbox>
-                    <a href="#" style={{fontSize: '12px', color: '#007AFF'}}>ลืมรหัสผ่าน?</a>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', fontSize: '13px' }}>
+                    <Checkbox style={{ color: '#888' }}>Remember me</Checkbox>
+                    <a href="#" style={{ color: '#0061ff', fontWeight: 600 }}>Forgot Password?</a>
                   </div>
 
-                  <Button 
-                    type="primary" 
-                    htmlType="submit" 
-                    block 
-                    loading={isLoggingIn} 
-                    style={{ 
-                      height: '48px', 
-                      fontSize: '16px', 
-                      fontWeight: 'bold', 
-                      borderRadius: '8px',
-                      background: 'linear-gradient(90deg, #0061ff 0%, #60efff 100%)',
-                      border: 'none',
-                      boxShadow: '0 4px 15px rgba(0, 97, 255, 0.3)'
-                    }}
-                  >
-                    เข้าสู่ระบบ (Sign In)
-                  </Button>
+                  <Space size="middle" style={{ width: '100%', justifyContent: 'center' }}>
+                    <Button 
+                      type="primary" 
+                      htmlType="submit" 
+                      shape="round" 
+                      loading={isLoggingIn} 
+                      style={{ 
+                        width: '140px', 
+                        height: '45px', 
+                        fontWeight: 600,
+                        background: '#0061ff',
+                        boxShadow: '0 4px 14px rgba(0, 97, 255, 0.39)'
+                      }}
+                    >
+                      Login
+                    </Button>
+                    <Button 
+                      shape="round" 
+                      style={{ 
+                        width: '140px', 
+                        height: '45px', 
+                        fontWeight: 600,
+                        color: '#888',
+                        borderColor: '#ddd'
+                      }}
+                    >
+                      Register
+                    </Button>
+                  </Space>
                 </Form>
 
-                <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                  <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>
+                    Test Accounts: somchai / somsak / view
+                  </Text>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
-                    บัญชีทดสอบ: somchai, somsak, view (Pass: 1234)
+                    Password: 1234
                   </Text>
                 </div>
               </div>
