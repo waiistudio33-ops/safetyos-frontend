@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, Row, Col, Statistic, Typography, List, Tag, Space, Avatar, Progress, Skeleton, Modal, Button, Image } from 'antd';
+import { Card, Row, Col, Statistic, Typography, List, Tag, Space, Avatar, Progress, Skeleton, Modal, Button, Image, Grid } from 'antd'; // 👈 เพิ่ม Grid
 import { 
   ToolOutlined, CheckCircleOutlined, WarningOutlined, 
   DashboardOutlined, HistoryOutlined, QrcodeOutlined,
@@ -15,13 +15,17 @@ dayjs.extend(relativeTime);
 dayjs.locale('th');
 
 const { Title, Text, Paragraph } = Typography;
+const { useBreakpoint } = Grid; // 🚀 เรียกใช้ Hook สำหรับเช็คขนาดหน้าจอ
 
 export default function Dashboard() {
+  const screens = useBreakpoint(); // 🚀 ตัวแปรเช็คขนาดจอ (md, lg, xs)
+  const isMobile = !screens.md; // ถ้าไม่ใช่จอขนาดกลางขึ้นไป (Tablet/PC) ถือว่าเป็นมือถือ
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [recentPermits, setRecentPermits] = useState<any[]>([]);
 
-  // 🚀 State สำหรับเปิดหน้าต่าง (Modal) ดูรายละเอียด
+  // State สำหรับเปิดหน้าต่าง (Modal) ดูรายละเอียด
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
 
@@ -32,13 +36,11 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // ดึงข้อมูล Dashboard สถิติ
       const resDash = await axios.get('https://safetyos-backend.onrender.com/dashboard');
       setData(resDash.data);
 
-      // 🚀 ดึงข้อมูล Permit ทั้งหมดมาเพื่อโชว์รายการล่าสุดในหน้าแรก
       const resPermits = await axios.get('https://safetyos-backend.onrender.com/permits');
-      setRecentPermits(resPermits.data.slice(0, 4)); // เอาแค่ 4 งานล่าสุดมาโชว์
+      setRecentPermits(resPermits.data.slice(0, 4)); 
 
     } catch (error) {
       console.error('Fetch error:', error);
@@ -62,114 +64,128 @@ export default function Dashboard() {
   if (loading || !data) return <Skeleton active paragraph={{ rows: 10 }} />;
 
   return (
-    <div className="space-y-6" style={{ padding: '24px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <Space align="center" size="middle">
+    // 🚀 ปรับ Padding: มือถือ = 12px, คอม = 24px (ใช้พื้นที่คุ้มค่าแบบ Facebook)
+    <div className="space-y-6" style={{ padding: isMobile ? '12px' : '24px', paddingBottom: '80px' }}>
+      
+      {/* Header Responsive */}
+      <div style={{ 
+        marginBottom: '32px', 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', // 👈 มือถือเรียงแนวตั้ง, คอมเรียงแนวนอน
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'flex-end',
+        gap: '16px' // 👈 เว้นระยะห่างเวลาซ้อนกัน
+      }}>
+        <Space align="center" size="middle" style={{ width: '100%' }}>
           <div style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', padding: '16px', borderRadius: '18px', boxShadow: '0 8px 16px rgba(0,122,255,0.2)' }}>
-            <DashboardOutlined style={{ fontSize: '32px', color: '#fff' }} />
+            <DashboardOutlined style={{ fontSize: isMobile ? '24px' : '32px', color: '#fff' }} />
           </div>
           <div>
-            <Title level={2} style={{ margin: 0 }}>Safety Overview</Title>
-            <Text type="secondary">ศูนย์บัญชาการและสรุปสถิติความปลอดภัยแบบ Real-time</Text>
+            <Title level={isMobile ? 3 : 2} style={{ margin: 0, wordBreak: 'keep-all' }}>Safety Overview</Title>
+            <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>ศูนย์บัญชาการและสรุปสถิติความปลอดภัยแบบ Real-time</Text>
           </div>
         </Space>
-        <Tag color="blue" style={{ borderRadius: '20px', padding: '4px 12px' }}>อัปเดตล่าสุด: {dayjs().format('HH:mm')} น.</Tag>
+        
+        {/* 🚀 ย้าย Tag ไปชิดขวาหรือชิดซ้ายตามขนาดจอ */}
+        <Tag color="blue" style={{ borderRadius: '20px', padding: '4px 12px', alignSelf: isMobile ? 'flex-start' : 'auto', marginLeft: isMobile ? 54 : 0 }}>
+          อัปเดตล่าสุด: {dayjs().format('HH:mm')} น.
+        </Tag>
       </div>
 
-      {/* 📊 ส่วนที่ 1: การ์ดตัวเลขสรุป (Top Stats) */}
-      <Row gutter={[24, 24]}>
+      {/* 📊 ส่วนที่ 1: การ์ดตัวเลขสรุป (ใช้ Grid เดิม แต่ปรับ Font ให้เหมาะกับมือถือ) */}
+      <Row gutter={[16, 16]}> {/* ลดช่องว่าง Grid บนมือถือให้กระชับขึ้น */}
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ ...glassPanel, borderTop: '4px solid #007AFF' }} hoverable>
-            <Statistic title="ใบอนุญาตงานทั้งหมด" value={data.stats.totalPermits} prefix={<FileTextOutlined style={{color:'#007AFF'}}/>} valueStyle={{fontWeight: 800}} />
-            <Progress percent={Math.round((data.stats.pendingPermits / data.stats.totalPermits) * 100) || 0} status="active" strokeColor="#007AFF" />
+          <Card style={{ ...glassPanel, borderTop: '4px solid #007AFF' }} hoverable bodyStyle={{ padding: '20px' }}>
+            <Statistic title="ใบอนุญาตงานทั้งหมด" value={data.stats.totalPermits} prefix={<FileTextOutlined style={{color:'#007AFF'}}/>} valueStyle={{fontWeight: 800, fontSize: isMobile ? '24px' : '32px'}} />
+            <Progress percent={Math.round((data.stats.pendingPermits / data.stats.totalPermits) * 100) || 0} status="active" strokeColor="#007AFF" size="small" />
             <Text type="secondary" style={{fontSize:'12px'}}>รอตรวจสอบ {data.stats.pendingPermits} ใบ</Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ ...glassPanel, borderTop: '4px solid #ff4d4f' }} hoverable>
-            <Statistic title="จุดเสี่ยงที่ยังไม่แก้ไข (Open)" value={data.stats.openIncidents} prefix={<WarningOutlined style={{color:'#ff4d4f'}}/>} valueStyle={{color: '#ff4d4f', fontWeight: 800}} />
-            <Text type="secondary">ต้องการการแก้ไขด่วน!</Text>
+          <Card style={{ ...glassPanel, borderTop: '4px solid #ff4d4f' }} hoverable bodyStyle={{ padding: '20px' }}>
+            <Statistic title="จุดเสี่ยง (Open)" value={data.stats.openIncidents} prefix={<WarningOutlined style={{color:'#ff4d4f'}}/>} valueStyle={{color: '#ff4d4f', fontWeight: 800, fontSize: isMobile ? '24px' : '32px'}} />
+            <Text type="secondary" style={{fontSize:'12px'}}>ต้องการการแก้ไขด่วน!</Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ ...glassPanel, borderTop: '4px solid #faad14' }} hoverable>
-            <Statistic title="อุปกรณ์ชำรุด (Defective)" value={data.stats.defectiveEquip} prefix={<ToolOutlined style={{color:'#faad14'}}/>} valueStyle={{color: '#faad14', fontWeight: 800}} />
-            <Text type="secondary">รอดำเนินการซ่อมบำรุง</Text>
+          <Card style={{ ...glassPanel, borderTop: '4px solid #faad14' }} hoverable bodyStyle={{ padding: '20px' }}>
+            <Statistic title="อุปกรณ์ชำรุด" value={data.stats.defectiveEquip} prefix={<ToolOutlined style={{color:'#faad14'}}/>} valueStyle={{color: '#faad14', fontWeight: 800, fontSize: isMobile ? '24px' : '32px'}} />
+            <Text type="secondary" style={{fontSize:'12px'}}>รอดำเนินการซ่อมบำรุง</Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ ...glassPanel, borderTop: '4px solid #52c41a' }} hoverable>
-            <Statistic title="พนักงานในพื้นที่" value={data.stats.totalUsers} prefix={<TeamOutlined style={{color:'#52c41a'}}/>} valueStyle={{color: '#52c41a', fontWeight: 800}} />
-            <Text type="secondary">ยืนยันผ่าน E-Passport แล้ว</Text>
+          <Card style={{ ...glassPanel, borderTop: '4px solid #52c41a' }} hoverable bodyStyle={{ padding: '20px' }}>
+            <Statistic title="พนักงานในพื้นที่" value={data.stats.totalUsers} prefix={<TeamOutlined style={{color:'#52c41a'}}/>} valueStyle={{color: '#52c41a', fontWeight: 800, fontSize: isMobile ? '24px' : '32px'}} />
+            <Text type="secondary" style={{fontSize:'12px'}}>ยืนยันผ่าน E-Passport</Text>
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
         
-        {/* 🚀 ส่วนที่ 2: รายงานจุดเสี่ยงล่าสุด (คลิกเพื่อดูรูปและรายละเอียดได้) */}
+        {/* 🚀 ส่วนที่ 2: รายงานจุดเสี่ยงล่าสุด */}
         <Col xs={24} lg={12}>
-          <Card title={<Space><WarningOutlined style={{color:'#ff4d4f'}}/> <Text strong>รายงานจุดเสี่ยงล่าสุด (คลิกดูรายละเอียด)</Text></Space>} style={glassPanel}>
+          <Card title={<Space><WarningOutlined style={{color:'#ff4d4f'}}/> <Text strong>รายงานจุดเสี่ยงล่าสุด</Text></Space>} style={glassPanel} bodyStyle={{ padding: isMobile ? '12px' : '24px' }}>
             <List
               itemLayout="horizontal"
               dataSource={data.recentIncidents}
               renderItem={(item: any) => (
                 <List.Item 
-                  style={{ cursor: 'pointer', transition: 'all 0.3s', padding: '12px', borderRadius: '12px' }}
+                  style={{ cursor: 'pointer', transition: 'all 0.3s', padding: '12px', borderRadius: '12px', flexWrap: 'nowrap' }}
                   className="hover:bg-gray-50"
-                  onClick={() => showIncidentDetail(item)} // 👈 กดปุ๊บเปิด Modal
+                  onClick={() => showIncidentDetail(item)}
                 >
                   <List.Item.Meta
-                    avatar={<Avatar src={item.image_url} icon={<WarningOutlined />} style={{backgroundColor: '#fff1f0', color: '#ff4d4f', width: 48, height: 48, borderRadius: '12px'}} />}
-                    title={<Text strong style={{ color: '#007AFF' }}>{item.title}</Text>}
+                    avatar={<Avatar src={item.image_url} icon={<WarningOutlined />} shape="square" style={{backgroundColor: '#fff1f0', color: '#ff4d4f', width: 48, height: 48, borderRadius: '12px'}} />}
+                    title={<Text strong style={{ color: '#007AFF', fontSize: isMobile ? '14px' : '16px' }} ellipsis={{ tooltip: item.title }}>{item.title}</Text>}
                     description={
                       <Space direction="vertical" size={0}>
-                        <Text type="secondary" style={{fontSize:'12px'}}><TeamOutlined /> {item.reporter?.full_name}</Text>
-                        <Text type="secondary" style={{fontSize:'12px'}}>{dayjs(item.created_at).fromNow()}</Text>
+                        <Text type="secondary" style={{fontSize:'12px'}} ellipsis><TeamOutlined /> {item.reporter?.full_name}</Text>
+                        <Text type="secondary" style={{fontSize:'10px'}}>{dayjs(item.created_at).fromNow()}</Text>
                       </Space>
                     }
                   />
-                  <Space direction="vertical" align="end">
-                    <Tag color="error" style={{ borderRadius: '12px' }}>OPEN</Tag>
-                    
-                  </Space>
+                  <div style={{ marginLeft: '10px' }}>
+                     <Tag color="error" style={{ borderRadius: '12px', fontSize: '10px' }}>OPEN</Tag>
+                  </div>
                 </List.Item>
               )}
             />
           </Card>
         </Col>
 
-        {/* 🚀 ส่วนที่ 3: งานล่าสุดและไฟล์แนบ (โหลดไฟล์ JSA/เอกสาร ได้จากหน้าแรกเลย) */}
+        {/* 🚀 ส่วนที่ 3: งานล่าสุด */}
         <Col xs={24} lg={12}>
-          <Card title={<Space><FileTextOutlined style={{color:'#007AFF'}}/> <Text strong>ใบอนุญาตทำงานล่าสุด (Permits & Files)</Text></Space>} style={glassPanel}>
+          <Card title={<Space><FileTextOutlined style={{color:'#007AFF'}}/> <Text strong>ใบอนุญาตทำงานล่าสุด</Text></Space>} style={glassPanel} bodyStyle={{ padding: isMobile ? '12px' : '24px' }}>
             <List
               itemLayout="horizontal"
               dataSource={recentPermits}
               renderItem={(item: any) => (
-                <List.Item style={{ padding: '12px' }}>
+                <List.Item style={{ padding: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '10px' }}>
                   <List.Item.Meta
                     avatar={
                       <div style={{ background: '#e6f7ff', padding: '12px', borderRadius: '12px' }}>
                         <ThunderboltOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
                       </div>
                     }
-                    title={<Text strong>{item.title}</Text>}
+                    title={<Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>{item.title}</Text>}
                     description={
                       <Space direction="vertical" size={0}>
                         <Text type="secondary" style={{fontSize:'12px'}}>{item.permit_type}</Text>
-                        <Text type="secondary" style={{fontSize:'12px'}}>{item.applicant?.full_name}</Text>
+                        <Text type="secondary" style={{fontSize:'12px'}} ellipsis style={{ maxWidth: 150 }}>{item.applicant?.full_name}</Text>
                       </Space>
                     }
                   />
-                  {/* 👈 ปุ่มดาวน์โหลดไฟล์เอกสารแนบตรงๆ จาก Dashboard */}
-                  {item.attached_file ? (
-                    <Button type="primary" shape="round" icon={<DownloadOutlined />} size="small" href={item.attached_file} target="_blank" style={{ background: '#5856D6', border: 'none' }}>
-                      เปิดไฟล์ JSA
-                    </Button>
-                  ) : (
-                    <Text type="secondary" style={{ fontSize: '12px', fontStyle: 'italic' }}>ไม่มีไฟล์แนบ</Text>
-                  )}
+                  {/* ปุ่มดาวน์โหลดจะขยายเต็มในมือถือ */}
+                  <div style={{ width: isMobile ? '100%' : 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+                    {item.attached_file ? (
+                      <Button type="primary" shape="round" icon={<DownloadOutlined />} size="small" href={item.attached_file} target="_blank" style={{ background: '#5856D6', border: 'none', width: isMobile ? '100%' : 'auto' }}>
+                        เปิดไฟล์ JSA
+                      </Button>
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: '12px', fontStyle: 'italic' }}>ไม่มีไฟล์แนบ</Text>
+                    )}
+                  </div>
                 </List.Item>
               )}
             />
@@ -178,58 +194,60 @@ export default function Dashboard() {
       </Row>
 
       {/* =========================================================
-          🔥 Modal สำหรับแสดงรายละเอียดจุดเสี่ยงแบบเต็มจอ (Popup)
-          ========================================================= */}
+          🔥 Modal Responsive: มือถือ = เต็มจอ, คอม = Popup 600px
+         ========================================================= */}
       <Modal
-        title={<Space><WarningOutlined style={{ color: '#ff4d4f' }} /> รายละเอียดจุดเสี่ยง (Incident Details)</Space>}
+        title={<Space><WarningOutlined style={{ color: '#ff4d4f' }} /> รายละเอียดจุดเสี่ยง</Space>}
         open={isIncidentModalOpen}
         onCancel={() => setIsIncidentModalOpen(false)}
-        footer={[
-          <Button key="close" type="primary" shape="round" onClick={() => setIsIncidentModalOpen(false)}>
-            ปิดหน้าต่าง
-          </Button>
-        ]}
-        width={600}
+        footer={null} // ซ่อน Footer เดิม เพื่อทำปุ่มปิดเองที่เหมาะกับมือถือ
+        width={isMobile ? '100%' : 600} // 👈 มือถือ: เต็มความกว้าง 100%
+        style={{ top: isMobile ? 0 : 20, maxWidth: '100vw', margin: 0, padding: 0 }} // 👈 มือถือ: ชิดขอบบน ไม่เหลือขอบขาว
+        bodyStyle={{ height: isMobile ? '100vh' : 'auto', overflowY: 'auto', paddingBottom: '40px' }} // 👈 มือถือ: สกอลล์ได้
         destroyOnClose
       >
         {selectedIncident && (
-          <div style={{ marginTop: '16px' }}>
-            <Title level={4}>{selectedIncident.title}</Title>
-            <Space style={{ marginBottom: '16px' }}>
+          <div style={{ marginTop: '0px' }}>
+            <Title level={4} style={{ fontSize: isMobile ? '18px' : '20px' }}>{selectedIncident.title}</Title>
+            <Space style={{ marginBottom: '16px', flexWrap: 'wrap' }}>
               <Tag color="error">{selectedIncident.type}</Tag>
               <Tag color="orange">สถานะ: {selectedIncident.status}</Tag>
+              <Tag><EnvironmentOutlined /> GPS: {selectedIncident.lat?.toFixed(4)}, {selectedIncident.lng?.toFixed(4)}</Tag>
             </Space>
 
-            <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-              <Text strong>รายละเอียดที่พบ:</Text>
-              <Paragraph style={{ marginTop: '8px', marginBottom: 0 }}>{selectedIncident.description}</Paragraph>
-            </div>
-
-            <Row gutter={16} style={{ marginBottom: '16px' }}>
-              <Col span={12}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>ผู้แจ้ง:</Text><br />
-                <Text strong><TeamOutlined /> {selectedIncident.reporter?.full_name}</Text>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>พิกัด GPS:</Text><br />
-                <Text strong><EnvironmentOutlined /> {selectedIncident.lat?.toFixed(4)}, {selectedIncident.lng?.toFixed(4)}</Text>
-              </Col>
-            </Row>
-
-            {/* โชว์รูปถ่ายหน้างานแบบคลิกขยายได้ */}
-            {selectedIncident.image_url ? (
-              <div style={{ textAlign: 'center', background: '#000', borderRadius: '12px', padding: '8px' }}>
+            {/* รูปภาพใหญ่สะใจแบบ Facebook */}
+            <div style={{ textAlign: 'center', background: '#000', borderRadius: '12px', padding: '4px', marginBottom: '16px', overflow: 'hidden' }}>
+              {selectedIncident.image_url ? (
                 <Image 
                   src={selectedIncident.image_url} 
                   alt="Incident" 
-                  style={{ maxHeight: '300px', borderRadius: '8px', objectFit: 'contain' }}
+                  style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }}
                 />
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', background: '#f0f0f0', borderRadius: '12px', padding: '24px' }}>
-                <Text type="secondary">ไม่มีรูปถ่ายหน้างาน</Text>
-              </div>
-            )}
+              ) : (
+                <div style={{ padding: '40px', background: '#f5f5f5', color: '#999' }}>ไม่มีรูปภาพ</div>
+              )}
+            </div>
+
+            <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+              <Text strong style={{ fontSize: '16px' }}>รายละเอียดที่พบ:</Text>
+              <Paragraph style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px', color: '#555' }}>{selectedIncident.description}</Paragraph>
+            </div>
+
+            <Row gutter={16} style={{ marginBottom: '24px' }}>
+              <Col span={24}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid #eee', borderRadius: '10px' }}>
+                  <Avatar icon={<TeamOutlined />} size="large" style={{ backgroundColor: '#007AFF' }} />
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>ผู้แจ้งเหตุ</Text><br />
+                    <Text strong style={{ fontSize: '16px' }}>{selectedIncident.reporter?.full_name}</Text>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+
+            <Button block type="primary" size="large" shape="round" onClick={() => setIsIncidentModalOpen(false)} style={{ height: '50px', fontSize: '16px' }}>
+              ปิดหน้าต่าง
+            </Button>
           </div>
         )}
       </Modal>
