@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, Typography, Space, Input, message, Tag, Switch, Divider, Result, Tabs, Timeline, Empty } from 'antd';
+import { Card, Button, Typography, Space, Input, message, Tag, Switch, Divider, Result, Tabs, Timeline, Empty, Grid } from 'antd'; // 👈 เพิ่ม Grid
 import { 
   QrcodeOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, 
   CloseCircleOutlined, SaveOutlined, HistoryOutlined, UserOutlined,
@@ -10,6 +10,7 @@ import 'dayjs/locale/th';
 
 dayjs.locale('th');
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid; // 🚀 เรียกใช้ Hook เช็คขนาดจอ
 
 // 📝 มาตรฐาน Checklist อิงตาม NFPA 10 และกฎหมายไทย
 const CHECKLISTS: Record<string, string[]> = {
@@ -34,6 +35,9 @@ const CHECKLISTS: Record<string, string[]> = {
 };
 
 export default function EquipmentInspection({ currentUser }: { currentUser: any }) {
+  const screens = useBreakpoint(); // 🚀 ตัวแปรเช็คขนาดจอ
+  const isMobile = !screens.md; // ถ้าเล็กกว่า md (Tablet) ถือเป็น Mobile
+
   const [qrCode, setQrCode] = useState('');
   const [equipment, setEquipment] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +101,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
   };
 
   const glassPanel = { 
-    background: 'rgba(255, 255, 255, 0.8)', 
+    background: 'rgba(255, 255, 255, 0.9)', // ปรับให้ทึบขึ้นนิดนึงเพื่อให้อ่านง่ายบนมือถือ
     backdropFilter: 'blur(20px)', 
     borderRadius: '24px', 
     border: '1px solid rgba(255, 255, 255, 0.5)', 
@@ -106,11 +110,11 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
   if (isSuccess) {
     return (
-      <Card style={glassPanel} className="text-center">
+      <Card style={glassPanel} className="text-center" bodyStyle={{ padding: isMobile ? '24px 12px' : '32px' }}>
         <Result 
           status="success" 
-          title={<Title level={3} style={{ color: '#34c759' }}>บันทึกการตรวจสอบเรียบร้อย!</Title>}
-          subTitle={`อัปเดตสถานะของ ${equipment?.name} ลงในระบบส่วนกลางแล้ว ระบบได้บันทึกประวัติการทำงานของคุณ`}
+          title={<Title level={isMobile ? 4 : 3} style={{ color: '#34c759' }}>บันทึกการตรวจสอบเรียบร้อย!</Title>}
+          subTitle={`อัปเดตสถานะของ ${equipment?.name} ลงในระบบส่วนกลางแล้ว`}
           extra={[
             <Button 
               type="primary" 
@@ -118,7 +122,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
               icon={<QrcodeOutlined />} 
               key="console" 
               onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); }} 
-              style={{ borderRadius: '12px', background: '#007AFF', padding: '0 32px' }}
+              style={{ borderRadius: '12px', background: '#007AFF', width: isMobile ? '100%' : 'auto', padding: '0 32px' }}
             >
               สแกนอุปกรณ์ชิ้นต่อไป
             </Button>
@@ -129,85 +133,112 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
   }
 
   return (
-    <div className="space-y-6" style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Space align="center" style={{ marginBottom: '16px' }}>
+    // 🚀 ปรับ Padding ตามขนาดจอ: มือถือชิดขอบมากขึ้น (12px), คอมเว้นที่เยอะหน่อย (24px)
+    <div className="space-y-6" style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '12px' : '0' }}>
+      
+      <Space align="center" style={{ marginBottom: '16px', justifyContent: isMobile ? 'center' : 'flex-start', width: '100%' }}>
         <div style={{ background: '#007AFF', padding: '12px', borderRadius: '12px' }}>
           <SafetyCertificateOutlined style={{ fontSize: '24px', color: '#fff' }} />
         </div>
-        <Title level={3} style={{ color: '#1d1d1f', margin: 0 }}>ระบบตรวจสอบอุปกรณ์ (Inspection)</Title>
+        <Title level={isMobile ? 4 : 3} style={{ color: '#1d1d1f', margin: 0 }}>ระบบตรวจสอบอุปกรณ์</Title>
       </Space>
 
       {/* Search Card */}
-      <Card style={glassPanel} bodyStyle={{ padding: '24px' }}>
-        <Title level={5} style={{ color: '#1d1d1f' }}>🔍 สแกน QR Code หรือ พิมพ์รหัสอุปกรณ์</Title>
-        <Space.Compact style={{ width: '100%', marginTop: '8px' }}>
+      <Card style={glassPanel} bodyStyle={{ padding: isMobile ? '16px' : '24px' }}>
+        <Title level={5} style={{ color: '#1d1d1f', marginBottom: 12 }}>🔍 สแกน QR Code หรือ พิมพ์รหัส</Title>
+        <Space.Compact style={{ width: '100%' }}>
           <Input 
             size="large" 
-            placeholder="ตัวอย่างรหัส: EXT-001 หรือ SCAF-001" 
+            placeholder="รหัสอุปกรณ์ (EXT-001)" 
             value={qrCode} 
             onChange={(e) => setQrCode(e.target.value)} 
             onPressEnter={handleSearchQR} 
             prefix={<QrcodeOutlined style={{ color: '#8e8e93' }} />} 
+            style={{ fontSize: '16px' }}
           />
           <Button type="primary" size="large" onClick={handleSearchQR} loading={isLoading} icon={<SearchOutlined />} style={{ background: '#007AFF' }}>
-            ค้นหาข้อมูล
+            {!isMobile && 'ค้นหา'} 
           </Button>
         </Space.Compact>
-        <Text type="secondary" style={{ display: 'block', marginTop: '12px', fontSize: '13px' }}>
-          *ในการใช้งานจริงบนสมาร์ทโฟน ระบบสามารถดึงปลั๊กอินเปิดกล้องเพื่อสแกน QR Code ได้ทันที
+        <Text type="secondary" style={{ display: 'block', marginTop: '12px', fontSize: '12px' }}>
+          *รองรับการใช้งานผ่านกล้องมือถือและเครื่องสแกน
         </Text>
       </Card>
 
       {/* Equipment Details Card */}
       {equipment && (
-        <Card style={{...glassPanel, borderTop: '4px solid #007AFF', padding: '8px'}}>
+        <Card style={{...glassPanel, borderTop: '4px solid #007AFF', marginTop: '16px'}} bodyStyle={{ padding: isMobile ? '12px' : '24px' }}>
           <Tabs defaultActiveKey="1" items={[
             {
               key: '1',
-              label: <span><CheckCircleOutlined /> ฟอร์มตรวจสอบ (Checklist)</span>,
+              label: <span><CheckCircleOutlined /> ตรวจสอบ</span>,
               children: (
                 <div style={{ paddingTop: '16px' }}>
-                  {/* Header Info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', background: '#f8f9fa', padding: '16px', borderRadius: '16px' }}>
+                  {/* 🚀 Header Info: บนมือถือเรียงแนวตั้ง (Column), บนคอมเรียงแนวนอน (Row) */}
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: isMobile ? 'column' : 'row', 
+                    alignItems: 'center', 
+                    gap: '20px', 
+                    marginBottom: '24px', 
+                    background: '#f8f9fa', 
+                    padding: '16px', 
+                    borderRadius: '16px',
+                    textAlign: isMobile ? 'center' : 'left'
+                  }}>
                     <div style={{ fontSize: '48px', background: '#fff', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                       {getEquipmentIcon(equipment.type)}
                     </div>
-                    <div>
+                    <div style={{ width: '100%' }}>
                       <Title level={4} style={{ margin: '0 0 4px 0', color: '#1d1d1f' }}>{equipment.name}</Title>
-                      <Text type="secondary" style={{ fontSize: '14px' }}>รหัสอ้างอิง: <Text strong>{equipment.qr_code}</Text></Text>
-                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                      <Text type="secondary" style={{ fontSize: '14px' }}>รหัส: <Text strong>{equipment.qr_code}</Text></Text>
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px', justifyContent: isMobile ? 'center' : 'flex-start', flexWrap: 'wrap' }}>
                         <Tag color="blue" style={{ borderRadius: '6px' }}>{equipment.type}</Tag>
                         <Tag color={equipment.status === 'NORMAL' ? 'green' : 'red'} style={{ borderRadius: '6px' }}>
-                          สถานะล่าสุด: {equipment.status}
+                          สถานะ: {equipment.status}
                         </Tag>
                       </div>
                     </div>
                   </div>
 
-                  <Divider orientation="left"><Text strong style={{ fontSize: '16px', color: '#1d1d1f' }}>📝 รายการตรวจสอบประจำเดือน</Text></Divider>
+                  <Divider orientation="left" style={{ margin: '12px 0' }}><Text strong style={{ fontSize: '16px', color: '#1d1d1f' }}>📝 รายการตรวจสอบ</Text></Divider>
                   
                   {/* Checklist Items */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {(CHECKLISTS[equipment.type] || ['สภาพทั่วไปปกติพร้อมใช้งาน']).map((item, index) => (
                       <div key={index} style={{ 
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        display: 'flex', 
+                        flexDirection: isMobile ? 'column' : 'row', // 🚀 มือถือเรียงลงมา, คอมเรียงข้าง
+                        justifyContent: 'space-between', 
+                        alignItems: isMobile ? 'flex-start' : 'center', 
+                        gap: isMobile ? '12px' : '0',
                         background: inspectionResult[index] ? '#f6ffed' : '#fff1f0', 
-                        padding: '16px', borderRadius: '12px', 
+                        padding: '16px', 
+                        borderRadius: '12px', 
                         border: `1px solid ${inspectionResult[index] ? '#b7eb8f' : '#ffa39e'}`,
                         transition: 'all 0.3s'
                       }}>
-                        <Space style={{ flex: 1, paddingRight: '16px' }}>
-                          {inspectionResult[index] ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '20px' }}/> : <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '20px' }}/>}
-                          <Text strong style={{ fontSize: '15px', color: inspectionResult[index] ? '#237804' : '#a8071a' }}>{item}</Text>
+                        <Space style={{ flex: 1, paddingRight: isMobile ? 0 : '16px', width: '100%' }}>
+                          {inspectionResult[index] ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '20px', flexShrink: 0 }}/> : <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: '20px', flexShrink: 0 }}/>}
+                          <Text strong style={{ fontSize: '15px', color: inspectionResult[index] ? '#237804' : '#a8071a', wordBreak: 'break-word' }}>{item}</Text>
                         </Space>
-                        <Space direction="vertical" align="end" size={2}>
-                          <Text type="secondary" style={{ fontSize: '12px', fontWeight: 'bold' }}>{inspectionResult[index] ? 'ผ่าน' : 'ชำรุด'}</Text>
+                        
+                        {/* ส่วน Switch บนมือถือจะกว้างเต็มจอ */}
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          width: isMobile ? '100%' : 'auto', 
+                          borderTop: isMobile ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                          paddingTop: isMobile ? '8px' : '0'
+                        }}>
+                          <Text type="secondary" style={{ fontSize: '14px', fontWeight: 'bold' }}>{inspectionResult[index] ? 'ผ่าน' : 'ชำรุด'}</Text>
                           <Switch 
                             checked={inspectionResult[index]} 
                             onChange={(checked) => setInspectionResult({...inspectionResult, [index]: checked})} 
                             style={{ background: inspectionResult[index] ? '#52c41a' : '#ff4d4f' }} 
                           />
-                        </Space>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -215,7 +246,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                   {/* Submit Section */}
                   <div style={{ marginTop: '32px', textAlign: 'center', background: '#f8f9fa', padding: '24px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
                     <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '14px' }}>
-                      <UserOutlined /> ผู้ตรวจสอบปัจจุบัน: <Text strong style={{ color: '#007AFF' }}>{currentUser?.full_name || 'ไม่ระบุชื่อ'}</Text>
+                      <UserOutlined /> ผู้ตรวจสอบ: <Text strong style={{ color: '#007AFF' }}>{currentUser?.full_name || 'ไม่ระบุชื่อ'}</Text>
                     </Text>
                     <Button 
                       type="primary" 
@@ -223,7 +254,17 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                       icon={<SaveOutlined />} 
                       onClick={handleSubmit} 
                       loading={isLoading} 
-                      style={{ borderRadius: '12px', background: 'linear-gradient(135deg, #007AFF, #5856D6)', border: 'none', width: '100%', maxWidth: '350px', height: '50px', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,122,255,0.3)' }}
+                      style={{ 
+                        borderRadius: '12px', 
+                        background: 'linear-gradient(135deg, #007AFF, #5856D6)', 
+                        border: 'none', 
+                        width: '100%', 
+                        maxWidth: '350px', 
+                        height: '50px', 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        boxShadow: '0 4px 15px rgba(0,122,255,0.3)' 
+                      }}
                     >
                       ยืนยันผลการตรวจสอบ
                     </Button>
@@ -233,9 +274,9 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
             },
             {
               key: '2',
-              label: <span><HistoryOutlined /> ประวัติย้อนหลัง (Traceability)</span>,
+              label: <span><HistoryOutlined /> ประวัติ</span>,
               children: (
-                <div style={{ marginTop: '16px', padding: '24px', background: '#fff', borderRadius: '16px', border: '1px solid #f0f0f0' }}>
+                <div style={{ marginTop: '16px', padding: isMobile ? '12px' : '24px', background: '#fff', borderRadius: '16px', border: '1px solid #f0f0f0' }}>
                   {equipment.history && equipment.history.length > 0 ? (
                     <Timeline 
                       mode="left"
@@ -243,11 +284,13 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                         color: log.status === 'NORMAL' ? 'green' : 'red',
                         children: (
                           <div style={{ paddingBottom: '8px' }}>
-                            <Text strong style={{ fontSize: '15px' }}>{dayjs(log.created_at).format('DD MMMM YYYY, HH:mm น.')}</Text>
-                            <div style={{ marginTop: '8px', background: log.status === 'NORMAL' ? '#f6ffed' : '#fff1f0', border: `1px solid ${log.status === 'NORMAL' ? '#b7eb8f' : '#ffa39e'}`, padding: '12px 16px', borderRadius: '8px' }}>
-                              <Space direction="vertical" size={4}>
-                                <Text>สถานะ: <Tag color={log.status === 'NORMAL' ? 'green' : 'red'} style={{ margin: 0 }}>{log.status === 'NORMAL' ? 'ปกติ (NORMAL)' : 'ชำรุด (DEFECTIVE)'}</Tag></Text>
-                                <Text type="secondary" style={{ fontSize: '13px' }}><UserOutlined /> ผู้ตรวจ: <Text strong>{log.inspector_name}</Text></Text>
+                            <Text strong style={{ fontSize: '14px' }}>{dayjs(log.created_at).format('DD MMM YY, HH:mm')}</Text>
+                            <div style={{ marginTop: '4px', background: log.status === 'NORMAL' ? '#f6ffed' : '#fff1f0', border: `1px solid ${log.status === 'NORMAL' ? '#b7eb8f' : '#ffa39e'}`, padding: '8px 12px', borderRadius: '8px' }}>
+                              <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Tag color={log.status === 'NORMAL' ? 'green' : 'red'} style={{ margin: 0 }}>{log.status}</Tag>
+                                </div>
+                                <Text type="secondary" style={{ fontSize: '12px', marginTop: 4 }}><UserOutlined /> {log.inspector_name}</Text>
                               </Space>
                             </div>
                           </div>
@@ -255,10 +298,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                       }))}
                     />
                   ) : (
-                    <Empty 
-                      image={Empty.PRESENTED_IMAGE_SIMPLE} 
-                      description={<Text type="secondary">ยังไม่มีประวัติการตรวจสอบสำหรับอุปกรณ์ชิ้นนี้</Text>} 
-                    />
+                    <Empty description={<Text type="secondary">ไม่มีประวัติ</Text>} />
                   )}
                 </div>
               )
