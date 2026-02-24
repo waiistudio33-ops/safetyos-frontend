@@ -71,6 +71,7 @@ export default function App() {
   const [confinedForm] = Form.useForm();
   const [currentTime, setCurrentTime] = useState(dayjs());
 
+  // --- Check LocalStorage ---
   useEffect(() => {
     const checkAuth = () => {
       const savedUser = localStorage.getItem('safetyos_user');
@@ -83,7 +84,7 @@ export default function App() {
           localStorage.removeItem('safetyos_user');
         }
       }
-      setIsAuthChecking(false); 
+      setIsAuthChecking(false);
     };
     checkAuth();
   }, []);
@@ -204,6 +205,7 @@ export default function App() {
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
   const handleExportPDF = () => { const element = document.getElementById('pdf-document-content'); if (!element) return; html2pdf().set({ margin: [0.5, 0.5, 0.5, 0.5], filename: `WorkPermit_${selectedPermitDetail?.permit_number}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save(); message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); };
+  
   const handleCreatePermit = async (values: any) => {
     try {
       if (!currentUser) return message.error('กรุณาเข้าสู่ระบบก่อน');
@@ -217,6 +219,7 @@ export default function App() {
       message.success('ส่งคำขอ Permit สำเร็จ!'); setIsModalOpen(false); form.resetFields(); setFileList([]); fetchPermits();
     } catch (error) { message.error('สร้างรายการไม่สำเร็จ'); } finally { setIsSubmitting(false); }
   };
+
   const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT') => {
     try { let nextStatus = ''; if (action === 'REJECT') nextStatus = 'REJECTED'; else { if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; } await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: action === 'APPROVE' ? 'อนุมัติผ่านระบบ E-Permit' : 'ไม่อนุมัติตามมาตรการความปลอดภัย' }); message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); fetchPermits(); } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
   };
@@ -261,6 +264,7 @@ export default function App() {
     },
   ];
 
+  // 🚀 Loading Screen
   if (isAuthChecking) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}>
@@ -271,117 +275,59 @@ export default function App() {
     );
   }
 
-  // 🔥🔥🔥 ปรับหน้า Login ให้เป็นสไตล์ Facebook (Split Screen) 🔥🔥🔥
+  // 🔥🔥🔥 แก้ไขหน้า Login ตรงนี้ให้สวยงามและไม่เบี้ยว 🔥🔥🔥
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#007AFF', borderRadius: 12, fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
-        {/* Container พื้นหลังสีเทาอ่อนเหมือน Facebook */}
         <div style={{ 
-          minHeight: '100vh', 
-          width: '100%', 
+          height: '100vh', 
+          width: '100%', // ใช้ 100% แทน 100vw เพื่อป้องกัน Scrollbar ดันจอ
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          background: '#f0f2f5', 
+          background: 'radial-gradient(circle at 50% 50%, #001529 0%, #000 100%)', // ปรับสีให้ดูเข้มพรีเมียมขึ้น
           padding: '20px',
-          overflow: 'hidden'
+          margin: 0,
+          overflow: 'hidden' // ป้องกันการเลื่อนหน้าจอ
         }}>
-          {/* Grid Layout: ซ้าย = Logo, ขวา = Login Box */}
-          <Row style={{ width: '100%', maxWidth: '980px' }} gutter={[40, 40]} align="middle">
-            
-            {/* ฝั่งซ้าย: Logo & Branding (โชว์เฉพาะจอใหญ่ หรืออยู่ด้านบนในมือถือ) */}
-            <Col xs={24} md={14} style={{ textAlign: isMobile ? 'center' : 'left' }}>
-              <div style={{ marginBottom: isMobile ? '24px' : '0' }}>
-                <Space align="center" size={16} style={{ marginBottom: '16px', justifyContent: isMobile ? 'center' : 'flex-start' }}>
-                  <div style={{ 
-                    background: '#007AFF', 
-                    width: '60px', 
-                    height: '60px', 
-                    borderRadius: '16px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 15px rgba(0,122,255,0.3)' 
-                  }}>
-                    <SafetyCertificateOutlined style={{ fontSize: '36px', color: '#fff' }} />
-                  </div>
-                  <Title level={1} style={{ margin: 0, fontWeight: 800, color: '#007AFF', fontSize: isMobile ? '36px' : '48px', letterSpacing: '-1px' }}>
-                    SafetyOS
-                  </Title>
-                </Space>
-                <Title level={3} style={{ fontWeight: 400, color: '#1d1d1f', marginTop: 0, fontSize: isMobile ? '20px' : '28px' }}>
-                  Enterprise Safety Management System
-                </Title>
-                <Text type="secondary" style={{ fontSize: '16px' }}>
-                  เชื่อมต่อการทำงานด้านความปลอดภัยที่ Map Ta Phut ไว้ในที่เดียว
-                </Text>
+          <Card style={{ 
+            width: '100%', 
+            maxWidth: 420, 
+            background: 'rgba(255, 255, 255, 0.95)', // เพิ่มความทึบให้อ่านง่าย
+            backdropFilter: 'blur(20px)', 
+            borderRadius: '24px', 
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', // เพิ่มเงาให้ดูลอยมีมิติ
+            padding: isMobile ? '20px' : '40px', 
+            border: '1px solid rgba(255,255,255,0.2)' 
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', width: '72px', height: '72px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 20px rgba(0,122,255,0.3)' }}>
+                <SafetyCertificateOutlined style={{ fontSize: '36px', color: '#fff' }} />
               </div>
-            </Col>
-
-            {/* ฝั่งขวา: Login Card (ขาวสะอาด มีเงา) */}
-            <Col xs={24} md={10}>
-              <Card 
-                style={{ 
-                  borderRadius: '12px', 
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0,0,0,0.05)', // เงาสไตล์ Facebook
-                  border: 'none',
-                  padding: '12px',
-                  background: '#fff'
-                }}
-                bodyStyle={{ padding: '24px' }}
-              >
-                <Form layout="vertical" onFinish={handleLogin} size="large">
-                  <Form.Item name="username" rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]} style={{ marginBottom: '16px' }}>
-                    <Input 
-                      placeholder="รหัสพนักงาน (เช่น somchai)" 
-                      style={{ borderRadius: '8px', padding: '10px 12px' }} 
-                    />
-                  </Form.Item>
-                  <Form.Item name="password" rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]} style={{ marginBottom: '24px' }}>
-                    <Input.Password 
-                      placeholder="รหัสผ่าน" 
-                      style={{ borderRadius: '8px', padding: '10px 12px' }} 
-                    />
-                  </Form.Item>
-                  <Button 
-                    type="primary" 
-                    htmlType="submit" 
-                    block 
-                    loading={isLoggingIn} 
-                    style={{ 
-                      background: '#007AFF', // สีฟ้าเฟสบุ๊ค (ใกล้เคียง)
-                      border: 'none', 
-                      height: '48px', 
-                      fontSize: '18px', 
-                      fontWeight: 'bold', 
-                      borderRadius: '8px' 
-                    }}
-                  >
-                    เข้าสู่ระบบ
-                  </Button>
-                </Form>
-                
-                <Divider plain><Text type="secondary" style={{ fontSize: '12px' }}>หรือ</Text></Divider>
-                
-                <div style={{ textAlign: 'center' }}>
-                  <Text type="secondary" style={{ fontSize: '13px' }}>บัญชีทดสอบ: somchai, somsak, view (pass: 1234)</Text>
-                </div>
-              </Card>
-              
-              <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                <Text type="secondary" style={{ fontSize: '13px' }}>
-                  <strong>Create a Page</strong> for a celebrity, brand or business.
-                </Text>
-              </div>
-            </Col>
-
-          </Row>
+              <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#1d1d1f' }}>SafetyOS</Title>
+              <Text type="secondary" style={{ fontSize: '16px' }}>Enterprise Safety Management</Text>
+            </div>
+            <Form layout="vertical" onFinish={handleLogin} size="large">
+              <Form.Item name="username" label={<Text strong>รหัสพนักงาน (Username)</Text>} rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]}>
+                <Input prefix={<UserOutlined style={{ color: '#8E8E93' }} />} placeholder="เช่น somchai" style={{ borderRadius: '12px' }} />
+              </Form.Item>
+              <Form.Item name="password" label={<Text strong>รหัสผ่าน (Password)</Text>} rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]}>
+                <Input.Password prefix={<LockOutlined style={{ color: '#8E8E93' }} />} placeholder="รหัสผ่าน: 1234" style={{ borderRadius: '12px' }} />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" block loading={isLoggingIn} style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', border: 'none', height: '52px', fontSize: '16px', fontWeight: 'bold', marginTop: '12px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,122,255,0.3)' }}>
+                เข้าสู่ระบบ (Login)
+              </Button>
+            </Form>
+            <div style={{ textAlign: 'center', marginTop: '32px', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>บัญชีทดสอบ: somchai, somsak, view (Password: 1234)</Text>
+            </div>
+          </Card>
         </div>
       </ConfigProvider>
     );
   }
 
-  // 🚀 โครงสร้างเมนูด้านข้าง (แยกออกมาเผื่อใช้ใน Drawer สำหรับมือถือ)
+  // --- Main Layout ---
   const menuItems = (
     <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent', padding: '0 12px', marginTop: '16px' }}>
       <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Dashboard สรุปผล</Menu.Item>
@@ -400,7 +346,6 @@ export default function App() {
       <div className="app-container">
         <Layout style={{ minHeight: '100vh', background: 'radial-gradient(circle at 10% 20%, rgb(239, 246, 249) 0%, rgb(206, 239, 253) 90%)' }}>
           
-          {/* 🚀 Sidebar สำหรับ Desktop */}
           {!isMobile && (
             <Sider width={260} style={{ ...glassPanel, margin: '16px 0 16px 16px', position: 'fixed', left: 0, zIndex: 100, height: 'calc(100vh - 32px)' }} theme="light">
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
@@ -411,18 +356,14 @@ export default function App() {
             </Sider>
           )}
 
-          {/* 🚀 Drawer เมนูสำหรับ Mobile */}
           <Drawer title={<div><SafetyCertificateOutlined style={{color:'#007AFF'}}/> SafetyOS</div>} placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} bodyStyle={{ padding: 0 }}>
             {menuItems}
           </Drawer>
 
-          {/* === Main Content Area === */}
           <Layout style={{ marginLeft: isMobile ? 0 : 280, transition: 'all 0.2s', background: 'transparent' }}>
             
-            {/* === Header === */}
             <Header style={modernHeaderStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {/* 🚀 ปุ่มแฮมเบอร์เกอร์ จะโชว์เฉพาะในมือถือ */}
                 {isMobile && (
                   <Button type="text" icon={<MenuOutlined style={{fontSize: '20px'}} />} onClick={() => setMobileMenuOpen(true)} style={{ padding: 0 }} />
                 )}
@@ -449,7 +390,6 @@ export default function App() {
                 {!isMobile && (
                   <Badge count={3} dot offset={[-4, 4]}><Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: '20px', color: '#8E8E93' }} />} /></Badge>
                 )}
-                
                 {!isMobile && <div style={{ width: '1px', height: '32px', background: '#E5E5EA', margin: '0 8px' }}></div>}
                 
                 <div style={{ background: '#ffffff', borderRadius: '100px', border: '1px solid #E5E5EA', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -468,12 +408,11 @@ export default function App() {
               </Space>
             </Header>
 
-            {/* === Content === */}
             <Content style={{ padding: isMobile ? '12px' : '24px', overflow: 'initial' }}>
               {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
               {activeMenu === 'E_PERMIT' && (
                 <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>รายการ Work Queue</b>} bordered={false} style={glassPanel} headStyle={{borderBottom: '1px solid rgba(0,0,0,0.05)'}} bodyStyle={{padding: isMobile ? '0' : '24px'}}>
-                  <Table columns={columns} dataSource={realPermits} loading={loading} pagination={{ pageSize: 8 }} size="small" scroll={{ x: 'max-content' }} /> {/* 🚀 scroll={{ x: 'max-content' }} ทำให้เลื่อนซ้ายขวาในมือถือได้ */}
+                  <Table columns={columns} dataSource={realPermits} loading={loading} pagination={{ pageSize: 8 }} size="small" scroll={{ x: 'max-content' }} />
                 </Card>
               )}
 
@@ -501,10 +440,9 @@ export default function App() {
                 </Card>
               )}
 
-              {/* 🚀 หน้าจอ Confined Space Board (ปรับ Responsive Grid) */}
               {activeMenu === 'CONFINED_SPACE' && (
                 <Row gutter={[16, 16]}>
-                  <Col xs={24} md={8}> {/* 🚀 ถ้าจอมือถือ (xs) ให้เต็ม 100%, ถ้าจอคอม (md) ให้ใช้แค่ 8 ส่วน */}
+                  <Col xs={24} md={8}> 
                     <Card title={<b style={{color: '#1d1d1f'}}>1. เลือกพื้นที่ปฏิบัติงาน</b>} bordered={false} style={{...glassPanel, height: '100%'}}>
                       {activeConfinedPermits.length === 0 ? <Text type="secondary">ไม่มีงานที่อับอากาศที่กำลังดำเนินการ</Text> : (
                         <Menu mode="vertical" selectedKeys={[selectedConfinedPermit || '']} style={{ border: 'none', background: 'transparent' }} onClick={(e) => setSelectedConfinedPermit(e.key)}>
@@ -518,7 +456,7 @@ export default function App() {
                       )}
                     </Card>
                   </Col>
-                  <Col xs={24} md={16}> {/* 🚀 ถ้าจอมือถือ (xs) ให้เต็ม 100%, ถ้าจอคอม (md) ให้ใช้ 16 ส่วน */}
+                  <Col xs={24} md={16}> 
                     <Card 
                       title={
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
