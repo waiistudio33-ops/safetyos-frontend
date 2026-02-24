@@ -205,7 +205,6 @@ export default function App() {
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
   const handleExportPDF = () => { const element = document.getElementById('pdf-document-content'); if (!element) return; html2pdf().set({ margin: [0.5, 0.5, 0.5, 0.5], filename: `WorkPermit_${selectedPermitDetail?.permit_number}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save(); message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); };
-  
   const handleCreatePermit = async (values: any) => {
     try {
       if (!currentUser) return message.error('กรุณาเข้าสู่ระบบก่อน');
@@ -219,7 +218,6 @@ export default function App() {
       message.success('ส่งคำขอ Permit สำเร็จ!'); setIsModalOpen(false); form.resetFields(); setFileList([]); fetchPermits();
     } catch (error) { message.error('สร้างรายการไม่สำเร็จ'); } finally { setIsSubmitting(false); }
   };
-
   const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT') => {
     try { let nextStatus = ''; if (action === 'REJECT') nextStatus = 'REJECTED'; else { if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; } await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: action === 'APPROVE' ? 'อนุมัติผ่านระบบ E-Permit' : 'ไม่อนุมัติตามมาตรการความปลอดภัย' }); message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); fetchPermits(); } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
   };
@@ -275,53 +273,146 @@ export default function App() {
     );
   }
 
-  // 🔥🔥🔥 แก้ไขหน้า Login ตรงนี้ให้สวยงามและไม่เบี้ยว 🔥🔥🔥
+  // 🔥🔥🔥 Refined Login UI based on the reference image 🔥🔥🔥
   if (!isAuthenticated) {
     return (
-      <ConfigProvider theme={{ token: { colorPrimary: '#007AFF', borderRadius: 12, fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
+      <ConfigProvider theme={{ token: { colorPrimary: '#007AFF', fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
         <div style={{ 
           height: '100vh', 
-          width: '100%', // ใช้ 100% แทน 100vw เพื่อป้องกัน Scrollbar ดันจอ
+          width: '100%', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          background: 'radial-gradient(circle at 50% 50%, #001529 0%, #000 100%)', // ปรับสีให้ดูเข้มพรีเมียมขึ้น
-          padding: '20px',
-          margin: 0,
-          overflow: 'hidden' // ป้องกันการเลื่อนหน้าจอ
+          background: isMobile ? '#fff' : '#f0f2f5', // Mobile: White bg, Desktop: Grey bg
+          overflow: 'hidden' 
         }}>
-          <Card style={{ 
-            width: '100%', 
-            maxWidth: 420, 
-            background: 'rgba(255, 255, 255, 0.95)', // เพิ่มความทึบให้อ่านง่าย
-            backdropFilter: 'blur(20px)', 
-            borderRadius: '24px', 
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', // เพิ่มเงาให้ดูลอยมีมิติ
-            padding: isMobile ? '20px' : '40px', 
-            border: '1px solid rgba(255,255,255,0.2)' 
+          
+          {/* Main Card Container - Responsive */}
+          <div style={{
+            width: isMobile ? '100%' : '900px',
+            height: isMobile ? '100%' : '600px',
+            background: '#fff',
+            borderRadius: isMobile ? '0' : '20px',
+            boxShadow: isMobile ? 'none' : '0 20px 50px rgba(0,0,0,0.1)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            position: 'relative'
           }}>
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <div style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', width: '72px', height: '72px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 20px rgba(0,122,255,0.3)' }}>
-                <SafetyCertificateOutlined style={{ fontSize: '36px', color: '#fff' }} />
+
+            {/* Left Side (Desktop) / Top Side (Mobile) - The Blue Area */}
+            <div style={{
+              width: isMobile ? '100%' : '40%',
+              height: isMobile ? '35%' : '100%',
+              background: 'linear-gradient(135deg, #0061ff 0%, #60efff 100%)', // Blue Gradient
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              color: '#fff',
+              position: 'relative',
+              padding: '20px',
+              // Add a curve for mobile view
+              borderBottomRightRadius: isMobile ? '80px' : '0',
+              zIndex: 1
+            }}>
+              {/* Decorative Circles (Optional, to match "Space" theme) */}
+              <div style={{
+                position: 'absolute', top: '-50px', left: '-50px', width: '150px', height: '150px',
+                background: 'rgba(255,255,255,0.1)', borderRadius: '50%'
+              }} />
+              
+              <div style={{ textAlign: 'center', zIndex: 2 }}>
+                <div style={{ 
+                  background: 'rgba(255,255,255,0.2)', 
+                  width: isMobile ? '60px' : '80px', 
+                  height: isMobile ? '60px' : '80px', 
+                  borderRadius: '20px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  margin: '0 auto 16px',
+                  backdropFilter: 'blur(5px)'
+                }}>
+                  <SafetyCertificateOutlined style={{ fontSize: isMobile ? '32px' : '40px', color: '#fff' }} />
+                </div>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0, fontWeight: 800, color: '#fff', letterSpacing: '1px' }}>SafetyOS</Title>
+                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: isMobile ? '14px' : '16px' }}>Enterprise Safety Management</Text>
               </div>
-              <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#1d1d1f' }}>SafetyOS</Title>
-              <Text type="secondary" style={{ fontSize: '16px' }}>Enterprise Safety Management</Text>
             </div>
-            <Form layout="vertical" onFinish={handleLogin} size="large">
-              <Form.Item name="username" label={<Text strong>รหัสพนักงาน (Username)</Text>} rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]}>
-                <Input prefix={<UserOutlined style={{ color: '#8E8E93' }} />} placeholder="เช่น somchai" style={{ borderRadius: '12px' }} />
-              </Form.Item>
-              <Form.Item name="password" label={<Text strong>รหัสผ่าน (Password)</Text>} rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]}>
-                <Input.Password prefix={<LockOutlined style={{ color: '#8E8E93' }} />} placeholder="รหัสผ่าน: 1234" style={{ borderRadius: '12px' }} />
-              </Form.Item>
-              <Button type="primary" htmlType="submit" block loading={isLoggingIn} style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)', border: 'none', height: '52px', fontSize: '16px', fontWeight: 'bold', marginTop: '12px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,122,255,0.3)' }}>
-                เข้าสู่ระบบ (Login)
-              </Button>
-            </Form>
-            <div style={{ textAlign: 'center', marginTop: '32px', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>บัญชีทดสอบ: somchai, somsak, view (Password: 1234)</Text>
+
+            {/* Right Side (Desktop) / Bottom Side (Mobile) - The Form Area */}
+            <div style={{
+              width: isMobile ? '100%' : '60%',
+              height: isMobile ? '65%' : '100%',
+              padding: isMobile ? '40px 24px' : '60px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              background: '#fff'
+            }}>
+              <div style={{ width: '100%', maxWidth: '360px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '32px' }}>
+                  <Title level={3} style={{ marginBottom: '8px', color: '#1d1d1f' }}>ยินดีต้อนรับ</Title>
+                  <Text type="secondary">กรุณาเข้าสู่ระบบเพื่อจัดการงานความปลอดภัย</Text>
+                </div>
+
+                <Form layout="vertical" onFinish={handleLogin} size="large">
+                  <Form.Item 
+                    name="username" 
+                    label={<span style={{fontWeight: 600, color: '#666'}}>รหัสพนักงาน</span>}
+                    rules={[{ required: true, message: 'กรุณากรอกชื่อผู้ใช้' }]}
+                  >
+                    <Input 
+                      placeholder="Enter your username" 
+                      style={{ borderRadius: '8px', background: '#f9f9f9', border: '1px solid #eee' }} 
+                    />
+                  </Form.Item>
+                  
+                  <Form.Item 
+                    name="password" 
+                    label={<span style={{fontWeight: 600, color: '#666'}}>รหัสผ่าน</span>}
+                    rules={[{ required: true, message: 'กรุณากรอกรหัสผ่าน' }]}
+                  >
+                    <Input.Password 
+                      placeholder="Enter your password" 
+                      style={{ borderRadius: '8px', background: '#f9f9f9', border: '1px solid #eee' }} 
+                    />
+                  </Form.Item>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                    <Checkbox><span style={{fontSize: '12px'}}>จดจำฉัน</span></Checkbox>
+                    <a href="#" style={{fontSize: '12px', color: '#007AFF'}}>ลืมรหัสผ่าน?</a>
+                  </div>
+
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    block 
+                    loading={isLoggingIn} 
+                    style={{ 
+                      height: '48px', 
+                      fontSize: '16px', 
+                      fontWeight: 'bold', 
+                      borderRadius: '8px',
+                      background: 'linear-gradient(90deg, #0061ff 0%, #60efff 100%)',
+                      border: 'none',
+                      boxShadow: '0 4px 15px rgba(0, 97, 255, 0.3)'
+                    }}
+                  >
+                    เข้าสู่ระบบ (Sign In)
+                  </Button>
+                </Form>
+
+                <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    บัญชีทดสอบ: somchai, somsak, view (Pass: 1234)
+                  </Text>
+                </div>
+              </div>
             </div>
-          </Card>
+
+          </div>
         </div>
       </ConfigProvider>
     );
