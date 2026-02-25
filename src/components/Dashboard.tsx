@@ -172,7 +172,7 @@ export default function Dashboard() {
                     description={
                       <Space direction="vertical" size={0}>
                         <Text type="secondary" style={{fontSize:'12px'}}>{item.permit_type}</Text>
-                        <Text type="secondary" style={{fontSize:'12px'}} ellipsis style={{ maxWidth: 150 }}>{item.applicant?.full_name}</Text>
+                        <Text type="secondary" ellipsis style={{ fontSize: '12px', maxWidth: 150 }}></Text>
                       </Space>
                     }
                   />

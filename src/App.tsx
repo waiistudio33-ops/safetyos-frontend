@@ -14,7 +14,7 @@ import {
   BuildOutlined, EnvironmentOutlined, TeamOutlined, RetweetOutlined, UploadOutlined,
   IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, SafetyOutlined, BellOutlined,
   DownOutlined, DownloadOutlined, EyeOutlined, FilePdfOutlined, LogoutOutlined, LockOutlined,
-  CheckCircleOutlined, StopOutlined, LoginOutlined, MenuOutlined, RocketOutlined 
+  CheckCircleOutlined, StopOutlined, LoginOutlined, MenuOutlined, RocketOutlined, MailOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -32,40 +32,30 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker; 
 const { useBreakpoint } = Grid; 
 
-// ☁️ Component ก้อนเมฆสำหรับตกแต่งรอยต่อ
-const CloudSeparator = ({ isMobile }: { isMobile: boolean }) => {
+// 🌊 Component คลื่น (Wave Design) - แยก Mobile/Desktop ชัดเจน
+const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => {
   return (
-    <div style={{
-      position: 'absolute',
-      right: isMobile ? '0' : '-1px', // Desktop: ชิดขวาของกล่องน้ำเงิน
-      bottom: isMobile ? '-1px' : '0', // Mobile: ชิดล่างของกล่องน้ำเงิน
-      width: isMobile ? '100%' : '100px',
-      height: isMobile ? '60px' : '100%',
-      zIndex: 2,
-      pointerEvents: 'none',
-      display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: isMobile ? 'center' : 'flex-end',
-      flexDirection: isMobile ? 'row' : 'column',
-      overflow: 'hidden'
-    }}>
-      {/* ใช้ SVG วาดรูปคลื่นก้อนเมฆสีขาว */}
+    <div className="absolute z-10 pointer-events-none" 
+      style={{
+        right: isMobile ? 0 : -1,
+        bottom: isMobile ? -1 : 0,
+        width: isMobile ? '100%' : '150px',
+        height: isMobile ? '120px' : '100%',
+        display: 'flex',
+        alignItems: isMobile ? 'flex-end' : 'stretch',
+      }}
+    >
       <svg 
-        viewBox={isMobile ? "0 0 1440 320" : "0 0 100 100"} 
+        viewBox={isMobile ? "0 0 1440 320" : "0 0 320 1440"} 
         preserveAspectRatio="none"
-        style={{
-          width: '100%',
-          height: '100%',
-          fill: '#ffffff',
-          transform: isMobile ? 'none' : 'scaleX(-1)' // กลับด้านสำหรับ Desktop ให้โค้งกินเข้ามา
-        }}
+        className="w-full h-full fill-white"
       >
         {isMobile ? (
-          // SVG สำหรับแนวนอน (Mobile)
-          <path d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+          // 📱 Mobile Wave: คลื่นแนวนอน ด้านล่าง
+          <path fillOpacity="1" d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
         ) : (
-          // SVG สำหรับแนวตั้ง (Desktop) - รูปทรงก้อนเมฆซ้อนกัน
-          <path d="M0,0 C30,10 50,30 50,50 C50,70 30,90 0,100 L100,100 L100,0 Z" />
+          // 💻 Desktop Wave: คลื่นแนวตั้ง ด้านขวา
+          <path fillOpacity="1" d="M224,1440L197.3,1392C170.7,1344,117.3,1248,128,1152C138.7,1056,213.3,960,224,864C234.7,768,181.3,672,165.3,576C149.3,480,170.7,384,192,288C213.3,192,234.7,96,245.3,48L256,0L320,0L320,48C320,96,320,192,320,288C320,384,320,480,320,576C320,672,320,768,320,864C320,960,320,1056,320,1152C320,1248,320,1344,320,1392L320,1440Z"></path>
         )}
       </svg>
     </div>
@@ -315,159 +305,159 @@ export default function App() {
     );
   }
 
-  // 🔥🔥🔥 NEW LOGIN SCREEN DESIGN (Split Screen & Clouds) 🔥🔥🔥
+  // 🔥🔥🔥 NEW LOGIN SCREEN DESIGN (Full Screen Mobile & Improved Desktop) 🔥🔥🔥
   if (!isAuthenticated) {
-    // Custom Style for Bottom-Border-Only Inputs
-    const customInputStyle = {
+    // Custom Style for Minimalist Input
+    const minimalInputStyle = {
       border: 'none',
-      borderBottom: '1px solid #d9d9d9',
+      borderBottom: '2px solid #f0f0f0',
       borderRadius: '0',
       boxShadow: 'none',
       background: 'transparent',
       paddingLeft: '0',
-      fontSize: '16px'
+      paddingBottom: '8px',
+      fontSize: '16px',
     };
 
-    return (
-      <ConfigProvider theme={{ token: { colorPrimary: '#0061ff', fontFamily: "-apple-system, BlinkMacSystemFont, 'Prompt', sans-serif" }}}>
-        <div style={{ 
-          height: '100vh', 
-          width: '100%', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          background: '#f5f7fb',
-          overflow: 'hidden'
-        }}>
-          
-          {/* Main Card */}
-          <div style={{
-            width: isMobile ? '100%' : '960px',
-            height: isMobile ? '100%' : '640px',
-            background: '#fff',
-            borderRadius: isMobile ? '0' : '24px',
-            boxShadow: isMobile ? 'none' : '0 20px 40px rgba(0,0,0,0.1)',
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            overflow: 'hidden',
-            position: 'relative'
-          }}>
-
-            {/* Left Side (Blue Gradient) */}
-            <div style={{
-              width: isMobile ? '100%' : '45%',
-              height: isMobile ? '35%' : '100%',
-              background: 'linear-gradient(135deg, #0061ff 0%, #00aaff 100%)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              color: '#fff',
-              position: 'relative'
-            }}>
-              
-              <div style={{ position: 'relative', zIndex: 10, textAlign: 'center' }}>
-                <div style={{ 
-                  background: 'rgba(255,255,255,0.2)', 
-                  width: 80, height: 80, borderRadius: '50%', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 20px', backdropFilter: 'blur(10px)'
-                }}>
-                  <RocketOutlined style={{ fontSize: '40px', color: '#fff' }} />
+    if (isMobile) {
+      // 📱 Mobile View: Full Screen Design
+      return (
+        <ConfigProvider theme={{ token: { colorPrimary: '#0061ff', fontFamily: "'Prompt', sans-serif" }}}>
+          <div className="min-h-screen w-full flex flex-col bg-white">
+            
+            {/* Header Section (Blue + Wave) */}
+            <div className="h-[45vh] w-full bg-gradient-to-br from-blue-600 to-indigo-600 relative flex flex-col items-center justify-center text-white px-6 text-center">
+              <div className="z-20 flex flex-col items-center">
+                <div className="bg-white/20 backdrop-blur-md rounded-full w-20 h-20 flex items-center justify-center shadow-lg mb-4">
+                  <RocketOutlined style={{ fontSize: '40px' }} />
                 </div>
-                <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 700 }}>SafetyOS</Title>
-                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: '16px' }}>Enterprise Safety Management</Text>
+                <h1 className="text-3xl font-bold mb-1">SafetyOS</h1>
+                <p className="text-blue-100 text-sm opacity-90">Enterprise Safety Management</p>
               </div>
-
-              {/* ☁️ Cloud Separator */}
-              <CloudSeparator isMobile={isMobile} />
+              {/* Wave Separator */}
+              <WaveSeparator isMobile={true} />
             </div>
 
-            {/* Right Side (White Form) */}
-            <div style={{
-              width: isMobile ? '100%' : '55%',
-              height: isMobile ? '65%' : '100%',
-              padding: isMobile ? '40px 30px' : '0 80px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              background: '#fff',
-              position: 'relative',
-              zIndex: 5
-            }}>
-              <div style={{ width: '100%' }}>
-                <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-                  <Title level={3} style={{ marginBottom: '8px', color: '#0061ff' }}>Welcome to SafetyOS</Title>
-                  <Text type="secondary">Login to your account</Text>
+            {/* Content Section (White Form) */}
+            <div className="flex-1 w-full bg-white flex flex-col px-8 pt-8 pb-4">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-1">Welcome Back</h2>
+                <p className="text-gray-400 text-sm">Please sign in to continue.</p>
+              </div>
+
+              <Form layout="vertical" onFinish={handleLogin} size="large" className="flex-1 flex flex-col">
+                <Form.Item 
+                  name="username" 
+                  label={<span className="font-semibold text-gray-600 text-xs uppercase tracking-wide">Username</span>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="mb-4"
+                >
+                  <Input placeholder="Enter username" className="hover:!border-blue-500 focus:!border-blue-500 transition-colors" style={minimalInputStyle} />
+                </Form.Item>
+                
+                <Form.Item 
+                  name="password" 
+                  label={<span className="font-semibold text-gray-600 text-xs uppercase tracking-wide">Password</span>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="mb-6"
+                >
+                  <Input.Password placeholder="Enter password" style={minimalInputStyle} />
+                </Form.Item>
+
+                <div className="flex justify-between items-center mb-8 text-sm">
+                  <Checkbox className="text-gray-500 text-xs">Remember me</Checkbox>
+                  <a href="#" className="text-blue-600 font-bold text-xs">Forgot Password?</a>
+                </div>
+
+                <div className="mt-auto mb-4">
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    loading={isLoggingIn}
+                    block
+                    shape="round"
+                    className="h-12 text-lg font-bold bg-blue-600 shadow-lg shadow-blue-500/30 border-none"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              </Form>
+              
+              <div className="text-center pb-4">
+                <Text type="secondary" className="text-xs block text-gray-300">Protected by SafetyOS Security</Text>
+              </div>
+            </div>
+          </div>
+        </ConfigProvider>
+      );
+    }
+
+    // 💻 Desktop View: Card Design with Side Wave
+    return (
+      <ConfigProvider theme={{ token: { colorPrimary: '#0061ff', fontFamily: "'Prompt', sans-serif" }}}>
+        <div className="min-h-screen w-full flex items-center justify-center bg-gray-100 p-4">
+          <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[650px]">
+            
+            {/* Left Side (Blue + Wave) */}
+            <div className="w-1/2 relative bg-gradient-to-br from-blue-600 to-indigo-600 flex flex-col items-center justify-center text-white p-12">
+               <div className="z-20 text-center">
+                  <div className="bg-white/20 backdrop-blur-md rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6 shadow-xl border border-white/10">
+                    <RocketOutlined style={{ fontSize: '48px' }} />
+                  </div>
+                  <h1 className="text-4xl font-extrabold mb-3 tracking-tight">SafetyOS</h1>
+                  <p className="text-blue-100 text-lg font-light">The Next Gen Safety Management</p>
+               </div>
+               {/* Wave Separator */}
+               <WaveSeparator isMobile={false} />
+            </div>
+
+            {/* Right Side (Form) */}
+            <div className="w-1/2 bg-white flex flex-col justify-center p-16 z-20">
+              <div className="max-w-md mx-auto w-full">
+                <div className="mb-10">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h2>
+                  <p className="text-gray-400">Please enter your details to sign in.</p>
                 </div>
 
                 <Form layout="vertical" onFinish={handleLogin} size="large">
                   <Form.Item 
                     name="username" 
+                    label={<span className="font-bold text-gray-700 text-xs uppercase tracking-wider">Username</span>}
                     rules={[{ required: true, message: 'Please enter username' }]}
-                    style={{ marginBottom: '24px' }}
+                    className="mb-6"
                   >
-                    <Input 
-                      placeholder="Username" 
-                      bordered={false} // AntD prop to remove default border
-                      style={customInputStyle}
-                    />
+                    <Input placeholder="Enter your username" style={minimalInputStyle} className="focus:!border-blue-600 transition-all duration-300" />
                   </Form.Item>
                   
                   <Form.Item 
                     name="password" 
+                    label={<span className="font-bold text-gray-700 text-xs uppercase tracking-wider">Password</span>}
                     rules={[{ required: true, message: 'Please enter password' }]}
-                    style={{ marginBottom: '32px' }}
+                    className="mb-8"
                   >
-                    <Input.Password 
-                      placeholder="Password" 
-                      bordered={false} 
-                      style={customInputStyle}
-                    />
+                    <Input.Password placeholder="Enter your password" style={minimalInputStyle} className="focus:!border-blue-600 transition-all duration-300" />
                   </Form.Item>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', fontSize: '13px' }}>
-                    <Checkbox style={{ color: '#888' }}>Remember me</Checkbox>
-                    <a href="#" style={{ color: '#0061ff', fontWeight: 600 }}>Forgot Password?</a>
+                  <div className="flex justify-between items-center mb-10 text-sm">
+                    <Checkbox className="text-gray-500">Remember me</Checkbox>
+                    <a href="#" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">Forgot Password?</a>
                   </div>
 
-                  <Space size="middle" style={{ width: '100%', justifyContent: 'center' }}>
-                    <Button 
-                      type="primary" 
-                      htmlType="submit" 
-                      shape="round" 
-                      loading={isLoggingIn} 
-                      style={{ 
-                        width: '140px', 
-                        height: '45px', 
-                        fontWeight: 600,
-                        background: '#0061ff',
-                        boxShadow: '0 4px 14px rgba(0, 97, 255, 0.39)'
-                      }}
-                    >
-                      Login
-                    </Button>
-                    <Button 
-                      shape="round" 
-                      style={{ 
-                        width: '140px', 
-                        height: '45px', 
-                        fontWeight: 600,
-                        color: '#888',
-                        borderColor: '#ddd'
-                      }}
-                    >
-                      Register
-                    </Button>
-                  </Space>
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    loading={isLoggingIn}
+                    block
+                    shape="round"
+                    className="h-14 text-lg font-bold bg-blue-600 hover:!bg-blue-700 shadow-xl shadow-blue-500/20 border-none transition-all transform hover:scale-[1.02]"
+                  >
+                    Sign in
+                  </Button>
                 </Form>
 
-                <div style={{ textAlign: 'center', marginTop: '40px' }}>
-                  <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>
-                    Test Accounts: somchai / somsak / view
-                  </Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Password: 1234
+                <div className="mt-10 text-center">
+                  <Text type="secondary" className="text-xs text-gray-300">
+                      Protected by SafetyOS Security Systems
                   </Text>
                 </div>
               </div>
@@ -479,7 +469,7 @@ export default function App() {
     );
   }
 
-  // --- Main Layout ---
+  // --- Main Layout (Keep Original) ---
   const menuItems = (
     <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent', padding: '0 12px', marginTop: '16px' }}>
       <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Dashboard สรุปผล</Menu.Item>
