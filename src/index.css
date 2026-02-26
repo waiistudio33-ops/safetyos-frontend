@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* พื้นขาวบริสุทธิ์ */
+    --foreground: 0 0% 9.8%; /* ตัวหนังสือสีเทาเข้มจัดเกือบดำ */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9.8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9.8%;
+
+    --primary: 0 0% 9.8%; /* ปุ่มหลักสีดำ */
+    --primary-foreground: 0 0% 98%; /* ตัวหนังสือในปุ่มสีขาว */
+
+    --secondary: 0 0% 96.1%; /* สีเทาอ่อนๆ สไตล์ปุ่มรองของ Notion */
+    --secondary-foreground: 0 0% 9.8%;
+
+    --muted: 0 0% 96.1%; /* สีพื้นหลังเวลา Hover */
+    --muted-foreground: 0 0% 45.1%; /* ตัวหนังสือสีเทากลาง */
+
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9.8%;
+
+    --border: 0 0% 89.8%; /* เส้นขอบบางๆ อ่อนๆ */
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 9.8%;
+
+    --radius: 0.375rem; /* ขอบมนนิดๆ (6px) แบบ Notion */
+  }
+}

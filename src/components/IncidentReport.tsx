@@ -1,29 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Card, Table, Tag, Button, Space, Typography, Form, Input, 
-  Select, Upload, message, Badge, Tooltip, Row, Col, Modal, List, Avatar, Grid 
-} from 'antd'; // 👈 เพิ่ม List, Avatar, Grid
+  Select, Upload, message, Badge, Row, Col, List, Avatar, Grid 
+} from 'antd'; 
 import { 
   WarningOutlined, CameraOutlined, EnvironmentOutlined, 
   PushpinOutlined, CheckCircleOutlined, SyncOutlined, AlertOutlined,
-  UserOutlined, ClockCircleOutlined
+  UserOutlined, InfoCircleOutlined, ThunderboltOutlined,
+  HistoryOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/th';
 import { supabase } from '../supabase';
 
+dayjs.extend(relativeTime);
+dayjs.locale('th');
+
 const { Title, Text, Paragraph } = Typography;
-const { useBreakpoint } = Grid; // 🚀 เรียกใช้ Hook เช็คขนาดจอ
+const { useBreakpoint } = Grid; 
 
 export default function IncidentReport({ currentUser }: { currentUser: any }) {
-  const screens = useBreakpoint(); // 🚀 ตัวแปรเช็คขนาดจอ
-  const isMobile = !screens.md; // เล็กกว่า Tablet = Mobile
+  const screens = useBreakpoint(); 
+  const isMobile = !screens.md; 
 
   const [incidents, setIncidents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fileList, setFileList] = useState<any[]>([]);
   
-  // State สำหรับเก็บ GPS
   const [location, setLocation] = useState<{ lat: number | null, lng: number | null }>({ lat: null, lng: null });
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   
@@ -43,7 +48,6 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
     fetchIncidents();
   }, []);
 
-  // 🌍 ฟังก์ชันดึง GPS จากอุปกรณ์ (มือถือ/คอม)
   const getLocation = () => {
     setIsGettingLocation(true);
     if (navigator.geolocation) {
@@ -57,7 +61,7 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
           setIsGettingLocation(false);
         },
         (error) => {
-          message.error('ไม่สามารถดึงพิกัดได้ กรุณาเปิด GPS หรืออนุญาตการเข้าถึง Location');
+          message.error('ไม่สามารถดึงพิกัดได้ กรุณาเปิด GPS');
           setIsGettingLocation(false);
         }
       );
@@ -74,7 +78,6 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
     try {
       let imageUrl = null;
 
-      // 1. อัปโหลดรูปภาพหลักฐาน
       if (fileList.length > 0) {
         const file = fileList[0].originFileObj;
         const fileExt = file.name.split('.').pop();
@@ -87,7 +90,6 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
         imageUrl = publicUrlData.publicUrl;
       }
 
-      // 2. ส่งข้อมูลไป Backend
       await fetch('https://safetyos-backend.onrender.com/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,37 +133,38 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
   // --- UI Helpers ---
   const getTypeTag = (type: string) => {
     switch(type) {
-      case 'NEAR_MISS': return <Tag color="volcano" icon={<AlertOutlined />}>Near Miss (เกือบเกิดอุบัติเหตุ)</Tag>;
-      case 'UNSAFE_ACT': return <Tag color="magenta" icon={<WarningOutlined />}>Unsafe Act (การกระทำ)</Tag>;
-      case 'UNSAFE_CONDITION': return <Tag color="gold" icon={<WarningOutlined />}>Unsafe Condition (สภาพแวดล้อม)</Tag>;
-      default: return <Tag color="default">{type}</Tag>;
+      case 'NEAR_MISS': return <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-md text-xs font-bold border border-orange-200"><AlertOutlined className="mr-1"/> Near Miss (เกือบเกิดอุบัติเหตุ)</span>;
+      case 'UNSAFE_ACT': return <span className="bg-fuchsia-100 text-fuchsia-600 px-2 py-1 rounded-md text-xs font-bold border border-fuchsia-200"><WarningOutlined className="mr-1"/> Unsafe Act (การกระทำ)</span>;
+      case 'UNSAFE_CONDITION': return <span className="bg-amber-100 text-amber-600 px-2 py-1 rounded-md text-xs font-bold border border-amber-200"><WarningOutlined className="mr-1"/> Unsafe Condition (สภาพแวดล้อม)</span>;
+      default: return <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs font-bold">{type}</span>;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case 'OPEN': return <Badge status="error" text={<span style={{color: '#ff4d4f', fontWeight: 'bold'}}>รอ (OPEN)</span>} />;
-      case 'IN_PROGRESS': return <Badge status="warning" text={<span style={{color: '#faad14', fontWeight: 'bold'}}>กำลังแก้</span>} />;
-      case 'RESOLVED': return <Badge status="success" text={<span style={{color: '#52c41a', fontWeight: 'bold'}}>เสร็จแล้ว</span>} />;
-      default: return <Badge status="default" text={status} />;
+      case 'OPEN': return <div className="bg-red-500 text-white px-2 py-1 rounded-md font-bold text-[10px] md:text-xs uppercase">รอแก้ไข (OPEN)</div>;
+      case 'IN_PROGRESS': return <div className="bg-amber-400 text-white px-2 py-1 rounded-md font-bold text-[10px] md:text-xs uppercase">กำลังแก้</div>;
+      case 'RESOLVED': return <div className="bg-emerald-500 text-white px-2 py-1 rounded-md font-bold text-[10px] md:text-xs uppercase">เสร็จแล้ว</div>;
+      default: return <div className="bg-gray-500 text-white px-2 py-1 rounded-md font-bold text-[10px] md:text-xs uppercase">{status}</div>;
     }
   };
 
-  const glassPanel = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)' };
-
-  // 🚀 Action Buttons สำหรับใช้ทั้งใน Table และ Card View
   const ActionButtons = ({ record }: { record: any }) => {
     if (currentUser?.role !== 'SAFETY_ENGINEER') return null;
 
     return (
-      <Space size="small" wrap>
+      <div className="flex gap-2 w-full mt-2 md:mt-0">
         {record.status === 'OPEN' && (
-          <Button type="default" size="small" shape="round" icon={<SyncOutlined />} onClick={() => handleUpdateStatus(record.id, 'IN_PROGRESS')} style={{ color: '#faad14', borderColor: '#faad14', fontSize: '12px' }}>รับเรื่อง</Button>
+          <button onClick={() => handleUpdateStatus(record.id, 'IN_PROGRESS')} className="btn btn-sm btn-outline btn-warning rounded-full flex-1 md:flex-none">
+            <SyncOutlined /> รับเรื่อง
+          </button>
         )}
         {record.status === 'IN_PROGRESS' && (
-          <Button type="primary" size="small" shape="round" icon={<CheckCircleOutlined />} onClick={() => handleUpdateStatus(record.id, 'RESOLVED')} style={{ background: '#52c41a', border: 'none', fontSize: '12px' }}>ปิดเคส</Button>
+          <button onClick={() => handleUpdateStatus(record.id, 'RESOLVED')} className="btn btn-sm btn-success text-white rounded-full flex-1 md:flex-none shadow-md shadow-green-500/30">
+            <CheckCircleOutlined /> ปิดเคส
+          </button>
         )}
-      </Space>
+      </div>
     );
   };
 
@@ -170,177 +173,248 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
       title: 'วันที่ / เวลา',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 120,
+      width: 140,
       render: (text) => (
-        <Space direction="vertical" size={0}>
-          <Text strong>{dayjs(text).format('DD MMM')}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(text).format('HH:mm')}</Text>
-        </Space>
+        <div>
+          <div className="font-bold text-slate-800">{dayjs(text).format('DD MMM YYYY')}</div>
+          <div className="text-xs text-slate-400">{dayjs(text).format('HH:mm')} น.</div>
+        </div>
       )
     },
     {
-      title: 'ข้อมูลจุดเสี่ยง (Incident Details)',
+      title: 'ข้อมูลจุดเสี่ยง',
       key: 'details',
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Text strong style={{ fontSize: '15px' }}>{record.title}</Text>
-          {getTypeTag(record.type)}
-          <Text type="secondary" style={{ fontSize: '12px', marginTop: '4px' }}>{record.description}</Text>
-          <Text type="secondary" style={{ fontSize: '12px', color: '#007AFF' }}>
-            <EnvironmentOutlined /> ผู้แจ้ง: {record.reporter?.full_name}
-          </Text>
-        </Space>
+        <div className="flex flex-col gap-1.5">
+          <div className="font-bold text-slate-800 text-base">{record.title}</div>
+          <div>{getTypeTag(record.type)}</div>
+          <div className="text-sm text-slate-500 line-clamp-2 mt-1">{record.description}</div>
+          <div className="text-xs font-semibold text-blue-600 mt-1">
+            <UserOutlined className="mr-1" /> ผู้แจ้ง: {record.reporter?.full_name}
+          </div>
+        </div>
       )
     },
     {
-      title: 'พิกัด GPS',
-      key: 'gps',
+      title: 'ข้อมูลแนบ',
+      key: 'attachment',
+      width: 120,
       render: (_, record) => (
-        record.lat && record.lng ? (
-          <Button 
-            type="link" 
-            size="small" 
-            icon={<PushpinOutlined />}
-            href={`https://www.google.com/maps/search/?api=1&query=${record.lat},${record.lng}`}
-            target="_blank"
-            style={{ padding: 0 }}
-          >
-             ดูแผนที่
-          </Button>
-        ) : <Text type="secondary" style={{ fontSize: '12px' }}>-</Text>
-      )
-    },
-    {
-      title: 'รูปถ่าย (Evidence)',
-      key: 'image',
-      render: (_, record) => (
-        record.image_url ? (
-          <Button type="primary" ghost size="small" icon={<CameraOutlined />} href={record.image_url} target="_blank" style={{ borderRadius: '8px' }}>
-            ดูรูป
-          </Button>
-        ) : <Text type="secondary">-</Text>
+        <div className="flex flex-col gap-2">
+          {record.lat && record.lng ? (
+            <a href={`https://www.google.com/maps/search/?api=1&query=${record.lat},${record.lng}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-500 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md text-center border border-blue-100 transition-colors">
+              <PushpinOutlined /> แผนที่
+            </a>
+          ) : <span className="text-xs text-slate-300 text-center">-</span>}
+          
+          {record.image_url ? (
+            <a href={record.image_url} target="_blank" rel="noreferrer" className="text-xs font-bold text-purple-500 hover:text-purple-700 bg-purple-50 px-2 py-1 rounded-md text-center border border-purple-100 transition-colors">
+              <CameraOutlined /> รูปถ่าย
+            </a>
+          ) : <span className="text-xs text-slate-300 text-center">-</span>}
+        </div>
       )
     },
     {
       title: 'สถานะ',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 120,
       render: (status) => getStatusBadge(status)
     },
     {
-      title: 'การจัดการ (จป.)',
+      title: 'จัดการ (สำหรับ จป.)',
       key: 'action',
+      width: 150,
       render: (_, record) => <ActionButtons record={record} />
     }
   ];
 
   return (
-    <div className="space-y-6" style={{ padding: isMobile ? '12px' : '0' }}> {/* 🚀 ลด Padding มือถือ */}
+    <div className="w-full pb-20 px-2 md:px-0">
       
-      {/* ส่วนที่ 1: ฟอร์มแจ้งเหตุ */}
-      <Card 
-        title={<Space><AlertOutlined style={{color: '#ff4d4f'}} /> <Text strong style={{color: '#ff4d4f', fontSize: isMobile ? '16px' : '18px'}}>ระบบรายงานจุดเสี่ยง (Incident Report)</Text></Space>} 
-        bordered={false} 
-        style={{...glassPanel, background: 'linear-gradient(135deg, rgba(255, 241, 240, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
-        bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
-      >
-        <Form form={form} layout="vertical" onFinish={handleReportIncident}>
-          <Row gutter={16}>
-            <Col xs={24} md={16}> {/* 🚀 มือถือเต็มจอ (24), คอม 2/3 (16) */}
-              <Form.Item name="title" label={<Text strong>หัวข้อ/จุดที่พบเห็น (What happened?)</Text>} rules={[{ required: true, message: 'กรุณาระบุหัวข้อ' }]}>
-                <Input size="large" placeholder="เช่น พบนั่งร้านชำรุด, น้ำมันรั่วไหล" style={{ borderRadius: '8px' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}> {/* 🚀 มือถือเต็มจอ (24), คอม 1/3 (8) */}
-              <Form.Item name="type" label={<Text strong>ประเภทความเสี่ยง (Incident Type)</Text>} rules={[{ required: true }]}>
-                <Select size="large" placeholder="เลือกประเภท" options={[
-                  { value: 'NEAR_MISS', label: '⚠️ Near Miss' },
-                  { value: 'UNSAFE_ACT', label: '🚫 Unsafe Act' },
-                  { value: 'UNSAFE_CONDITION', label: '🏭 Unsafe Condition' },
-                ]} />
-              </Form.Item>
-            </Col>
-          </Row>
+      {/* 🚀 Header */}
+      <div className="flex items-center gap-3 mb-6 md:mb-8">
+        <div className="bg-gradient-to-tr from-red-500 to-rose-600 p-3 md:p-4 rounded-2xl shadow-lg shadow-red-500/30 text-white">
+          <AlertOutlined className="text-2xl md:text-3xl" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-3xl font-extrabold text-slate-800 m-0 tracking-tight">ระบบรายงานจุดเสี่ยง</h2>
+          <p className="text-slate-500 text-xs md:text-sm m-0 mt-1">Incident Report & Safety Tracking</p>
+        </div>
+      </div>
 
-          <Form.Item name="description" label={<Text strong>รายละเอียดเพิ่มเติม (Description)</Text>} rules={[{ required: true }]}>
-            <Input.TextArea rows={3} placeholder="อธิบายรายละเอียดสิ่งที่พบเห็น..." style={{ borderRadius: '8px' }} />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item label={<Text strong>📍 พิกัด GPS (สำคัญ)</Text>}>
-                <Button block={isMobile} type="dashed" size="large" onClick={getLocation} loading={isGettingLocation} icon={<EnvironmentOutlined />} style={{ borderRadius: '8px', borderColor: '#007AFF', color: '#007AFF' }}>
-                  {location.lat ? 'อัปเดตพิกัดเรียบร้อย' : 'คลิกดึงพิกัด GPS'}
-                </Button>
-                {location.lat && <div style={{ marginTop: 8 }}><Text type="success" strong><CheckCircleOutlined /> {location.lat.toFixed(4)}, {location.lng?.toFixed(4)}</Text></div>}
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item label={<Text strong>📸 รูปถ่าย (Evidence)</Text>}>
-                <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
-                  <Button block={isMobile} icon={<CameraOutlined />} size="large" style={{ borderRadius: '8px', width: isMobile ? '100%' : 'auto' }}>อัปโหลดรูปถ่าย</Button>
-                </Upload>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item style={{ marginBottom: 0, marginTop: '8px' }}>
-            <Button type="primary" htmlType="submit" size="large" loading={isLoading} style={{ background: '#ff4d4f', borderRadius: '8px', fontWeight: 600, width: isMobile ? '100%' : '200px', height: '50px' }}>
-              ส่งรายงานจุดเสี่ยงด่วน!
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-
-      {/* ส่วนที่ 2: Dashboard */}
-      <Card title={<b style={{fontSize: isMobile ? '16px' : '18px', color: '#1d1d1f'}}>🚨 กระดานติดตามจุดเสี่ยง</b>} bordered={false} style={glassPanel} bodyStyle={{ padding: isMobile ? '12px' : '24px' }}>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
         
-        {/* 🚀 Desktop: แสดง Table */}
-        {!isMobile && (
-          <Table columns={columns} dataSource={incidents} loading={isLoading && incidents.length === 0} pagination={{ pageSize: 5 }} size="middle" rowKey="id" />
-        )}
+        {/* 📝 ส่วนที่ 1: ฟอร์มแจ้งเหตุ (ซ้าย) */}
+        <div className="xl:col-span-5">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
+            <div className="bg-gradient-to-r from-red-50 to-rose-50 p-5 md:p-6 border-b border-red-100">
+              <h3 className="text-lg font-bold text-red-600 m-0 flex items-center gap-2">
+                <ThunderboltOutlined /> พบจุดเสี่ยง แจ้งด่วน!
+              </h3>
+              <p className="text-xs text-red-400 m-0 mt-1">ข้อมูลจะถูกส่งตรงถึง จป. เพื่อดำเนินการแก้ไข</p>
+            </div>
+            
+            <div className="p-5 md:p-6 bg-white">
+              <Form form={form} layout="vertical" onFinish={handleReportIncident} requiredMark={false}>
+                
+                <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้อ / จุดที่พบเห็น <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุหัวข้อ' }]}>
+                  <Input size="large" placeholder="เช่น นั่งร้านเอียง, สายไฟชำรุด, มีคราบน้ำมัน" className="rounded-xl border-slate-300" />
+                </Form.Item>
+                
+                <Form.Item name="type" label={<span className="font-bold text-slate-700">ประเภทความเสี่ยง <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'เลือกประเภท' }]}>
+                  <Select size="large" placeholder="ระบุประเภทของปัญหา" className="w-full">
+                    <Select.Option value="NEAR_MISS">⚠️ Near Miss (เกือบเกิดอุบัติเหตุ)</Select.Option>
+                    <Select.Option value="UNSAFE_ACT">🚫 Unsafe Act (การกระทำที่ไม่ปลอดภัย)</Select.Option>
+                    <Select.Option value="UNSAFE_CONDITION">🏭 Unsafe Condition (สภาพแวดล้อมอันตราย)</Select.Option>
+                  </Select>
+                </Form.Item>
 
-        {/* 🚀 Mobile: แสดง List แบบ Facebook Feed */}
-        {isMobile && (
-          <List
-            itemLayout="vertical"
-            size="large"
-            pagination={{ pageSize: 3 }}
-            dataSource={incidents}
-            renderItem={(item) => (
-              <List.Item
-                key={item.title}
-                style={{ background: '#fff', borderRadius: '12px', marginBottom: '16px', border: '1px solid #f0f0f0', padding: '16px' }}
-                actions={[
-                  <ActionButtons record={item} />, // ปุ่มรับเรื่อง/ปิดเคส
-                  item.lat && <Button type="link" size="small" icon={<EnvironmentOutlined />} href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`} target="_blank">แผนที่</Button>,
-                  item.image_url && <Button type="link" size="small" icon={<CameraOutlined />} href={item.image_url} target="_blank">รูปภาพ</Button>
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar icon={<UserOutlined />} style={{ backgroundColor: '#007AFF' }} />}
-                  title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <Text strong style={{ fontSize: '16px', color: '#1d1d1f' }}>{item.title}</Text>
-                      {getStatusBadge(item.status)}
-                    </div>
-                  }
-                  description={
-                    <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>{item.reporter?.full_name} • {dayjs(item.created_at).fromNow()}</Text>
-                      <div style={{ marginTop: '8px' }}>{getTypeTag(item.type)}</div>
-                    </Space>
-                  }
-                />
-                <div style={{ marginTop: '12px', color: '#555', fontSize: '14px' }}>
-                  {item.description}
+                <Form.Item name="description" label={<span className="font-bold text-slate-700">รายละเอียดเพิ่มเติม <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุรายละเอียด' }]}>
+                  <Input.TextArea rows={3} placeholder="อธิบายรายละเอียดสิ่งที่พบเห็น เพื่อให้ทีมงานเข้าแก้ไขได้ถูกต้อง..." className="rounded-xl border-slate-300" />
+                </Form.Item>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {/* GPS Button */}
+                  <div className="form-control w-full">
+                    <label className="label py-1"><span className="label-text font-bold text-slate-700">พิกัด GPS <span className="text-red-500">*</span></span></label>
+                    <Button 
+                      type={location.lat ? "primary" : "dashed"} 
+                      onClick={getLocation} 
+                      loading={isGettingLocation} 
+                      icon={location.lat ? <CheckCircleOutlined /> : <EnvironmentOutlined />} 
+                      className={`h-12 rounded-xl border-2 font-bold w-full ${location.lat ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600' : 'border-blue-300 text-blue-600 hover:border-blue-400 hover:text-blue-700'}`}
+                    >
+                      {location.lat ? 'พิกัดพร้อมแล้ว' : 'กดดึงพิกัด'}
+                    </Button>
+                    {location.lat && <span className="text-[10px] text-emerald-600 font-bold mt-1 text-center bg-emerald-50 rounded-md py-0.5">{location.lat.toFixed(3)}, {location.lng?.toFixed(3)}</span>}
+                  </div>
+
+                  {/* Upload Button */}
+                  <div className="form-control w-full">
+                    <label className="label py-1"><span className="label-text font-bold text-slate-700">รูปถ่ายหลักฐาน</span></label>
+                    <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
+                      <Button icon={<CameraOutlined />} className="h-12 rounded-xl border-2 border-slate-300 text-slate-600 hover:border-slate-400 w-full font-bold">
+                        {fileList.length > 0 ? 'เลือกรูปแล้ว' : 'แนบรูปภาพ'}
+                      </Button>
+                    </Upload>
+                  </div>
                 </div>
-              </List.Item>
-            )}
-          />
-        )}
-      </Card>
+
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={isLoading} 
+                  className="w-full h-14 rounded-2xl text-lg font-bold bg-red-500 hover:!bg-red-600 border-none shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
+                >
+                  <WarningOutlined /> ส่งรายงานจุดเสี่ยง
+                </Button>
+              </Form>
+            </div>
+          </div>
+        </div>
+
+        {/* 🚨 ส่วนที่ 2: กระดานติดตามจุดเสี่ยง (ขวา/ล่าง) */}
+        <div className="xl:col-span-7">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
+            
+            {/* ✅ แก้ไขจุดที่บัค (เปลี่ยนคลาสของตัวนับรายการให้เป็น Tailwind แบบชัวร์ๆ) */}
+            <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 m-0 flex items-center gap-2">
+                <HistoryOutlined className="text-blue-500" /> กระดานติดตาม (Tracking Board)
+              </h3>
+              {/* เปลี่ยนจาก badge daisyUI เป็น Tailwind เพียวๆ เพื่อแก้ปัญหากล่องดำ */}
+              <div className="bg-slate-800 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                {incidents.length} รายการ
+              </div>
+            </div>
+
+            <div className="p-4 flex-1">
+              {/* 🚀 Desktop View: Table */}
+              {!isMobile && (
+                <Table 
+                  columns={columns} 
+                  dataSource={incidents} 
+                  loading={isLoading && incidents.length === 0} 
+                  pagination={{ pageSize: 5 }} 
+                  rowKey="id" 
+                  className="modern-table"
+                />
+              )}
+
+              {/* 🚀 Mobile View: Card List (Facebook Feed Style) */}
+              {isMobile && (
+                <div className="space-y-4">
+                  {incidents.length > 0 ? incidents.map((item) => (
+                    <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
+                      {/* ขีดสีบอกสถานะ */}
+                      <div className={`absolute top-0 left-0 w-1.5 h-full ${item.status === 'RESOLVED' ? 'bg-emerald-500' : item.status === 'IN_PROGRESS' ? 'bg-amber-400' : 'bg-red-500'}`}></div>
+                      
+                      <div className="pl-2">
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar icon={<UserOutlined />} className="bg-slate-200 text-slate-500" />
+                            <div>
+                              <p className="text-sm font-bold text-slate-800 m-0">{item.reporter?.full_name}</p>
+                              <p className="text-[10px] text-slate-400 m-0">{dayjs(item.created_at).fromNow()}</p>
+                            </div>
+                          </div>
+                          <div>{getStatusBadge(item.status)}</div>
+                        </div>
+
+                        {/* Content */}
+                        <h4 className="text-base font-bold text-slate-800 mb-1">{item.title}</h4>
+                        <div className="mb-2">{getTypeTag(item.type)}</div>
+                        <p className="text-sm text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">{item.description}</p>
+
+                        {/* Footer / Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                          <div className="flex gap-2">
+                            {item.lat && (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`} target="_blank" rel="noreferrer" className="btn btn-xs btn-outline border-slate-300 text-slate-600 hover:bg-slate-100">
+                                <PushpinOutlined /> แผนที่
+                              </a>
+                            )}
+                            {item.image_url && (
+                              <a href={item.image_url} target="_blank" rel="noreferrer" className="btn btn-xs btn-outline border-slate-300 text-slate-600 hover:bg-slate-100">
+                                <CameraOutlined /> รูปถ่าย
+                              </a>
+                            )}
+                          </div>
+                          
+                          {/* ปุ่มของ จป. */}
+                          <ActionButtons record={item} />
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                      <CheckCircleOutlined className="text-5xl text-emerald-400 mb-3 opacity-50" />
+                      <p className="font-medium text-lg">พื้นที่ปลอดภัย ไม่มีจุดเสี่ยง</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <style>{`
+        /* Custom Table Styling for Modern Look */
+        .modern-table .ant-table-thead > tr > th {
+          background-color: #f8fafc;
+          color: #475569;
+          font-weight: bold;
+          border-bottom: 2px solid #e2e8f0;
+        }
+        .modern-table .ant-table-tbody > tr:hover > td {
+          background-color: #f1f5f9;
+        }
+      `}</style>
     </div>
   );
 }

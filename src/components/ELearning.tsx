@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, message, Radio, Row, Col, Progress, Result, Tag, Alert } from 'antd';
-import { PlayCircleOutlined, FormOutlined, CheckCircleOutlined, BookOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { Card, Button, Typography, Space, message, Row, Col, Progress, Result, Alert } from 'antd';
+import { PlayCircleOutlined, FormOutlined, CheckCircleOutlined, BookOutlined, VideoCameraOutlined, ArrowLeftOutlined, TrophyOutlined, InfoCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -100,7 +100,6 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     setScoreResult(null);
   };
 
-  // 🚀 ฟังก์ชันพระเอก! ช่วยแปลงลิงก์ YouTube ปกติ ให้กลายเป็นลิงก์สำหรับ Embed อัตโนมัติ
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
     try {
@@ -110,67 +109,104 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
       } else if (url.includes('youtu.be/')) {
         videoId = url.split('youtu.be/')[1].split('?')[0];
       } else if (url.includes('youtube.com/embed/')) {
-        return url; // ถ้าเป็น embed อยู่แล้ว ให้ส่งกลับไปเลย
+        return url; 
       }
       
       if (videoId) {
         return `https://www.youtube.com/embed/${videoId}`;
       }
-      return url; // ถ้าไม่ใช่ลิงก์ YouTube เลย ให้ส่งกลับแบบเดิม
+      return url; 
     } catch (e) {
       return url;
     }
   };
 
-  const glassPanel = { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)' };
-
   return (
-    <div className="space-y-6">
-      <Title level={3} style={{ color: '#1d1d1f' }}><BookOutlined /> ระบบอบรมความปลอดภัย (E-Learning)</Title>
+    <div className="w-full pb-10">
+      
+      {/* Header หลัก (จะซ่อนเมื่อเข้าสู่หน้าดูวิดีโอหรือสอบ เพื่อประหยัดพื้นที่) */}
+      {step === 'SELECT_COURSE' && (
+        <div className="flex items-center gap-3 mb-6 md:mb-8">
+          <div className="bg-gradient-to-tr from-indigo-500 to-blue-600 p-3 md:p-4 rounded-2xl shadow-sm text-white">
+            <BookOutlined className="text-2xl md:text-3xl" />
+          </div>
+          <div>
+            <h2 className="text-xl md:text-3xl font-extrabold text-slate-800 m-0 tracking-tight">ระบบอบรมความปลอดภัย</h2>
+            <p className="text-slate-500 text-xs md:text-sm m-0 mt-1">E-Learning & Examination System</p>
+          </div>
+        </div>
+      )}
 
       {/* --- สเต็ปที่ 1: เลือกวิชา --- */}
       {step === 'SELECT_COURSE' && (
-        <Row gutter={[16, 16]}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map(course => (
-            <Col xs={24} md={12} lg={8} key={course.id}>
-              <Card hoverable style={glassPanel} bodyStyle={{ padding: '24px' }}>
-                <Tag color="blue" style={{ marginBottom: '12px' }}>หลักสูตรบังคับ</Tag>
-                <Title level={5}>{course.title}</Title>
-                <Text type="secondary" style={{ display: 'block', marginBottom: '16px', minHeight: '44px' }}>
-                  {course.description || 'ไม่มีคำอธิบาย'}
-                </Text>
-                <Alert message={`เกณฑ์ผ่าน: ${course.passing_score}%`} type="info" showIcon style={{ marginBottom: '16px', borderRadius: '8px' }} />
+            <div key={course.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+              <div className="h-2 bg-indigo-500 w-full"></div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold">หลักสูตรบังคับ</span>
+                  <VideoCameraOutlined className="text-slate-300 text-xl" />
+                </div>
                 
-                <Button 
-                  type="primary" 
-                  icon={<PlayCircleOutlined />} 
-                  size="large" 
-                  block 
-                  style={{ borderRadius: '8px', background: '#007AFF' }}
+                <h2 className="text-lg font-bold text-slate-800 leading-tight mb-2">
+                  {course.title}
+                </h2>
+                <p className="text-slate-500 text-sm line-clamp-2 flex-grow mb-4">
+                  {course.description || 'ไม่มีคำอธิบายสำหรับหลักสูตรนี้'}
+                </p>
+                
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-5 flex items-center gap-2">
+                  <TrophyOutlined className="text-indigo-500" />
+                  <span className="text-sm font-semibold text-slate-600">เกณฑ์ผ่าน: <span className="text-indigo-600">{course.passing_score}%</span></span>
+                </div>
+                
+                <button 
                   onClick={() => handleStartCourse(course)}
                   disabled={currentUser?.role !== 'CONTRACTOR'}
+                  className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors
+                    ${currentUser?.role === 'CONTRACTOR' 
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md' 
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                 >
-                  {currentUser?.role === 'CONTRACTOR' ? 'เริ่มเรียนและสอบ' : 'สำหรับผู้รับเหมาเท่านั้น'}
-                </Button>
-              </Card>
-            </Col>
+                  <PlayCircleOutlined /> {currentUser?.role === 'CONTRACTOR' ? 'เริ่มเรียนเลย' : 'เฉพาะผู้รับเหมา'}
+                </button>
+              </div>
+            </div>
           ))}
-          {courses.length === 0 && <Text type="secondary">ยังไม่มีหลักสูตรในระบบ...</Text>}
-        </Row>
+          {courses.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-3xl border border-slate-200 border-dashed">
+              <BookOutlined className="text-5xl mb-3 opacity-30" />
+              <p className="text-lg font-medium">ยังไม่มีหลักสูตรในระบบ...</p>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* --- สเต็ปที่ 2: ดูวิดีโอ --- */}
+      {/* --- สเต็ปที่ 2: ดูวิดีโอ (ดีไซน์ใหม่ คลีน นิ่ง ไม่เด้ง) --- */}
       {step === 'WATCH_VIDEO' && selectedCourse && (
-        <Card style={glassPanel} bodyStyle={{ padding: '32px', textAlign: 'center' }}>
-          <Title level={4}>{selectedCourse.title}</Title>
-          <Text type="secondary">กรุณาดูวิดีโอให้จบก่อนทำแบบทดสอบ</Text>
+        <div className="max-w-4xl mx-auto">
+          {/* Top Navigation */}
+          <div className="mb-6 flex items-center">
+            <button onClick={resetState} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-medium bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 transition-colors">
+              <ArrowLeftOutlined /> กลับไปเลือกวิชา
+            </button>
+          </div>
+
+          {/* Title Area */}
+          <div className="mb-6 px-2 md:px-0">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 leading-tight mb-2">{selectedCourse.title}</h2>
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <InfoCircleOutlined className="text-indigo-500" />
+              <span>กรุณารับชมวิดีโอให้จบก่อนเริ่มทำแบบทดสอบ</span>
+            </div>
+          </div>
           
-          <div style={{ margin: '24px auto', maxWidth: '800px', background: '#000', borderRadius: '16px', overflow: 'hidden', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {/* 🚀 เรียกใช้ฟังก์ชัน getEmbedUrl ตรงนี้ */}
+          {/* Video Container (ขยายเต็มในมือถือ) */}
+          <div className="w-full bg-black md:rounded-2xl overflow-hidden shadow-md aspect-video flex items-center justify-center -mx-4 md:mx-0 w-[calc(100%+2rem)] md:w-full">
             {selectedCourse.video_url ? (
               <iframe 
-                width="100%" 
-                height="100%" 
+                className="w-full h-full"
                 src={getEmbedUrl(selectedCourse.video_url)} 
                 title="Training Video" 
                 frameBorder="0" 
@@ -178,73 +214,152 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                 allowFullScreen
               ></iframe>
             ) : (
-              <div style={{ color: '#fff', textAlign: 'center' }}>
-                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '16px', color: 'rgba(255,255,255,0.5)' }} />
-                <br />
-                <Text style={{ color: '#fff' }}>[พื้นที่แสดงวิดีโอ] <br/> (สามารถแนบลิงก์ YouTube ได้ในระบบหลังบ้าน)</Text>
+              <div className="text-center text-slate-400 p-6 flex flex-col items-center">
+                <VideoCameraOutlined className="text-4xl md:text-6xl mb-3 opacity-40" />
+                <span className="text-sm md:text-base">พื้นที่สำหรับวิดีโอประกอบการอบรม</span>
               </div>
             )}
           </div>
 
-          <Space size="middle">
-            <Button onClick={resetState}>กลับไปหน้าเลือกวิชา</Button>
-            <Button type="primary" size="large" icon={<FormOutlined />} onClick={() => setStep('TAKE_QUIZ')} style={{ borderRadius: '8px', background: '#34c759', border: 'none' }}>
-              ดูจบแล้ว ไปทำแบบทดสอบ
-            </Button>
-          </Space>
-        </Card>
+          {/* Action Area (กล่องเตรียมตัวสอบแบบนิ่งๆ คลีนๆ) */}
+          <div className="mt-8 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm text-center">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">พร้อมทำแบบทดสอบหรือยัง?</h3>
+            <p className="text-slate-500 text-sm mb-6">มีคำถามทั้งหมด {MOCK_QUESTIONS.length} ข้อ | เกณฑ์ผ่าน {selectedCourse.passing_score}%</p>
+            
+            <button 
+              onClick={() => setStep('TAKE_QUIZ')} 
+              className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg transition-colors flex items-center justify-center gap-2 mx-auto"
+            >
+              <FormOutlined /> เริ่มทำแบบทดสอบ
+            </button>
+          </div>
+        </div>
       )}
 
       {/* --- สเต็ปที่ 3: ทำแบบทดสอบ --- */}
       {step === 'TAKE_QUIZ' && selectedCourse && (
-        <Card style={glassPanel} title={<Title level={4} style={{ margin: 0 }}><FormOutlined /> แบบทดสอบ: {selectedCourse.title}</Title>}>
-          <Alert message={`คำชี้แจง: มีทั้งหมด ${MOCK_QUESTIONS.length} ข้อ ต้องได้คะแนน ${selectedCourse.passing_score}% ขึ้นไปจึงจะผ่าน`} type="warning" showIcon style={{ marginBottom: '24px', borderRadius: '8px' }} />
-          
-          <div className="space-y-8">
-            {MOCK_QUESTIONS.map((q, index) => (
-              <div key={q.id} style={{ background: 'rgba(0,0,0,0.02)', padding: '16px', borderRadius: '12px' }}>
-                <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '12px' }}>
-                  ข้อ {index + 1}. {q.question}
-                </Text>
-                <Radio.Group onChange={(e) => handleAnswer(q.id, e.target.value)} value={answers[q.id]}>
-                  <Space direction="vertical">
-                    {q.options.map((opt, optIdx) => (
-                      <Radio key={optIdx} value={optIdx}>{opt}</Radio>
-                    ))}
-                  </Space>
-                </Radio.Group>
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            {/* Quiz Header */}
+            <div className="bg-slate-50 border-b border-slate-200 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg md:text-xl font-bold text-slate-800 m-0 flex items-center gap-2">
+                  <FormOutlined className="text-indigo-500" /> แบบทดสอบ
+                </h3>
+                <button onClick={() => setStep('WATCH_VIDEO')} className="text-sm font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                  <ArrowLeftOutlined /> กลับไปดูคลิป
+                </button>
               </div>
-            ))}
-          </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full">
+                <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                  <span>ความคืบหน้า</span>
+                  <span>{Object.keys(answers).length} / {MOCK_QUESTIONS.length} ข้อ</span>
+                </div>
+                <Progress 
+                  percent={Math.round((Object.keys(answers).length / MOCK_QUESTIONS.length) * 100)} 
+                  showInfo={false} 
+                  strokeColor="#4f46e5" 
+                  trailColor="#e2e8f0"
+                  className="m-0"
+                />
+              </div>
+            </div>
+            
+            {/* Questions List */}
+            <div className="p-6 md:p-8 space-y-8">
+              {MOCK_QUESTIONS.map((q, index) => (
+                <div key={q.id}>
+                  <h4 className="text-base md:text-lg font-bold text-slate-800 mb-4 leading-relaxed">
+                    <span className="text-indigo-500 mr-1">{index + 1}.</span> {q.question}
+                  </h4>
+                  
+                  {/* Selectable Options */}
+                  <div className="grid grid-cols-1 gap-3">
+                    {q.options.map((opt, optIdx) => {
+                      const isSelected = answers[q.id] === optIdx;
+                      return (
+                        <div 
+                          key={optIdx}
+                          onClick={() => handleAnswer(q.id, optIdx)}
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition-colors flex items-start gap-3 select-none
+                            ${isSelected 
+                              ? 'border-indigo-500 bg-indigo-50/50' 
+                              : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          <div className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                            ${isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>
+                            {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                          </div>
+                          <span className={`text-sm md:text-base font-medium leading-tight ${isSelected ? 'text-indigo-800' : 'text-slate-600'}`}>
+                            {opt}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <div style={{ textAlign: 'center', marginTop: '32px' }}>
-            <Button type="primary" size="large" onClick={handleSubmitQuiz} loading={isSubmitting} icon={<CheckCircleOutlined />} style={{ borderRadius: '8px', width: '200px' }}>
-              ส่งคำตอบ
-            </Button>
+            {/* Submit Section */}
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-center">
+              <button 
+                onClick={handleSubmitQuiz} 
+                disabled={isSubmitting}
+                className="w-full md:w-auto px-12 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+              >
+                {isSubmitting ? 'กำลังตรวจคำตอบ...' : <><CheckCircleOutlined /> ส่งคำตอบ</>}
+              </button>
+            </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* --- สเต็ปที่ 4: ผลการสอบ --- */}
       {step === 'RESULT' && scoreResult && (
-        <Card style={glassPanel}>
-          <Result
-            status={scoreResult.passed ? 'success' : 'error'}
-            title={scoreResult.passed ? '🎉 ยินดีด้วย! คุณสอบผ่าน' : '❌ เสียใจด้วย คุณสอบไม่ผ่าน'}
-            subTitle={`คุณทำคะแนนได้ ${scoreResult.score}% (เกณฑ์ผ่านคือ ${selectedCourse?.passing_score}%)`}
-            extra={[
-              <Button type="primary" key="console" onClick={resetState} style={{ borderRadius: '8px' }}>
-                กลับสู่หน้าหลัก
-              </Button>,
-              !scoreResult.passed && (
-                <Button key="buy" onClick={() => setStep('TAKE_QUIZ')} style={{ borderRadius: '8px' }}>
-                  สอบใหม่อีกครั้ง
-                </Button>
-              )
-            ]}
-          />
-        </Card>
+        <div className="max-w-2xl mx-auto">
+          <div className={`border border-slate-200 shadow-xl rounded-3xl overflow-hidden bg-white`}>
+            <Result
+              status={scoreResult.passed ? 'success' : 'error'}
+              icon={
+                <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center text-5xl mb-2
+                  ${scoreResult.passed ? 'bg-emerald-100 text-emerald-500' : 'bg-red-100 text-red-500'}`}>
+                  {scoreResult.passed ? <TrophyOutlined /> : <InfoCircleOutlined />}
+                </div>
+              }
+              title={<span className="text-2xl md:text-3xl font-black text-slate-800">{scoreResult.passed ? 'สอบผ่าน! ยอดเยี่ยมมาก 🎉' : 'เสียใจด้วย คุณสอบไม่ผ่าน'}</span>}
+              subTitle={
+                <div className="mt-4">
+                  <p className="text-slate-500 font-medium mb-1">คะแนนของคุณ</p>
+                  <div className={`text-5xl md:text-6xl font-black mb-3 ${scoreResult.passed ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {scoreResult.score}<span className="text-2xl">%</span>
+                  </div>
+                  <p className="text-sm text-slate-500 bg-slate-100 inline-block px-4 py-1.5 rounded-full">
+                    เกณฑ์ผ่านคือ {selectedCourse?.passing_score}%
+                  </p>
+                </div>
+              }
+              extra={[
+                <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6 px-6 pb-6" key="actions">
+                  <button onClick={resetState} className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                    กลับหน้าหลัก
+                  </button>
+                  {!scoreResult.passed && (
+                    <button onClick={() => setStep('TAKE_QUIZ')} className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md">
+                      สอบใหม่อีกครั้ง
+                    </button>
+                  )}
+                </div>
+              ]}
+            />
+          </div>
+        </div>
       )}
+      
     </div>
   );
 }

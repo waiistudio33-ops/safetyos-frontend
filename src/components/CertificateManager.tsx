@@ -1,29 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Card, Table, Tag, Button, Space, Typography, Form, Input, 
-  DatePicker, Select, Upload, message, Badge, Tooltip, List, Avatar, Grid, Row, Col 
-} from 'antd'; // 🚀 เพิ่ม List, Avatar, Grid, Row, Col
+  Select, Upload, message, Badge, List, Avatar, Grid 
+} from 'antd'; 
 import { 
   SafetyCertificateOutlined, CheckCircleOutlined, CloseCircleOutlined, 
-  UploadOutlined, FileTextOutlined, ClockCircleOutlined, UserOutlined, CalendarOutlined
+  UploadOutlined, FileTextOutlined, ClockCircleOutlined, UserOutlined, CalendarOutlined, IdcardOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { supabase } from '../supabase'; 
 
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
-const { useBreakpoint } = Grid; // 🚀 เรียกใช้ Hook เช็คขนาดจอ
+const { useBreakpoint } = Grid; 
+
+// 🗓️ ✨ Component เลือกวันที่แบบ Native (เหมาะกับมือถือสุดๆ)
+const ModernDatePickerRange = ({ value, onChange }: any) => {
+  const onStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const start = e.target.value ? dayjs(e.target.value) : null;
+    onChange([start, value?.[1]]);
+  };
+  const onEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const end = e.target.value ? dayjs(e.target.value) : null;
+    onChange([value?.[0], end]);
+  };
+  const toNativeFormat = (date: any) => date ? date.format('YYYY-MM-DD') : '';
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="form-control bg-slate-50 p-3 rounded-2xl border border-slate-200">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+          <CalendarOutlined className="text-blue-500"/> วันที่ออกบัตร
+        </label>
+        <input 
+          type="date" 
+          className="w-full bg-transparent outline-none text-slate-800 font-semibold"
+          value={toNativeFormat(value?.[0])}
+          onChange={onStartChange}
+        />
+      </div>
+      <div className="form-control bg-slate-50 p-3 rounded-2xl border border-slate-200">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+          <ClockCircleOutlined className="text-orange-500"/> วันหมดอายุ
+        </label>
+        <input 
+          type="date" 
+          className="w-full bg-transparent outline-none text-slate-800 font-semibold"
+          value={toNativeFormat(value?.[1])}
+          onChange={onEndChange}
+        />
+      </div>
+    </div>
+  );
+};
 
 export default function CertificateManager({ currentUser }: { currentUser: any }) {
-  const screens = useBreakpoint(); // 🚀 ตัวแปรเช็คขนาดจอ
-  const isMobile = !screens.md; // เล็กกว่า Tablet = Mobile
+  const screens = useBreakpoint(); 
+  const isMobile = !screens.md; 
 
   const [certs, setCerts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [form] = Form.useForm();
   
-  // State สำหรับเก็บไฟล์ที่ผู้รับเหมาเลือก
   const [fileList, setFileList] = useState<any[]>([]);
 
   const fetchCerts = async () => {
@@ -109,12 +147,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     }
   };
 
+  // --- UI Helpers ---
   const getStatusTag = (status: string) => {
     switch(status) {
-      case 'PENDING': return <Badge status="processing" text={<span style={{color: '#007AFF', fontWeight: 600}}>รอตรวจสอบ</span>} />;
-      case 'APPROVED': return <Badge status="success" text={<span style={{color: '#34c759', fontWeight: 600}}>ผ่าน</span>} />;
-      case 'REJECTED': return <Badge status="error" text={<span style={{color: '#ff3b30', fontWeight: 600}}>ไม่ผ่าน</span>} />;
-      default: return <Badge status="default" text={status} />;
+      case 'PENDING': return <span className="bg-blue-100 text-blue-600 px-2.5 py-1 rounded-md text-xs font-bold border border-blue-200"><div className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></div>รอตรวจสอบ</span>;
+      case 'APPROVED': return <span className="bg-emerald-100 text-emerald-600 px-2.5 py-1 rounded-md text-xs font-bold border border-emerald-200"><CheckCircleOutlined className="mr-1"/> ผ่าน</span>;
+      case 'REJECTED': return <span className="bg-red-100 text-red-600 px-2.5 py-1 rounded-md text-xs font-bold border border-red-200"><CloseCircleOutlined className="mr-1"/> ไม่ผ่าน</span>;
+      default: return <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-bold border border-gray-200">{status}</span>;
     }
   };
 
@@ -123,30 +162,22 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     const today = dayjs();
     const daysLeft = expiry.diff(today, 'day');
     
-    let color = '#34c759'; 
-    if (daysLeft < 0) color = '#ff3b30'; 
-    else if (daysLeft <= 30) color = '#ff9500'; 
-
-    return (
-      <Space size={4}>
-        <ClockCircleOutlined style={{ color }} />
-        <Text style={{ fontSize: '12px', color: color, fontWeight: 600 }}>
-          {daysLeft < 0 ? 'หมดอายุแล้ว' : `เหลือ ${daysLeft} วัน`}
-        </Text>
-      </Space>
-    );
+    if (daysLeft < 0) return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">หมดอายุแล้ว</span>;
+    if (daysLeft <= 30) return <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">เหลือ {daysLeft} วัน</span>;
+    return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">เหลือ {daysLeft} วัน</span>;
   };
 
-  const glassPanel = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)' };
-
-  // 🚀 Action Buttons Component (ใช้ซ้ำทั้งใน Table และ List)
   const ActionButtons = ({ record }: { record: any }) => {
     if (currentUser?.role === 'SAFETY_ENGINEER' && record.status === 'PENDING') {
       return (
-        <Space size="small">
-          <Button type="primary" size="small" shape="round" icon={<CheckCircleOutlined />} onClick={() => handleVerify(record.id, 'APPROVED')} style={{ background: '#34c759', border: 'none', fontSize: '12px' }}>อนุมัติ</Button>
-          <Button type="primary" size="small" shape="round" icon={<CloseCircleOutlined />} onClick={() => handleVerify(record.id, 'REJECTED')} style={{ background: '#ff3b30', border: 'none', fontSize: '12px' }}>ปฏิเสธ</Button>
-        </Space>
+        <div className="flex gap-2 mt-3 md:mt-0 w-full md:w-auto">
+          <button onClick={() => handleVerify(record.id, 'APPROVED')} className="btn btn-sm bg-emerald-500 hover:bg-emerald-600 text-white border-none flex-1 md:flex-none shadow-sm">
+            <CheckCircleOutlined /> อนุมัติ
+          </button>
+          <button onClick={() => handleVerify(record.id, 'REJECTED')} className="btn btn-sm bg-red-500 hover:bg-red-600 text-white border-none flex-1 md:flex-none shadow-sm">
+            <CloseCircleOutlined /> ปฏิเสธ
+          </button>
+        </div>
       );
     }
     return null;
@@ -157,10 +188,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       title: 'ผู้รับเหมา', 
       key: 'user', 
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
-          <Text strong style={{ color: '#1d1d1f' }}>{record.user?.full_name}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>{record.user?.department}</Text>
-        </Space>
+        <div className="flex items-center gap-3">
+          <Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-400" />
+          <div>
+            <div className="font-bold text-slate-800">{record.user?.full_name}</div>
+            <div className="text-xs text-slate-500">{record.user?.department}</div>
+          </div>
+        </div>
       )
     },
     {
@@ -168,20 +202,19 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       dataIndex: 'cert_name', 
       key: 'cert_name',
       render: (text) => (
-        <Space>
-          <SafetyCertificateOutlined style={{ color: '#007AFF' }} />
-          <Text strong>{text}</Text>
-        </Space>
+        <div className="font-semibold text-slate-700 flex items-center gap-2">
+          <SafetyCertificateOutlined className="text-blue-500" /> {text}
+        </div>
       )
     },
     {
       title: 'วันหมดอายุ', 
       key: 'expiry_date',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
-          <Text>{dayjs(record.expiry_date).format('DD MMM YY')}</Text>
-          {getExpiryDisplay(record.expiry_date)}
-        </Space>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-slate-600">{dayjs(record.expiry_date).format('DD MMM YYYY')}</span>
+          <div>{getExpiryDisplay(record.expiry_date)}</div>
+        </div>
       )
     },
     {
@@ -189,8 +222,10 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       key: 'document',
       render: (_, record) => (
         record.file_url ? (
-          <Button type="link" icon={<FileTextOutlined />} size="small" style={{ padding: 0 }} href={record.file_url} target="_blank">ดูไฟล์</Button>
-        ) : <Text type="secondary">-</Text>
+          <a href={record.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+            <FileTextOutlined /> ดูไฟล์แนบ
+          </a>
+        ) : <span className="text-xs text-slate-400">-</span>
       )
     },
     {
@@ -200,110 +235,179 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       render: (status) => getStatusTag(status)
     },
     {
-      title: 'Action', 
+      title: 'จัดการ', 
       key: 'action',
       render: (_, record) => <ActionButtons record={record} />
     },
   ];
 
   return (
-    <div className="space-y-6" style={{ padding: isMobile ? '12px' : '0' }}> {/* 🚀 ลด Padding มือถือ */}
+    <div className="w-full pb-20 px-2 md:px-0">
       
-      {/* ส่วนที่ 1: ฟอร์มอัปโหลด (เฉพาะผู้รับเหมา) */}
-      {currentUser?.role === 'CONTRACTOR' && (
-        <Card 
-          title={<Space><UploadOutlined style={{color: '#007AFF'}} /> <Text strong style={{color: '#007AFF', fontSize: isMobile ? '16px' : '18px'}}>อัปโหลดใบ Certificate</Text></Space>} 
-          bordered={false} 
-          style={{...glassPanel, background: 'linear-gradient(135deg, rgba(240, 248, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
-          bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
-        >
-          <Form form={form} layout="vertical" onFinish={handleUploadCert}>
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item name="cert_name" label={<Text strong>ประเภทใบ Certificate</Text>} rules={[{ required: true, message: 'กรุณาเลือกประเภท' }]}>
-                  <Select size="large" placeholder="เลือกประเภทเอกสาร" options={[
-                    { value: 'ผู้ปฏิบัติงานในที่อับอากาศ (Confined Space)', label: '🕳️ Confined Space' },
-                    { value: 'ผู้ควบคุมปั้นจั่น (Crane Operator)', label: '🏗️ Crane Operator' },
-                    { value: 'ช่างไฟฟ้า (Electrician)', label: '⚡ Electrician' },
-                    { value: 'ผู้ควบคุมงานร้อน (Hot Work Safety)', label: '🔥 Hot Work Safety' },
-                  ]} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="dateRange" label={<Text strong>วันที่ออกบัตร - วันหมดอายุ</Text>} rules={[{ required: true, message: 'กรุณาระบุวันที่' }]}>
-                  <RangePicker size="large" style={{ width: '100%' }} format="DD/MM/YYYY" />
-                </Form.Item>
-              </Col>
-            </Row>
+      {/* 🚀 Header */}
+      <div className="flex items-center gap-3 mb-6 md:mb-8">
+        <div className="bg-gradient-to-tr from-blue-500 to-sky-500 p-3 md:p-4 rounded-2xl shadow-lg shadow-blue-500/30 text-white">
+          <IdcardOutlined className="text-2xl md:text-3xl" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-3xl font-extrabold text-slate-800 m-0 tracking-tight">จัดการใบ Certificate</h2>
+          <p className="text-slate-500 text-xs md:text-sm m-0 mt-1">E-Certificate Management System</p>
+        </div>
+      </div>
 
-            <Form.Item label={<Text strong>แนบไฟล์เอกสาร (PDF/JPG)</Text>}>
-              <Upload 
-                beforeUpload={() => false} 
-                maxCount={1}
-                fileList={fileList}
-                onChange={(info) => setFileList(info.fileList)}
-              >
-                <Button block={isMobile} icon={<UploadOutlined />} size="large" style={{ borderRadius: '8px', width: isMobile ? '100%' : 'auto' }}>เลือกไฟล์เอกสาร</Button>
-              </Upload>
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Button type="primary" htmlType="submit" size="large" loading={isLoading} style={{ background: '#007AFF', borderRadius: '8px', fontWeight: 600, width: isMobile ? '100%' : 'auto' }}>
-                ส่งข้อมูลให้ จป. ตรวจสอบ
-              </Button>
-            </Form.Item>
-          </Form>
-        </Card>
-      )}
-
-      {/* ส่วนที่ 2: ตารางข้อมูล */}
-      <Card title={<b style={{fontSize: isMobile ? '16px' : '18px', color: '#1d1d1f'}}>📋 ทะเบียนประวัติใบ Certificate</b>} bordered={false} style={glassPanel} bodyStyle={{ padding: isMobile ? '12px' : '24px' }}>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
         
-        {/* 🚀 Desktop: แสดง Table */}
-        {!isMobile && (
-          <Table columns={columns} dataSource={certs} loading={isLoading && certs.length === 0} pagination={{ pageSize: 5 }} size="middle" rowKey="id" />
+        {/* 📝 ส่วนที่ 1: ฟอร์มอัปโหลด (เฉพาะผู้รับเหมา) */}
+        {currentUser?.role === 'CONTRACTOR' && (
+          <div className="xl:col-span-4">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
+              <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-5 border-b border-blue-100">
+                <h3 className="text-lg font-bold text-blue-700 m-0 flex items-center gap-2">
+                  <UploadOutlined /> นำส่งใบ Certificate
+                </h3>
+                <p className="text-xs text-blue-500 m-0 mt-1">อัปโหลดเอกสารเพื่อใช้ประกอบการขออนุญาตทำงาน</p>
+              </div>
+              
+              <div className="p-5 md:p-6 bg-white">
+                <Form form={form} layout="vertical" onFinish={handleUploadCert} requiredMark={false}>
+                  
+                  <Form.Item name="cert_name" label={<span className="font-bold text-slate-700">ประเภทใบ Certificate <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาเลือกประเภท' }]}>
+                    <Select size="large" placeholder="-- เลือกประเภทเอกสาร --" className="w-full">
+                      <Select.Option value="ผู้ปฏิบัติงานในที่อับอากาศ (Confined Space)">🕳️ ผู้ปฏิบัติงานในที่อับอากาศ</Select.Option>
+                      <Select.Option value="ผู้ควบคุมปั้นจั่น (Crane Operator)">🏗️ ผู้ควบคุมปั้นจั่น</Select.Option>
+                      <Select.Option value="ช่างไฟฟ้า (Electrician)">⚡ ช่างไฟฟ้า</Select.Option>
+                      <Select.Option value="ผู้ควบคุมงานร้อน (Hot Work Safety)">🔥 ผู้ควบคุมงานร้อน</Select.Option>
+                      <Select.Option value="อื่นๆ (Others)">📝 อื่นๆ</Select.Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item name="dateRange" label={<span className="font-bold text-slate-700">อายุของใบ Certificate <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุวันที่' }]} style={{marginBottom: '20px'}}>
+                    <ModernDatePickerRange />
+                  </Form.Item>
+
+                  <Form.Item label={<span className="font-bold text-slate-700">แนบไฟล์เอกสาร <span className="text-red-500">*</span></span>}>
+                    <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
+                      <div className="w-full border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-100 transition-colors rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer mb-2">
+                        <div className="bg-white text-blue-500 p-2 rounded-full mb-2 shadow-sm border border-blue-100">
+                          <FileTextOutlined className="text-xl" />
+                        </div>
+                        <span className="text-slate-700 font-semibold text-sm mb-1">แตะเพื่อเลือกไฟล์</span>
+                        <span className="text-slate-400 text-[10px]">รองรับ PDF, JPG, PNG</span>
+                      </div>
+                    </Upload>
+                  </Form.Item>
+
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    loading={isLoading} 
+                    className="w-full h-14 rounded-2xl text-base font-bold bg-blue-600 hover:!bg-blue-700 border-none shadow-lg shadow-blue-500/30 flex items-center justify-center"
+                  >
+                    ส่งข้อมูลให้ จป. ตรวจสอบ
+                  </Button>
+                </Form>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 🚀 Mobile: แสดง List แบบ Facebook Feed */}
-        {isMobile && (
-          <List
-            itemLayout="vertical"
-            size="large"
-            pagination={{ pageSize: 5 }}
-            dataSource={certs}
-            renderItem={(item) => (
-              <List.Item
-                key={item.id}
-                style={{ background: '#fff', borderRadius: '12px', marginBottom: '16px', border: '1px solid #f0f0f0', padding: '16px' }}
-                actions={[
-                  <ActionButtons record={item} />, // ปุ่มอนุมัติของ จป.
-                  item.file_url && <Button type="link" size="small" icon={<FileTextOutlined />} href={item.file_url} target="_blank">ดูไฟล์</Button>
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar icon={<UserOutlined />} style={{ backgroundColor: '#87d068' }} />}
-                  title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <Text strong style={{ fontSize: '15px', color: '#1d1d1f', maxWidth: '70%' }} ellipsis>{item.cert_name}</Text>
-                      {getStatusTag(item.status)}
-                    </div>
-                  }
-                  description={
-                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                      <Text type="secondary" style={{ fontSize: '13px' }}>{item.user?.full_name} ({item.user?.department})</Text>
-                      <Space style={{ marginTop: 4 }}>
-                        <CalendarOutlined style={{ color: '#888' }} />
-                        <Text type="secondary" style={{ fontSize: '12px' }}>หมดอายุ: {dayjs(item.expiry_date).format('DD MMM YY')}</Text>
-                      </Space>
-                      {getExpiryDisplay(item.expiry_date)}
-                    </Space>
-                  }
+        {/* 📋 ส่วนที่ 2: ตารางข้อมูลทะเบียนประวัติ */}
+        <div className={currentUser?.role === 'CONTRACTOR' ? "xl:col-span-8" : "xl:col-span-12"}>
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
+            
+            <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 m-0 flex items-center gap-2">
+                <SafetyCertificateOutlined className="text-emerald-500" /> ทะเบียนประวัติ (Registry)
+              </h3>
+              <div className="bg-slate-800 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                {certs.length} รายการ
+              </div>
+            </div>
+
+            <div className="p-4 flex-1">
+              {/* 🚀 Desktop View: Table */}
+              {!isMobile && (
+                <Table 
+                  columns={columns} 
+                  dataSource={certs} 
+                  loading={isLoading && certs.length === 0} 
+                  pagination={{ pageSize: 5 }} 
+                  rowKey="id" 
+                  className="modern-table"
                 />
-              </List.Item>
-            )}
-          />
-        )}
-      </Card>
+              )}
+
+              {/* 🚀 Mobile View: Card List */}
+              {isMobile && (
+                <div className="space-y-4">
+                  {certs.length > 0 ? certs.map((item) => (
+                    <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
+                      {/* ขีดสีบอกสถานะ */}
+                      <div className={`absolute top-0 left-0 w-1.5 h-full ${item.status === 'APPROVED' ? 'bg-emerald-500' : item.status === 'REJECTED' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                      
+                      <div className="pl-2">
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-500 border border-slate-200" />
+                            <div>
+                              <p className="text-sm font-bold text-slate-800 m-0 leading-tight">{item.user?.full_name}</p>
+                              <p className="text-[10px] font-semibold text-slate-400 m-0">{item.user?.department}</p>
+                            </div>
+                          </div>
+                          <div>{getStatusTag(item.status)}</div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-3">
+                          <h4 className="text-sm font-bold text-slate-700 m-0 mb-2 flex items-start gap-1.5">
+                            <SafetyCertificateOutlined className="text-blue-500 mt-0.5" />
+                            <span className="leading-tight">{item.cert_name}</span>
+                          </h4>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
+                            <span className="text-[10px] text-slate-400 font-medium">หมดอายุ: {dayjs(item.expiry_date).format('DD/MM/YYYY')}</span>
+                            {getExpiryDisplay(item.expiry_date)}
+                          </div>
+                        </div>
+
+                        {/* Footer / Actions */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-1">
+                          {item.file_url ? (
+                            <a href={item.file_url} target="_blank" rel="noreferrer" className="w-full sm:w-auto btn btn-sm btn-outline border-slate-200 text-slate-600 bg-white hover:bg-slate-50 rounded-lg">
+                              <FileTextOutlined /> ดูไฟล์แนบ
+                            </a>
+                          ) : <span className="text-xs text-slate-400">-</span>}
+                          
+                          {/* ปุ่มของ จป. จะกางเต็มพื้นที่ในมือถือ */}
+                          <ActionButtons record={item} />
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                      <IdcardOutlined className="text-5xl text-blue-300 mb-3 opacity-50" />
+                      <p className="font-medium text-lg text-slate-500">ยังไม่มีประวัติใบ Certificate</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <style>{`
+        .modern-table .ant-table-thead > tr > th {
+          background-color: #f8fafc;
+          color: #475569;
+          font-weight: bold;
+          border-bottom: 2px solid #e2e8f0;
+        }
+        .modern-table .ant-table-tbody > tr:hover > td {
+          background-color: #f1f5f9;
+        }
+      `}</style>
     </div>
   );
 }
