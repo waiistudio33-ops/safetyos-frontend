@@ -7,5 +7,11 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [
+    require('daisyui'), // 👈 เพิ่มบรรทัดนี้ครับ
+  ],
+  // (Optional) ตั้งค่า Theme ของ daisyUI ได้ตรงนี้
+  daisyui: {
+    themes: ["light", "dark", "cupcake", "corporate"], // เลือกธีมที่ชอบได้เลย
+  },
 }
