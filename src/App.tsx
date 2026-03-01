@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, Table, Tag, ConfigProvider, Space,
-  Button, Modal, Form, Input, Select, DatePicker, message, Badge, Upload, Divider, Checkbox, InputNumber, Descriptions,
+  Button, Modal, Form, Input, Select, message, Badge, Upload, Divider, Checkbox, InputNumber, Descriptions,
   Radio, List, Popconfirm, Drawer, Grid, Spin 
 } from 'antd';
 import { 
@@ -11,15 +11,16 @@ import {
   UserOutlined, SettingOutlined, FileTextOutlined,
   PlusOutlined, CheckOutlined, CloseOutlined,
   FieldTimeOutlined, FireOutlined, ThunderboltOutlined,
-  BuildOutlined, EnvironmentOutlined, TeamOutlined, RetweetOutlined, UploadOutlined,
-  IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, SafetyOutlined, BellOutlined,
-  DownOutlined, DownloadOutlined, EyeOutlined, FilePdfOutlined, LogoutOutlined, LockOutlined,
-  CheckCircleOutlined, StopOutlined, LoginOutlined, MenuOutlined, RocketOutlined, MailOutlined,
+  BuildOutlined, EnvironmentOutlined, TeamOutlined, UploadOutlined,
+  IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, BellOutlined,
+  DownloadOutlined, EyeOutlined, FilePdfOutlined, LogoutOutlined,
+  CheckCircleOutlined, LoginOutlined, MenuOutlined, RocketOutlined,
   CalendarOutlined, ClockCircleOutlined, ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import html2pdf from 'html2pdf.js'; 
+import liff from '@line/liff'; // 🟢 1. IMPORT LIFF SDK
 
 import CertificateManager from './components/CertificateManager';
 import IncidentReport from './components/IncidentReport';
@@ -32,7 +33,7 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// 🌊 Component คลื่น (Wave Design)
+// ... (เก็บ WaveSeparator, ModernDateRange, ModernToggleChips, getStatusDisplayModern ไว้เหมือนเดิม ไม่ลบครับ)
 const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => (
   <div className="absolute z-10 pointer-events-none" style={{ right: isMobile ? 0 : -1, bottom: isMobile ? -1 : 0, width: isMobile ? '100%' : '150px', height: isMobile ? '120px' : '100%', display: 'flex', alignItems: isMobile ? 'flex-end' : 'stretch' }}>
     <svg viewBox={isMobile ? "0 0 1440 320" : "0 0 320 1440"} preserveAspectRatio="none" className="w-full h-full fill-white">
@@ -41,18 +42,10 @@ const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => (
   </div>
 );
 
-// 🗓️ ✨ รูปแบบวันที่สำหรับมือถือโดยเฉพาะ (Native Date Picker)
 const ModernDateRange = ({ value, onChange }: any) => {
-  const onStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const start = e.target.value ? dayjs(e.target.value) : null;
-    onChange([start, value?.[1]]);
-  };
-  const onEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const end = e.target.value ? dayjs(e.target.value) : null;
-    onChange([value?.[0], end]);
-  };
+  const onStartChange = (e: React.ChangeEvent<HTMLInputElement>) => { onChange([e.target.value ? dayjs(e.target.value) : null, value?.[1]]); };
+  const onEndChange = (e: React.ChangeEvent<HTMLInputElement>) => { onChange([value?.[0], e.target.value ? dayjs(e.target.value) : null]); };
   const toNativeFormat = (date: any) => date ? date.format('YYYY-MM-DDTHH:mm') : '';
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-white p-3 rounded-2xl border border-blue-100 shadow-sm flex flex-col justify-center">
@@ -67,31 +60,30 @@ const ModernDateRange = ({ value, onChange }: any) => {
   );
 };
 
-// ☑️ ✨ ปุ่มกดเลือกแบบชิป
 const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-blue-600 text-white" }: any) => {
-  const toggle = (val: string) => {
-    const newValue = value.includes(val) ? value.filter((v: string) => v !== val) : [...value, val];
-    onChange(newValue);
-  };
-
+  const toggle = (val: string) => { onChange(value.includes(val) ? value.filter((v: string) => v !== val) : [...value, val]); };
   return (
     <div className="flex flex-wrap gap-2 mt-1">
       {options.map((opt: any) => {
         const isSelected = value.includes(opt.value);
         return (
-          <div 
-            key={opt.value}
-            onClick={() => toggle(opt.value)}
-            className={`cursor-pointer px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5 select-none border shadow-sm
-              ${isSelected ? `${activeColor} border-transparent scale-105` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-          >
-            {isSelected ? <CheckCircleOutlined /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-300"></div>}
-            {opt.label}
+          <div key={opt.value} onClick={() => toggle(opt.value)} className={`cursor-pointer px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5 select-none border shadow-sm ${isSelected ? `${activeColor} border-transparent scale-105` : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+            {isSelected ? <CheckCircleOutlined /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-300"></div>} {opt.label}
           </div>
         );
       })}
     </div>
   );
+};
+
+const getStatusDisplayModern = (status: string) => { 
+  switch(status) { 
+    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-600"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
+    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-600"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
+    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-600"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
+    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600"><CloseOutlined /> ไม่อนุมัติ</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">{status}</span>; 
+  } 
 };
 
 export default function App() {
@@ -103,6 +95,9 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
   const [activeMenu, setActiveMenu] = useState('DASHBOARD'); 
+
+  // 🟢 2. State สำหรับเก็บข้อมูลโปรไฟล์จาก LINE
+  const [lineProfile, setLineProfile] = useState<any>(null);
 
   const [realPermits, setRealPermits] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]);
@@ -130,6 +125,28 @@ export default function App() {
   const [bbsForm] = Form.useForm();
   const [confinedForm] = Form.useForm();
   const [currentTime, setCurrentTime] = useState(dayjs());
+
+  // 🟢 3. Initialize LINE LIFF เมื่อเปิดแอป
+  useEffect(() => {
+    const initLIFF = async () => {
+      try {
+        // ⚠️ ต้องเปลี่ยน 'YOUR_LIFF_ID' เป็นของจริงภายหลัง
+        await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
+        
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          setLineProfile(profile);
+          console.log("LINE Profile:", profile);
+        } else if (liff.isInClient()) {
+          // ถ้าเปิดในแอป LINE แต่ยังไม่ได้ Login ให้เด้ง Login อัตโนมัติ
+          liff.login();
+        }
+      } catch (err) {
+        console.log("LIFF Init Failed or not running in LINE", err);
+      }
+    };
+    initLIFF();
+  }, []);
 
   // --- Check LocalStorage ---
   useEffect(() => {
@@ -202,10 +219,7 @@ export default function App() {
   useEffect(() => {
     if (activeMenu === 'CONFINED_SPACE' && selectedConfinedPermit) {
       fetchEntries(selectedConfinedPermit);
-      const interval = setInterval(() => {
-        fetchEntries(selectedConfinedPermit);
-        setCurrentTime(dayjs());
-      }, 60000); 
+      const interval = setInterval(() => { fetchEntries(selectedConfinedPermit); setCurrentTime(dayjs()); }, 60000); 
       return () => clearInterval(interval);
     }
   }, [activeMenu, selectedConfinedPermit]);
@@ -225,6 +239,7 @@ export default function App() {
     localStorage.removeItem('safetyos_user');
     setIsAuthenticated(false); 
     setCurrentUser(null); 
+    if (liff.isLoggedIn()) liff.logout(); // 🟢 4. Logout LINE ด้วย (ถ้ามี)
     message.info('ออกจากระบบเรียบร้อย'); 
   };
 
@@ -251,35 +266,14 @@ export default function App() {
 
   const handleEvacuateAll = async () => {
     try {
-      await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { 
-        permit_id: selectedConfinedPermit,
-        triggered_by: currentUser.full_name 
-      });
-      message.success('สั่งอพยพและส่งแจ้งเตือนฉุกเฉินแล้ว!');
-      fetchEntries(selectedConfinedPermit!);
-    } catch (error) {
-      message.error('เกิดข้อผิดพลาดในการสั่งอพยพ');
-    }
+      await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name });
+      message.success('สั่งอพยพและส่งแจ้งเตือนฉุกเฉินแล้ว!'); fetchEntries(selectedConfinedPermit!);
+    } catch (error) { message.error('เกิดข้อผิดพลาดในการสั่งอพยพ'); }
   };
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
-  
-  const handleExportPDF = () => { 
-    const element = document.getElementById('pdf-document-content'); 
-    if (!element) return; 
-    
-    // กำหนดให้ Export แบบไม่ย่อจนมองไม่เห็น
-    html2pdf().set({ 
-      margin: [0.5, 0.5, 0.5, 0.5], 
-      filename: `WorkPermit_${selectedPermitDetail?.permit_number}.pdf`, 
-      image: { type: 'jpeg', quality: 0.98 }, 
-      html2canvas: { scale: 2, useCORS: true, windowWidth: 800 }, // ล็อคขนาดหน้าจอจำลอง
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
-    }).from(element).save(); 
-    
-    message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); 
-  };
+  const handleExportPDF = () => { const element = document.getElementById('pdf-document-content'); if (!element) return; html2pdf().set({ margin: [0.5, 0.5, 0.5, 0.5], filename: `WorkPermit_${selectedPermitDetail?.permit_number}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, windowWidth: 800 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save(); message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); };
   
   const handleCreatePermit = async (values: any) => {
     try {
@@ -300,43 +294,15 @@ export default function App() {
   };
 
   const getPermitTypeDisplay = (type: string) => { switch(type) { case 'HOT_WORK': return { icon: <FireOutlined />, color: 'volcano', text: 'Hot Work' }; case 'CONFINED_SPACE': return { icon: <BuildOutlined />, color: 'purple', text: 'Confined Space' }; case 'ELECTRICAL': return { icon: <ThunderboltOutlined />, color: 'gold', text: 'Electrical' }; default: return { icon: <BuildOutlined />, color: 'geekblue', text: 'Cold Work' }; } };
-  
-  // ปรับการแสดงผล Status ให้สวยงามแบบ Tailwind
-  const getStatusDisplayModern = (status: string) => { 
-    switch(status) { 
-      case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-600"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
-      case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-600"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-600"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
-      case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600"><CloseOutlined /> ไม่อนุมัติ</span>; 
-      default: return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">{status}</span>; 
-    } 
-  };
-  const getStatusDisplay = (status: string) => { switch(status) { case 'PENDING_AREA_OWNER': return <Badge status="processing" color="orange" text={<span style={{color: '#fa8c16', fontWeight: 600}}>รอเจ้าของพื้นที่</span>} />; case 'PENDING_SAFETY': return <Badge status="processing" color="blue" text={<span style={{color: '#007AFF', fontWeight: 600}}>รอ จป. อนุมัติ</span>} />; case 'APPROVED': return <Badge status="success" text={<span style={{color: '#34c759', fontWeight: 600}}>อนุมัติแล้ว</span>} />; case 'REJECTED': return <Badge status="error" text={<span style={{color: '#ff3b30', fontWeight: 600}}>ไม่อนุมัติ</span>} />; default: return <Badge status="default" text={status} />; } };
 
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
-  
-  const modernHeaderStyle = { 
-    background: 'rgba(255, 255, 255, 0.9)', 
-    backdropFilter: 'blur(20px)', 
-    borderRadius: isMobile ? '0px' : '24px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.04)', 
-    border: 'none', 
-    margin: isMobile ? '0' : '16px 24px 0', 
-    padding: isMobile ? '0 12px' : '0 24px', 
-    height: '70px', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    zIndex: 10,
-    position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', 
-    top: 0
-  };
+  const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
 
   const columns: ColumnsType<any> = [
     { title: 'Permit No.', dataIndex: 'permit_number', key: 'permit_number', width: 130, render: (text) => <Text style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007AFF', background: 'rgba(0, 122, 255, 0.1)', padding: '4px 8px', borderRadius: '8px' }}>{text || 'PTW-XX'}</Text> },
     { title: 'รายละเอียดงาน', key: 'details', render: (_, record) => ( <Space direction="vertical" size={2}><Text strong style={{ color: '#1d1d1f', fontSize: '15px' }}>{record.title}</Text><Text type="secondary" style={{ fontSize: '12px' }}><TeamOutlined /> {record.applicant?.full_name || 'ไม่ทราบชื่อ'} ({record.applicant?.department})</Text><Text type="secondary" style={{ fontSize: '12px' }}><EnvironmentOutlined /> {record.location_detail}</Text>{record.attachment_url && (<Button type="dashed" size="small" icon={<FileTextOutlined />} onClick={() => handlePreviewFile(record.attachment_url)} style={{ marginTop: '4px', borderRadius: '8px', fontSize: '12px', color: '#007AFF', borderColor: '#007AFF' }}>ดูเอกสาร JSA</Button>)}</Space> ) },
     { title: 'ประเภท', dataIndex: 'permit_type', key: 'type', width: 140, render: (type) => { const { icon, color, text } = getPermitTypeDisplay(type); return <Tag icon={icon} color={color} style={{ borderRadius: '10px', padding: '4px 10px', border: 'none', fontWeight: 600 }}>{text}</Tag>; }, responsive: ['md'] }, 
-    { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 160, render: (status) => getStatusDisplay(status) },
+    { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 160, render: (status) => getStatusDisplayModern(status) },
     { title: 'Action', key: 'action', width: 190, render: (_, record) => {
         const isAreaOwnerTurn = record.status === 'PENDING_AREA_OWNER' && currentUser?.role === 'AREA_OWNER'; const isSafetyTurn = record.status === 'PENDING_SAFETY' && currentUser?.role === 'SAFETY_ENGINEER';
         return (
@@ -351,19 +317,12 @@ export default function App() {
   ];
 
   if (isAuthChecking) {
-    return (
-      <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}>
-        <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
-          <Spin size="large" tip="กำลังโหลดข้อมูล..." />
-        </div>
-      </ConfigProvider>
-    );
+    return ( <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}> <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}> <Spin size="large" description="กำลังโหลดข้อมูล..." /> </div> </ConfigProvider> );
   }
 
-  // 🔥 Login Screen
+  // 🔥 Login Screen (แก้ให้รองรับการแสดงผลเชื่อม LINE)
   if (!isAuthenticated) {
     const minimalInputStyle = { border: 'none', borderBottom: '2px solid #e2e8f0', borderRadius: '0', boxShadow: 'none', background: 'transparent', paddingLeft: '0', paddingBottom: '8px', fontSize: '16px' };
-    
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-slate-50 overflow-hidden">
@@ -380,24 +339,29 @@ export default function App() {
 
           <div className={`${isMobile ? 'flex-1 pt-8' : 'w-1/2 flex items-center'} bg-white px-8 md:px-20 pb-10`}>
             <div className="w-full max-w-md mx-auto">
-              <div className="mb-8">
-                <h2 className="text-3xl font-extrabold text-gray-800 mb-2">Welcome Back</h2>
-                <p className="text-gray-400">Please enter your details to sign in.</p>
-              </div>
+              
+              {/* 🟢 5. แสดงข้อความทักทายถ้าเปิดจาก LINE */}
+              {lineProfile ? (
+                <div className="mb-8 text-center animate-fade-in">
+                  <Avatar src={lineProfile.pictureUrl} size={64} className="mb-3 border-2 border-green-500 shadow-md" />
+                  <h2 className="text-2xl font-extrabold text-slate-800 mb-1">สวัสดีคุณ {lineProfile.displayName}</h2>
+                  <p className="text-green-600 font-bold text-sm bg-green-50 inline-block px-3 py-1 rounded-full">เปิดผ่านแอป LINE สำเร็จ ✅</p>
+                  <p className="text-slate-400 text-xs mt-3">กรุณาล็อกอินด้วยรหัสพนักงานในครั้งแรก</p>
+                </div>
+              ) : (
+                <div className="mb-8">
+                  <h2 className="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back</h2>
+                  <p className="text-slate-400">Please enter your details to sign in.</p>
+                </div>
+              )}
 
               <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false}>
-                <Form.Item name="username" label={<span className="font-bold text-gray-700 text-xs uppercase tracking-wider">Username</span>} rules={[{ required: true, message: 'กรุณากรอก Username' }]}>
-                  <Input size="large" placeholder="Enter username" style={{ borderRadius: '12px', height: '50px' }} autoComplete="username" />
+                <Form.Item name="username" label={<span className="font-bold text-slate-700 text-xs uppercase tracking-wider">Username (ทดสอบใช้: view / somchai)</span>} rules={[{ required: true, message: 'กรุณากรอก Username' }]}>
+                  <Input size="large" placeholder="Enter username" style={minimalInputStyle} autoComplete="username" />
                 </Form.Item>
-                
-                <Form.Item name="password" label={<span className="font-bold text-gray-700 text-xs uppercase tracking-wider">Password</span>} rules={[{ required: true, message: 'กรุณากรอก Password' }]}>
-                  <Input.Password size="large" placeholder="Enter password" style={{ borderRadius: '12px', height: '50px' }} autoComplete="current-password" />
+                <Form.Item name="password" label={<span className="font-bold text-slate-700 text-xs uppercase tracking-wider">Password (รหัส: 1234)</span>} rules={[{ required: true, message: 'กรุณากรอก Password' }]}>
+                  <Input.Password size="large" placeholder="Enter password" style={minimalInputStyle} autoComplete="current-password" />
                 </Form.Item>
-
-                <div className="flex justify-between items-center mb-8">
-                  <Checkbox className="text-gray-500 text-sm">Remember me</Checkbox>
-                  <a href="#" className="text-blue-600 font-bold text-sm hover:underline">Forgot Password?</a>
-                </div>
 
                 <Button type="primary" htmlType="submit" loading={isLoggingIn} block style={{ height: '56px', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', background: '#2563eb', border: 'none', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)' }}>
                   Sign In
@@ -410,7 +374,7 @@ export default function App() {
     );
   }
 
-  // --- Main Layout ---
+  // --- ✨ อัปเกรด Main Layout (Sidebar Menu สวยขึ้น สไตล์ Modern) ---
   const menuItems = (
     <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent', padding: '0 12px', marginTop: '16px' }}>
       <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'DASHBOARD' ? 'bold' : 'normal', background: activeMenu === 'DASHBOARD' ? '#eff6ff' : 'transparent', color: activeMenu === 'DASHBOARD' ? '#2563eb' : '#475569' }}>Dashboard สรุปผล</Menu.Item>
@@ -439,7 +403,7 @@ export default function App() {
             </Sider>
           )}
 
-          <Drawer title={<div className="flex items-center gap-2"><SafetyCertificateOutlined className="text-blue-600 text-xl"/> <span className="font-bold text-slate-800">SafetyOS</span></div>} placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} bodyStyle={{ padding: 0 }}>
+          <Drawer title={<div className="flex items-center gap-2"><SafetyCertificateOutlined className="text-blue-600 text-xl"/> <span className="font-bold text-slate-800">SafetyOS</span></div>} placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} styles={{ body: { padding: 0 } }}>
             {menuItems}
           </Drawer>
 
@@ -476,7 +440,13 @@ export default function App() {
                 {!isMobile && <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 8px' }}></div>}
                 
                 <div style={{ background: '#ffffff', borderRadius: '100px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Avatar size={isMobile ? "default" : "large"} style={{ backgroundColor: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', border: '2px solid #fff' }} icon={<UserOutlined />} />
+                  {/* 🟢 6. ถ้ายูสเซอร์เปิดจาก LINE ให้เอารูปโปรไฟล์ LINE มาโชว์เลย! */}
+                  <Avatar 
+                    src={lineProfile?.pictureUrl} 
+                    size={isMobile ? "default" : "large"} 
+                    style={{ backgroundColor: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', border: '2px solid #fff' }} 
+                    icon={!lineProfile && <UserOutlined />} 
+                  />
                   {!isMobile && (
                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2', paddingRight: '8px' }}>
                       <Text strong style={{ fontSize: '13px', color: '#1e293b' }}>{currentUser?.full_name}</Text>
@@ -494,7 +464,7 @@ export default function App() {
             <Content style={{ padding: isMobile ? '12px' : '24px', overflow: 'initial' }}>
               {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
               {activeMenu === 'E_PERMIT' && (
-                <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>รายการ Work Queue</b>} bordered={false} style={glassPanel} headStyle={{borderBottom: '1px solid rgba(0,0,0,0.05)'}} bodyStyle={{padding: isMobile ? '0' : '24px'}}>
+                <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>รายการ Work Queue</b>} bordered={false} style={glassPanel} styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.05)' }, body: { padding: isMobile ? '0' : '24px' }}}>
                   <Table columns={columns} dataSource={realPermits} loading={loading} pagination={{ pageSize: 8 }} size="small" scroll={{ x: 'max-content' }} />
                 </Card>
               )}
@@ -556,23 +526,23 @@ export default function App() {
                       {selectedConfinedPermit ? (
                         <>
                           <Form form={confinedForm} layout={isMobile ? "vertical" : "inline"} onFinish={handleCheckIn} style={{ marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <Form.Item name="worker_name" rules={[{ required: true, message: 'กรอกชื่อ' }]} style={{flex: 1, marginBottom: isMobile ? '12px' : '0'}}><Input size="large" placeholder="ชื่อผู้ปฏิบัติงาน" prefix={<UserOutlined className="text-gray-400" />} className="rounded-xl border-gray-300" /></Form.Item>
+                            <Form.Item name="worker_name" rules={[{ required: true, message: 'กรอกชื่อ' }]} style={{flex: 1, marginBottom: isMobile ? '12px' : '0'}}><Input size="large" placeholder="ชื่อผู้ปฏิบัติงาน" prefix={<UserOutlined className="text-slate-400" />} style={{borderRadius: '12px'}} /></Form.Item>
                             <Form.Item name="role" rules={[{ required: true, message: 'เลือกหน้าที่' }]} style={{marginBottom: isMobile ? '12px' : '0'}}><Select size="large" placeholder="หน้าที่" options={[{value:'ENTRANT', label:'ผู้ปฏิบัติงาน'}, {value:'STANDBY', label:'ผู้เฝ้าระวัง'}]} style={{ width: isMobile ? '100%' : '150px' }}/></Form.Item>
-                            <Form.Item style={{marginBottom: 0}}><Button size="large" type="primary" htmlType="submit" block={isMobile} icon={<LoginOutlined />} style={{ background: '#2563eb', borderRadius: '12px' }}>เข้าพื้นที่</Button></Form.Item>
+                            <Form.Item style={{marginBottom: 0}}><Button size="large" type="primary" htmlType="submit" block={isMobile} icon={<LoginOutlined />} style={{ background: '#2563eb', borderRadius: '12px', border: 'none' }}>เข้าพื้นที่</Button></Form.Item>
                           </Form>
 
-                          <Divider orientation="left"><Text strong className="text-gray-500">สถานะปัจจุบัน (Real-time)</Text></Divider>
+                          <Divider orientation="left"><Text strong className="text-slate-500">สถานะปัจจุบัน (Real-time)</Text></Divider>
                           
                           <Row gutter={[16, 16]}>
                             <Col span={24}>
-                              <Card size="small" title={<Space><SafetyCertificateOutlined className="text-blue-500"/> <Text strong className="text-blue-700">ผู้เฝ้าระวัง (Standby)</Text></Space>} headStyle={{background: '#eff6ff', borderBottom: '1px solid #bfdbfe'}} style={{ border: '1px solid #bfdbfe', borderRadius: '12px', overflow: 'hidden' }}>
+                              <Card size="small" title={<Space><SafetyCertificateOutlined style={{color:'#3b82f6'}}/> <Text strong style={{color: '#1d4ed8'}}>ผู้เฝ้าระวัง (Standby)</Text></Space>} styles={{ header: {background: '#eff6ff', borderBottom: '1px solid #bfdbfe'} }} style={{ border: '1px solid #bfdbfe', borderRadius: '12px', overflow: 'hidden' }}>
                                 {confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'STANDBY').length === 0 ? <Text type="secondary" italic>⚠️ ไม่มีผู้เฝ้าระวังปากบ่อ</Text> : null}
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   {confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'STANDBY').map(e => (
                                     <Tag key={e.id} color="blue" style={{ padding: '8px', fontSize: '14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#dbeafe', color: '#1e3a8a' }}>
                                       <Avatar size="small" icon={<EyeOutlined />} style={{background: '#3b82f6'}} />
-                                      <span className="font-semibold">{e.worker_name}</span>
-                                      <Button size="small" type="text" danger onClick={() => handleCheckOut(e.id)} style={{marginLeft: '4px', padding: 0}}>ดึงออก</Button>
+                                      <span style={{fontWeight: 600}}>{e.worker_name}</span>
+                                      <Button size="small" type="text" danger onClick={() => handleCheckOut(e.id)} style={{marginLeft: '4px', padding: 0}}>ออก</Button>
                                     </Tag>
                                   ))}
                                 </div>
@@ -580,7 +550,7 @@ export default function App() {
                             </Col>
 
                             <Col xs={24} sm={12}>
-                              <Card size="small" title={<Space><WarningOutlined className="text-red-500"/> <Text strong className="text-red-700">อยู่ในบ่อ (Entrants)</Text> <Badge count={confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'ENTRANT').length} style={{backgroundColor: '#ef4444'}} /></Space>} headStyle={{background: '#fef2f2', borderBottom: '1px solid #fecaca'}} style={{ border: '1px solid #fecaca', borderRadius: '12px', overflow: 'hidden' }}>
+                              <Card size="small" title={<Space><WarningOutlined style={{color:'#ef4444'}}/> <Text strong style={{color: '#b91c1c'}}>อยู่ในบ่อ (Entrants)</Text> <Badge count={confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'ENTRANT').length} style={{backgroundColor: '#ef4444'}} /></Space>} styles={{ header: {background: '#fef2f2', borderBottom: '1px solid #fecaca'} }} style={{ border: '1px solid #fecaca', borderRadius: '12px', overflow: 'hidden' }}>
                                 {confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'ENTRANT').length === 0 ? <Text type="secondary">ไม่มีคนด้านใน</Text> : null}
                                 {confinedEntries.filter(e => e.status === 'INSIDE' && e.role === 'ENTRANT').map(e => {
                                   const minsInside = dayjs().diff(dayjs(e.time_in), 'minute');
@@ -601,7 +571,7 @@ export default function App() {
                             </Col>
 
                             <Col xs={24} sm={12}>
-                              <Card size="small" title={<Space><CheckCircleOutlined className="text-emerald-500"/> <Text strong className="text-emerald-700">ออกแล้ว (Logged Out)</Text></Space>} headStyle={{background: '#ecfdf5', borderBottom: '1px solid #a7f3d0'}} style={{ border: '1px solid #a7f3d0', borderRadius: '12px', overflow: 'hidden' }}>
+                              <Card size="small" title={<Space><CheckCircleOutlined style={{color:'#10b981'}}/> <Text strong style={{color: '#047857'}}>ออกแล้ว (Logged Out)</Text></Space>} styles={{ header: {background: '#ecfdf5', borderBottom: '1px solid #a7f3d0'} }} style={{ border: '1px solid #a7f3d0', borderRadius: '12px', overflow: 'hidden' }}>
                                 <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                   {confinedEntries.filter(e => e.status === 'OUTSIDE').map(e => (
                                     <div key={e.id} style={{ padding: '8px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
@@ -627,7 +597,7 @@ export default function App() {
             </Content>
           </Layout>
 
-          <Modal title={<Space><EyeOutlined style={{color:'#10b981'}}/><Title level={4} style={{margin: 0}}>บันทึกพฤติกรรม (BBS Observation)</Title></Space>} open={isBbsModalOpen} onCancel={() => setIsBbsModalOpen(false)} onOk={() => bbsForm.submit()} okText="บันทึกข้อมูล" cancelButtonProps={{shape: 'round'}} okButtonProps={{shape: 'round', style: {background: '#10b981', border: 'none'}}} destroyOnClose>
+          <Modal title={<Space><EyeOutlined style={{color:'#10b981'}}/><Title level={4} style={{margin: 0}}>บันทึกพฤติกรรม (BBS Observation)</Title></Space>} open={isBbsModalOpen} onCancel={() => setIsBbsModalOpen(false)} onOk={() => bbsForm.submit()} okText="บันทึกข้อมูล" cancelButtonProps={{shape: 'round'}} okButtonProps={{shape: 'round', style: {background: '#10b981', border: 'none'}}}>
             <Form form={bbsForm} layout="vertical" onFinish={handleCreateBbs} style={{ marginTop: '24px' }}>
               <Form.Item name="location" label="พื้นที่ที่พบเห็น" rules={[{required: true}]}><Input placeholder="เช่น Tank Farm Zone B" /></Form.Item>
               <Form.Item name="behavior_type" label="ประเภทพฤติกรรม" rules={[{required: true}]}>
@@ -642,7 +612,7 @@ export default function App() {
             </Form>
           </Modal>
 
-          {/* 🌟 NEW DETAILS MODAL (สวยและอ่านง่ายในมือถือ) */}
+          {/* 🌟 NEW DETAILS MODAL */}
           <Modal 
             title={null} 
             open={isDetailModalOpen} 
@@ -654,92 +624,93 @@ export default function App() {
           >
             {selectedPermitDetail && (
               <div id="pdf-document-content" className="bg-slate-50 rounded-xl overflow-hidden">
-                {/* Header Section */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white text-center rounded-t-xl">
-                  <h2 className="text-2xl md:text-3xl font-bold m-0 tracking-wider">WORK PERMIT</h2>
-                  <p className="text-blue-200 text-sm mt-1 mb-0">SafetyOS (Enterprise Safety Management)</p>
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 md:p-8 text-white text-center rounded-t-xl relative">
+                  <div className="absolute top-4 right-4">
+                    {getStatusDisplayModern(selectedPermitDetail.status)}
+                  </div>
+                  <FileTextOutlined className="text-4xl md:text-5xl mb-2 opacity-80" />
+                  <h2 className="text-2xl md:text-3xl font-bold m-0 tracking-widest text-white">WORK PERMIT</h2>
+                  <p className="text-blue-200 text-xs md:text-sm mt-1 mb-0">SafetyOS Enterprise Management</p>
                 </div>
 
-                <div className="p-4 md:p-8">
-                  {/* Card 1: Main Info */}
-                  <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-4">
-                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
-                      <span className="text-gray-500 font-bold">เลขที่เอกสาร</span>
-                      <span className="text-lg font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg">{selectedPermitDetail.permit_number}</span>
+                <div className="p-4 md:p-6">
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                      <span className="text-gray-500 font-bold text-sm">เลขที่เอกสาร</span>
+                      <span className="text-base font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{selectedPermitDetail.permit_number}</span>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-xs text-gray-400 block mb-1">สถานะปัจจุบัน</span>
-                        <div>{getStatusDisplayModern(selectedPermitDetail.status)}</div>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><ToolOutlined /></div>
+                        <div>
+                          <p className="text-xs text-slate-400 m-0">หัวข้องาน</p>
+                          <p className="font-bold text-slate-800 m-0 text-base">{selectedPermitDetail.title}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-xs text-gray-400 block mb-1">หัวข้องาน</span>
-                        <div className="font-bold text-gray-800 text-base">{selectedPermitDetail.title}</div>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><EnvironmentOutlined /></div>
+                        <div>
+                          <p className="text-xs text-slate-400 m-0">พื้นที่ปฏิบัติงาน</p>
+                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail.location_detail}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-xs text-gray-400 block mb-1">พื้นที่ปฏิบัติงาน</span>
-                        <div className="font-semibold text-gray-700"><EnvironmentOutlined className="text-blue-500 mr-1"/> {selectedPermitDetail.location_detail}</div>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-400 block mb-1">ผู้ขออนุญาต</span>
-                        <div className="font-semibold text-gray-700"><UserOutlined className="text-blue-500 mr-1"/> {selectedPermitDetail.applicant?.full_name}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Time */}
-                  <div className="bg-blue-50 p-4 md:p-6 rounded-2xl border border-blue-100 mb-4">
-                    <div className="flex items-center gap-2 mb-3 text-blue-800 font-bold">
-                      <ClockCircleOutlined /> ระยะเวลาปฏิบัติงาน
-                    </div>
-                    <div className="flex flex-col md:flex-row justify-between bg-white p-3 rounded-xl border border-blue-50">
-                      <div>
-                        <span className="text-xs text-gray-400 block">เริ่มต้น (Start)</span>
-                        <span className="font-bold text-gray-800">{dayjs(selectedPermitDetail.start_time).format('DD/MM/YYYY')} <span className="text-blue-600 ml-1">{dayjs(selectedPermitDetail.start_time).format('HH:mm')}</span></span>
-                      </div>
-                      <div className="hidden md:flex items-center text-gray-300">➡</div>
-                      <div className="text-right mt-2 md:mt-0">
-                        <span className="text-xs text-gray-400 block">สิ้นสุด (End)</span>
-                        <span className="font-bold text-gray-800">{dayjs(selectedPermitDetail.end_time).format('DD/MM/YYYY')} <span className="text-red-500 ml-1">{dayjs(selectedPermitDetail.end_time).format('HH:mm')}</span></span>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><UserOutlined /></div>
+                        <div>
+                          <p className="text-xs text-slate-400 m-0">ผู้ขออนุญาต</p>
+                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail.applicant?.full_name} <span className="text-xs font-normal text-slate-400">({selectedPermitDetail.applicant?.department})</span></p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 3: Safety */}
-                  <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                    <div className="flex items-center gap-2 mb-3 text-orange-600 font-bold">
+                  <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">
+                    <div className="flex items-center gap-2 mb-3 text-blue-800 font-bold text-sm">
+                      <ClockCircleOutlined /> ระยะเวลาดำเนินการ
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">เริ่ม</span>
+                        <span className="font-bold text-slate-700">{dayjs(selectedPermitDetail.start_time).format('DD/MM/YY')} <span className="text-blue-600 ml-1">{dayjs(selectedPermitDetail.start_time).format('HH:mm')}</span></span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">สิ้นสุด</span>
+                        <span className="font-bold text-slate-700">{dayjs(selectedPermitDetail.end_time).format('DD/MM/YY')} <span className="text-red-500 ml-1">{dayjs(selectedPermitDetail.end_time).format('HH:mm')}</span></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                    <div className="flex items-center gap-2 mb-3 text-orange-600 font-bold text-sm">
                       <SafetyCertificateOutlined /> มาตรการความปลอดภัย
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-mono border border-gray-100">
+                    <div className="bg-orange-50/50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-orange-100 font-medium">
                       {selectedPermitDetail.description}
                     </div>
                   </div>
 
-                  {/* Signatures */}
-                  <div className="flex justify-around items-center pt-6 border-t border-slate-200 mt-6">
-                    <div className="text-center">
-                      <div className="border-b-2 border-slate-300 w-32 md:w-40 pb-2 mb-2 font-handwriting text-lg text-blue-600">
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                    <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">
                         {selectedPermitDetail.applicant?.full_name}
                       </div>
-                      <span className="text-xs font-bold text-gray-500 uppercase">ผู้ขออนุญาต</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้ขออนุญาต</span>
                     </div>
-                    <div className="text-center">
-                      <div className="border-b-2 border-slate-300 w-32 md:w-40 pb-2 mb-2 font-bold text-green-600">
-                        {selectedPermitDetail.status === 'APPROVED' ? '✅ อนุมัติแล้ว' : '⏳ รอการพิจารณา'}
+                    <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className={`border-b-2 pb-2 mb-2 font-bold text-sm h-8 flex items-end justify-center ${selectedPermitDetail.status === 'APPROVED' ? 'text-emerald-600 border-emerald-200' : 'text-orange-500 border-orange-200'}`}>
+                        {selectedPermitDetail.status === 'APPROVED' ? 'APPROVER SIGNED' : 'WAITING APPROVAL'}
                       </div>
-                      <span className="text-xs font-bold text-gray-500 uppercase">ผู้อนุมัติ (Area Owner / จป.)</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้อนุมัติ (Area Owner / จป.)</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer Actions (Sticky) */}
-                <div className="bg-white p-4 border-t border-slate-200 flex gap-3 sticky bottom-0">
-                  <Button size="large" onClick={() => setIsDetailModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-gray-100 border-none text-gray-600 hover:bg-gray-200">
+                <div className="bg-white p-4 border-t border-slate-200 flex gap-3 sticky bottom-0 z-10">
+                  <Button size="large" onClick={() => setIsDetailModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">
                     ปิดหน้าต่าง
                   </Button>
-                  <Button size="large" type="primary" onClick={handleExportPDF} icon={<FilePdfOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-red-500 hover:bg-red-600 border-none shadow-md shadow-red-500/30">
-                    ดาวน์โหลด PDF
+                  <Button size="large" type="primary" onClick={handleExportPDF} icon={<FilePdfOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-md shadow-indigo-500/30">
+                    โหลด PDF
                   </Button>
                 </div>
               </div>
@@ -750,17 +721,7 @@ export default function App() {
             <div style={{ height: '70vh', display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '12px', overflow: 'hidden' }}>{previewType === 'image' ? <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} />}</div>
           </Modal>
 
-          {/* 📝 NEW GUIDED WORK PERMIT FORM (Mobile-First / RWD) */}
-          <Modal 
-            title={null} 
-            footer={null} 
-            open={isModalOpen} 
-            onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); }} 
-            width={750} 
-            centered
-            styles={{ body: { padding: 0 } }}
-          >
-            {/* Modal Header */}
+          <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); }} width={750} centered styles={{ body: { padding: 0 } }}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-t-xl text-white shadow-sm">
               <h2 className="text-2xl font-bold m-0 flex items-center gap-3 text-white">
                 <div className="bg-white/20 p-2 rounded-lg"><FileTextOutlined /></div>
@@ -772,16 +733,13 @@ export default function App() {
             <div className="p-4 md:p-8 bg-slate-50 overflow-y-auto max-h-[80vh]">
               <Form form={form} layout="vertical" onFinish={handleCreatePermit} requiredMark={false}>
                 
-                {/* 🏷️ Section 1: ข้อมูลทั่วไป */}
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-blue-700 font-bold border-b border-slate-100 pb-3">
                     <AppstoreAddOutlined className="text-lg" /> ข้อมูลพื้นฐานของงาน
                   </div>
-                  
                   <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้องาน (Title) <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุหัวข้องาน' }]} extra={<span className="text-xs text-slate-400">ระบุชื่องานหรือรหัสอุปกรณ์ให้ชัดเจน</span>}>
                      <Input size="large" placeholder="เช่น ซ่อมบำรุงปั๊มน้ำ P-101, งานเชื่อมโครงหลังคา" className="rounded-xl border-slate-300" />
                   </Form.Item>
-
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
                       <Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'เลือกประเภทงาน' }]}>
@@ -799,13 +757,11 @@ export default function App() {
                       </Form.Item>
                     </Col>
                   </Row>
-
                   <Form.Item name="location_detail" label={<span className="font-bold text-slate-700">สถานที่ปฏิบัติงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุสถานที่' }]} style={{marginBottom: 0}}>
                     <Input size="large" prefix={<EnvironmentOutlined className="text-slate-400 mr-2" />} placeholder="ระบุตึก / ชั้น / แผนก / โซน" className="rounded-xl border-slate-300" />
                   </Form.Item>
                 </div>
 
-                {/* ⏱️ Section 2: เวลาปฏิบัติงาน */}
                 <div className="bg-blue-50 p-5 rounded-2xl shadow-sm border border-blue-100 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-blue-800 font-bold border-b border-blue-200 pb-3">
                     <HourglassOutlined className="text-lg" /> ระยะเวลาปฏิบัติงาน <span className="text-red-500">*</span>
@@ -815,32 +771,26 @@ export default function App() {
                   </Form.Item>
                 </div>
 
-                {/* 🛡️ Section 3: มาตรการความปลอดภัย */}
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-orange-600 font-bold border-b border-slate-100 pb-3">
                     <SafetyCertificateOutlined className="text-lg" /> การเตรียมความพร้อมด้านความปลอดภัย
                   </div>
-                  
                   <Form.Item name="ppe" label={<span className="font-bold text-slate-700">อุปกรณ์ป้องกันภัย (PPE) ที่จำเป็น</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อเลือกอุปกรณ์ที่ต้องใช้ในงานนี้ (เลือกได้มากกว่า 1)</span>}>
                     <ModernToggleChips activeColor="bg-blue-600 text-white border-blue-600" options={[{label:'หมวกนิรภัย', value:'Helmet'}, {label:'รองเท้านิรภัย', value:'Shoes'}, {label:'ถุงมือ', value:'Gloves'}, {label:'แว่นตานิรภัย', value:'Glasses'}, {label:'เข็มขัดกันตก', value:'Harness'}, {label:'ที่อุดหู', value:'Earplugs'}]} />
                   </Form.Item>
-
                   <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 mt-2 block">มาตรการควบคุมพื้นที่</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อยืนยันมาตรการที่เตรียมไว้แล้ว</span>}>
                     <ModernToggleChips activeColor="bg-emerald-500 text-white border-emerald-500" options={[{label:'ถังดับเพลิง', value:'Fire Extinguisher'}, {label:'ผู้เฝ้าระวัง', value:'Standby Person'}, {label:'ตรวจวัดก๊าซ', value:'Gas Testing'}, {label:'กั้นพื้นที่', value:'Barricade'}, {label:'ตัดระบบ (LOTO)', value:'LOTO'}]} />
                   </Form.Item>
-                  
                   <Form.Item name="description" label={<span className="font-bold text-slate-700 mt-2 block">รายละเอียดเพิ่มเติม / หมายเหตุ</span>} style={{marginBottom: 0}}>
                     <Input.TextArea rows={2} placeholder="เช่น ข้อควรระวังพิเศษ, ชื่อผู้เฝ้าระวัง" className="rounded-xl border-slate-300" />
                   </Form.Item>
                 </div>
 
-                {/* 📎 Section 4: อัปโหลดเอกสาร */}
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-8">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-bold text-slate-700">เอกสาร JSA (Job Safety Analysis) <span className="text-red-500">*</span></span>
                   </div>
                   <div className="text-xs text-slate-500 mb-4"><InfoCircleOutlined /> จำเป็นต้องแนบเอกสารประเมินความเสี่ยงก่อนเริ่มงาน</div>
-                  
                   <Form.Item name="attachment" rules={[{ required: true, message: 'กรุณาแนบไฟล์ JSA' }]} style={{marginBottom: 0}}>
                     <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(i) => setFileList(i.fileList)}>
                       <div className="w-full border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-colors rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer">
@@ -854,7 +804,6 @@ export default function App() {
                   </Form.Item>
                 </div>
 
-                {/* 🔘 Action Buttons */}
                 <div className="flex gap-4 sticky bottom-0 bg-slate-50 py-2 border-t border-slate-200 mt-[-10px] pt-4 z-10">
                   <Button size="large" onClick={() => setIsModalOpen(false)} style={{ flex: 1, borderRadius: '16px', height: '56px', fontWeight: 'bold' }}>
                     ยกเลิก
@@ -863,7 +812,6 @@ export default function App() {
                     ส่งคำขออนุญาต
                   </Button>
                 </div>
-
               </Form>
             </div>
           </Modal>
