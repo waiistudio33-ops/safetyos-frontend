@@ -127,60 +127,55 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(dayjs());
 
   // 🟢 3. Initialize LINE LIFF เมื่อเปิดแอป
+  // 🟢 รวมระบบเช็คล็อกอินเดิม + LINE LIFF เข้าด้วยกัน
   useEffect(() => {
-    const initLIFF = async () => {
+    const initializeApp = async () => {
       try {
-        // ⚠️ ต้องเปลี่ยน 'YOUR_LIFF_ID' เป็นของจริงภายหลัง
-        await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
-        
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setLineProfile(profile);
-          console.log("LINE Profile:", profile);
-        } else if (liff.isInClient()) {
-          // ถ้าเปิดในแอป LINE แต่ยังไม่ได้ Login ให้เด้ง Login อัตโนมัติ
-          liff.login();
-        }
-      } catch (err) {
-        console.log("LIFF Init Failed or not running in LINE", err);
-      }
-    };
-    initLIFF();
-  }, []);
-
-  // --- Check LocalStorage ---
-  // 🟢 1. Initialize LINE LIFF และทำ Auto-Login
-  useEffect(() => {
-    const initLIFF = async () => {
-      try {
-        await liff.init({ liffId: 'https://liff.line.me/2009277207-jNY8QghJ' }); // ⚠️ อย่าลืมใส่ LIFF ID ของคุณวิว
-        
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setLineProfile(profile);
-          console.log("LINE Profile:", profile);
-
-          // 🚀 [เพิ่มใหม่] ลองส่ง userId ไปให้ Backend ตรวจสอบว่าเคยล็อกอินหรือยัง?
+        // 1. เช็ค LocalStorage ก่อน (เผื่อเคยล็อกอินค้างไว้)
+        const savedUser = localStorage.getItem('safetyos_user');
+        if (savedUser) {
           try {
-            const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: profile.userId });
-            // ถ้าเคยผูกไว้แล้ว (Backend ตรวจเจอ) -> ให้เข้าแอปทันที!
-            localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-            setCurrentUser(res.data.user);
+            setCurrentUser(JSON.parse(savedUser));
             setIsAuthenticated(true);
-            message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
           } catch (e) {
-            // ถ้า Backend หาไม่เจอ (ครั้งแรก) -> ปล่อยให้ไปหน้า Login กรอกรหัสปกติ
-            console.log("พนักงานใหม่: ยังไม่ได้ผูก LINE ID");
+            localStorage.removeItem('safetyos_user');
           }
+        }
 
+        // 2. สั่งเริ่มการทำงานของ LINE LIFF
+        // ⚠️ อย่าลืมแก้ 'YOUR_LIFF_ID' เป็นไอดีของคุณวิวนะครับ
+        await liff.init({ liffId: 'https://liff.line.me/2009277207-jNY8QghJ' }); 
+
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          setLineProfile(profile);
+
+          // 3. ถ้าในเครื่องยังไม่ได้ล็อกอิน ให้ลอง Auto-Login ผ่าน LINE ID
+          if (!savedUser) {
+            try {
+              const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: profile.userId });
+              localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
+              setCurrentUser(res.data.user);
+              setIsAuthenticated(true);
+              message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
+            } catch (e) {
+              console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE");
+            }
+          }
         } else if (liff.isInClient()) {
+          // ถ้าเปิดในแอป LINE แต่ยังไม่ได้ล็อกอิน ให้เด้งหน้าล็อกอิน LINE
           liff.login();
         }
+
       } catch (err) {
-        console.log("LIFF Init Failed or not running in LINE", err);
+        console.log("LIFF Init Failed (อาจจะเปิดผ่านเว็บปกติไม่ได้เปิดผ่าน LINE)", err);
+      } finally {
+        // 🔴 สำคัญที่สุด: ไม่ว่าจะสำเร็จหรือพัง ต้องสั่งปลดหน้าจอโหลด (Spin) ทิ้งเสมอ!
+        setIsAuthChecking(false);
       }
     };
-    initLIFF();
+
+    initializeApp();
   }, []);
 
   const fetchUsers = async () => {
