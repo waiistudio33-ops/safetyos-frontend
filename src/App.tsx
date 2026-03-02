@@ -21,7 +21,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import html2pdf from 'html2pdf.js'; 
 import liff from '@line/liff'; // 🟢 1. IMPORT LIFF SDK
-
+import EPassport from './components/EPassport';
 import CertificateManager from './components/CertificateManager';
 import IncidentReport from './components/IncidentReport';
 import ELearning from './components/ELearning';
@@ -149,21 +149,38 @@ export default function App() {
   }, []);
 
   // --- Check LocalStorage ---
+  // 🟢 1. Initialize LINE LIFF และทำ Auto-Login
   useEffect(() => {
-    const checkAuth = () => {
-      const savedUser = localStorage.getItem('safetyos_user');
-      if (savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          setCurrentUser(parsedUser);
-          setIsAuthenticated(true);
-        } catch (e) {
-          localStorage.removeItem('safetyos_user');
+    const initLIFF = async () => {
+      try {
+        await liff.init({ liffId: 'https://liff.line.me/2009277207-jNY8QghJ' }); // ⚠️ อย่าลืมใส่ LIFF ID ของคุณวิว
+        
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          setLineProfile(profile);
+          console.log("LINE Profile:", profile);
+
+          // 🚀 [เพิ่มใหม่] ลองส่ง userId ไปให้ Backend ตรวจสอบว่าเคยล็อกอินหรือยัง?
+          try {
+            const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: profile.userId });
+            // ถ้าเคยผูกไว้แล้ว (Backend ตรวจเจอ) -> ให้เข้าแอปทันที!
+            localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
+            setCurrentUser(res.data.user);
+            setIsAuthenticated(true);
+            message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
+          } catch (e) {
+            // ถ้า Backend หาไม่เจอ (ครั้งแรก) -> ปล่อยให้ไปหน้า Login กรอกรหัสปกติ
+            console.log("พนักงานใหม่: ยังไม่ได้ผูก LINE ID");
+          }
+
+        } else if (liff.isInClient()) {
+          liff.login();
         }
+      } catch (err) {
+        console.log("LIFF Init Failed or not running in LINE", err);
       }
-      setIsAuthChecking(false);
     };
-    checkAuth();
+    initLIFF();
   }, []);
 
   const fetchUsers = async () => {
@@ -224,15 +241,32 @@ export default function App() {
     }
   }, [activeMenu, selectedConfinedPermit]);
 
+  // 🟢 2. ตอนล็อกอินปกติ ให้แนบ userId ไปด้วยเพื่อผูกบัญชี
   const handleLogin = async (values: any) => {
     setIsLoggingIn(true);
     try {
-      const response = await axios.post('https://safetyos-backend.onrender.com/login', values);
+      // เอาข้อมูล username/password มารวมกับ lineProfile.userId
+      const payload = { 
+        ...values, 
+        line_id: lineProfile ? lineProfile.userId : null 
+      };
+
+      const response = await axios.post('https://safetyos-backend.onrender.com/login', payload);
       localStorage.setItem('safetyos_user', JSON.stringify(response.data.user));
       setCurrentUser(response.data.user); 
       setIsAuthenticated(true); 
-      message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
-    } catch (error: any) { message.error(error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ'); } finally { setIsLoggingIn(false); }
+      
+      if (lineProfile) {
+        message.success(`เชื่อมต่อบัญชี LINE กับคุณ ${response.data.user.full_name} สำเร็จ! ครั้งหน้าไม่ต้องกรอกรหัสแล้ว 🎉`);
+      } else {
+        message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
+      }
+
+    } catch (error: any) { 
+      message.error(error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ'); 
+    } finally { 
+      setIsLoggingIn(false); 
+    }
   };
 
   const handleLogout = () => { 
@@ -378,6 +412,7 @@ export default function App() {
   const menuItems = (
     <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent', padding: '0 12px', marginTop: '16px' }}>
       <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'DASHBOARD' ? 'bold' : 'normal', background: activeMenu === 'DASHBOARD' ? '#eff6ff' : 'transparent', color: activeMenu === 'DASHBOARD' ? '#2563eb' : '#475569' }}>Dashboard สรุปผล</Menu.Item>
+      <Menu.Item key="E_PASSPORT" icon={<IdcardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'E_PASSPORT' ? 'bold' : 'normal', background: activeMenu === 'E_PASSPORT' ? '#f0fdf4' : 'transparent', color: activeMenu === 'E_PASSPORT' ? '#16a34a' : '#475569' }}>My E-Passport</Menu.Item>
       <Menu.Item key="E_PERMIT" icon={<FileTextOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'E_PERMIT' ? 'bold' : 'normal', background: activeMenu === 'E_PERMIT' ? '#eff6ff' : 'transparent', color: activeMenu === 'E_PERMIT' ? '#2563eb' : '#475569' }}>ระบบ E-Permit (PTW)</Menu.Item>
       <Menu.Item key="BBS" icon={<EyeOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'BBS' ? 'bold' : 'normal', background: activeMenu === 'BBS' ? '#ecfdf5' : 'transparent', color: activeMenu === 'BBS' ? '#10b981' : '#475569' }}>BBS Observation</Menu.Item>
       <Menu.Item key="CONFINED_SPACE" icon={<BuildOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'CONFINED_SPACE' ? 'bold' : 'normal', background: activeMenu === 'CONFINED_SPACE' ? '#f3e8ff' : 'transparent', color: activeMenu === 'CONFINED_SPACE' ? '#9333ea' : '#475569' }}>บอร์ดที่อับอากาศ</Menu.Item>
@@ -417,6 +452,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <Title level={isMobile ? 4 : 3} style={{ margin: 0, lineHeight: '1.1', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px', fontSize: isMobile ? '16px' : 'auto' }}>
                     {activeMenu === 'DASHBOARD' ? 'ภาพรวม (Dashboard)' :
+                     activeMenu === 'E_PASSPORT' ? 'บัตรประจำตัว (E-Passport)' :
                      activeMenu === 'E_PERMIT' ? 'E-Permit Control Room' : 
                      activeMenu === 'BBS' ? 'พฤติกรรมความปลอดภัย (BBS)' : 
                      activeMenu === 'CONFINED_SPACE' ? 'Confined Space Board' : 
@@ -468,7 +504,7 @@ export default function App() {
                   <Table columns={columns} dataSource={realPermits} loading={loading} pagination={{ pageSize: 8 }} size="small" scroll={{ x: 'max-content' }} />
                 </Card>
               )}
-
+              {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
               {activeMenu === 'BBS' && (
                 <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>ประวัติ BBS</b>} bordered={false} style={glassPanel}>
                   <List
