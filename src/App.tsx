@@ -96,10 +96,21 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
   const [activeMenu, setActiveMenu] = useState('DASHBOARD'); 
-  const [verifyUserId, setVerifyUserId] = useState<string | null>(null); // 🟢 เพิ่มบรรทัดนี้
-  // 🟢 2. State สำหรับเก็บข้อมูลโปรไฟล์จาก LINE
+  const [verifyUserId, setVerifyUserId] = useState<string | null>(null); 
   const [lineProfile, setLineProfile] = useState<any>(null);
-
+  useEffect(() => {
+    // อ่านค่าจาก URL เช่น ?page=E_PASSPORT
+    const queryParams = new URLSearchParams(window.location.search);
+    const targetPage = queryParams.get('page');
+    if (targetPage) {
+      // รายชื่อหน้าทั้งหมดที่มีในระบบ
+      const validPages = ['DASHBOARD', 'E_PASSPORT', 'E_PERMIT', 'BBS', 'CONFINED_SPACE', 'CERTIFICATE', 'INCIDENT', 'E_LEARNING', 'EQUIPMENT'];
+      // ถ้าหน้าที่ส่งมามีอยู่จริง สั่งให้เปิดหน้านั้นทันที!
+      if (validPages.includes(targetPage)) {
+        setActiveMenu(targetPage);
+      }
+    }
+  }, []);
   const [realPermits, setRealPermits] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null); 
