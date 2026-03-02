@@ -21,6 +21,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import html2pdf from 'html2pdf.js'; 
 import liff from '@line/liff'; // 🟢 1. IMPORT LIFF SDK
+import VerificationPage from './components/VerificationPage';
 import EPassport from './components/EPassport';
 import CertificateManager from './components/CertificateManager';
 import IncidentReport from './components/IncidentReport';
@@ -95,7 +96,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
   const [activeMenu, setActiveMenu] = useState('DASHBOARD'); 
-
+  const [verifyUserId, setVerifyUserId] = useState<string | null>(null); // 🟢 เพิ่มบรรทัดนี้
   // 🟢 2. State สำหรับเก็บข้อมูลโปรไฟล์จาก LINE
   const [lineProfile, setLineProfile] = useState<any>(null);
 
@@ -126,7 +127,15 @@ export default function App() {
   const [confinedForm] = Form.useForm();
   const [currentTime, setCurrentTime] = useState(dayjs());
 
-  // 🟢 3. Initialize LINE LIFF เมื่อเปิดแอป
+  // 🟢 ดักจับว่าเปิดมาจากลิงก์สแกน QR Code (Verification) หรือไม่?
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/verify/')) {
+      const id = path.split('/')[2]; // ดึง ID พนักงานออกจากลิงก์
+      setVerifyUserId(id);
+    }
+  }, []);
+
   // 🟢 รวมระบบเช็คล็อกอินเดิม + LINE LIFF เข้าด้วยกัน
   useEffect(() => {
     const initializeApp = async () => {
@@ -347,6 +356,11 @@ export default function App() {
 
   if (isAuthChecking) {
     return ( <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}> <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}> <Spin size="large" description="กำลังโหลดข้อมูล..." /> </div> </ConfigProvider> );
+  }
+
+  // 🟢 ถ้าจับได้ว่าเป็นลิงก์สแกน QR ให้โชว์หน้านี้แทนแอปหลักเลย!
+  if (verifyUserId) {
+    return <VerificationPage userId={verifyUserId} />;
   }
 
   // 🔥 Login Screen (แก้ให้รองรับการแสดงผลเชื่อม LINE)
