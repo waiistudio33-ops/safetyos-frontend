@@ -144,7 +144,7 @@ export default function App() {
 
         // 2. สั่งเริ่มการทำงานของ LINE LIFF
         // ⚠️ อย่าลืมแก้ 'YOUR_LIFF_ID' เป็นไอดีของคุณวิวนะครับ
-        await liff.init({ liffId: 'https://liff.line.me/2009277207-jNY8QghJ' }); 
+        await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
 
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
