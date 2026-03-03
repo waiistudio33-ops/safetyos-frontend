@@ -35,7 +35,6 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// ... (WaveSeparator, ModernDateRange, ModernToggleChips)
 const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => (
   <div className="absolute z-10 pointer-events-none" style={{ right: isMobile ? 0 : -1, bottom: isMobile ? -1 : 0, width: isMobile ? '100%' : '150px', height: isMobile ? '120px' : '100%', display: 'flex', alignItems: isMobile ? 'flex-end' : 'stretch' }}>
     <svg viewBox={isMobile ? "0 0 1440 320" : "0 0 320 1440"} preserveAspectRatio="none" className="w-full h-full fill-white">
@@ -78,7 +77,6 @@ const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-bl
   );
 };
 
-// 🌟 ปรับแต่ง Badge สถานะด้วย Tailwind ล้วน (ไม่มี Ant Design แข็งๆ)
 const getStatusDisplayModern = (status: string) => { 
   switch(status) { 
     case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
@@ -89,7 +87,6 @@ const getStatusDisplayModern = (status: string) => {
   } 
 };
 
-// 🌟 ปรับแต่ง Badge ประเภทงานด้วย Tailwind ล้วน
 const getPermitTypeDisplayModern = (type: string) => { 
   switch(type) { 
     case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-100 whitespace-nowrap"><FireOutlined /> Hot Work</span>; 
@@ -140,6 +137,8 @@ export default function App() {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedPermitDetail, setSelectedPermitDetail] = useState<any>(null);
+  
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const [bbsRecords, setBbsRecords] = useState<any[]>([]);
   const [activeConfinedPermits, setActiveConfinedPermits] = useState<any[]>([]);
@@ -322,7 +321,42 @@ export default function App() {
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
-  const handleExportPDF = () => { const element = document.getElementById('pdf-document-content'); if (!element) return; html2pdf().set({ margin: [0.5, 0.5, 0.5, 0.5], filename: `WorkPermit_${selectedPermitDetail?.permit_number}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, windowWidth: 800 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save(); message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); };
+  
+  // 🚀 🟢 ฟังก์ชันดาวน์โหลด PDF ที่แก้ไขบัคตายสนิท 100% (ใช้ Async/Await คลีนๆ)
+  const handleExportPDF = async () => { 
+    const element = document.getElementById('pdf-document-content'); 
+    if (!element) return; 
+
+    // ดักไว้ก่อนเลยว่าถ้าทำบนแอป LINE อาจจะมีปัญหา
+    if (liff.isInClient()) {
+      message.warning('⚠️ แอป LINE อาจไม่รองรับการโหลดไฟล์ แนะนำให้เปิดผ่าน Chrome/Safari (กดเมนูขวาบน)', 8);
+    }
+
+    setIsExportingPDF(true); 
+    const hideLoadingMsg = message.loading('กำลังประมวลผลไฟล์ PDF กรุณารอสักครู่...', 0); 
+    
+    try {
+      const opt = { 
+        margin: 0.5, // แก้ไข margin ให้เป็นตัวเลขเดี่ยวเพื่อลดบัค
+        filename: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 2, useCORS: true, logging: false }, 
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
+      };
+
+      // ใช้ Await บังคับให้รอจนกว่าจะโหลดเสร็จ
+      await html2pdf().set(opt).from(element).save(); 
+      
+      hideLoadingMsg(); 
+      message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); 
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      hideLoadingMsg(); 
+      message.error('ระบบสร้างไฟล์ขัดข้อง กรุณาลองใหม่อีกครั้ง หรือเปิดผ่านเบราว์เซอร์ปกติ (Chrome)', 6);
+    } finally {
+      setIsExportingPDF(false); 
+    }
+  };
   
   const handleCreatePermit = async (values: any) => {
     try {
@@ -367,7 +401,6 @@ export default function App() {
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
   const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
 
-  // 🚀 คอลัมน์ตาราง E-Permit อัปเกรดด้วย Tailwind
   const columns: ColumnsType<any> = [
     { 
       title: 'Permit No.', 
@@ -628,7 +661,7 @@ export default function App() {
                       loading={loading} 
                       pagination={{ pageSize: 8 }} 
                       size="small" 
-                      scroll={{ x: 1000 }} // 🟢 ไฮไลท์ RWD: บังคับสกอร์บาร์แนวนอนถ้าจอเล็กกว่า 1000px
+                      scroll={{ x: 1000 }} 
                       className="modern-table"
                     />
                   </div>
@@ -876,8 +909,16 @@ export default function App() {
                   <Button size="large" onClick={() => setIsDetailModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">
                     ปิดหน้าต่าง
                   </Button>
-                  <Button size="large" type="primary" onClick={handleExportPDF} icon={<FilePdfOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-md shadow-indigo-500/30">
-                    โหลด PDF
+                  {/* 🟢 ปุ่มโหลด PDF ใส่สถานะ Loading ป้องกันการกดย้ำ */}
+                  <Button 
+                    size="large" 
+                    type="primary" 
+                    onClick={handleExportPDF} 
+                    loading={isExportingPDF}
+                    icon={<FilePdfOutlined />} 
+                    className="flex-1 rounded-xl h-12 font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-md shadow-indigo-500/30"
+                  >
+                    {isExportingPDF ? 'กำลังสร้างไฟล์...' : 'โหลด PDF'}
                   </Button>
                 </div>
               </div>
