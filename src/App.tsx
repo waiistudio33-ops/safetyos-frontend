@@ -15,8 +15,9 @@ import {
   IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, BellOutlined,
   DownloadOutlined, EyeOutlined, FilePdfOutlined, LogoutOutlined,
   CheckCircleOutlined, LoginOutlined, MenuOutlined, RocketOutlined,
-  CalendarOutlined, ClockCircleOutlined, ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined
+  CalendarOutlined, ClockCircleOutlined, ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined, ScanOutlined
 } from '@ant-design/icons';
+import QRScanner from './components/QRScanner';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import html2pdf from 'html2pdf.js'; 
@@ -96,8 +97,10 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
   const [activeMenu, setActiveMenu] = useState('DASHBOARD'); 
-  const [verifyUserId, setVerifyUserId] = useState<string | null>(null); 
+  const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false); // 🟢 เพิ่มบรรทัดนี้ 
   const [lineProfile, setLineProfile] = useState<any>(null);
+
   useEffect(() => {
     // อ่านค่าจาก URL เช่น ?page=E_PASSPORT
     const queryParams = new URLSearchParams(window.location.search);
@@ -111,6 +114,7 @@ export default function App() {
       }
     }
   }, []);
+
   const [realPermits, setRealPermits] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null); 
@@ -490,6 +494,18 @@ export default function App() {
               </div>
               
               <Space size={isMobile ? 'small' : 'middle'} align="center">
+                
+                {/* 🟢 ปุ่มเปิดกล้องสแกน QR */}
+                <Button 
+                  type="primary" 
+                  shape="circle" 
+                  icon={<ScanOutlined style={{ fontSize: '18px' }} />} 
+                  size={isMobile ? "middle" : "large"} 
+                  onClick={() => setIsScannerOpen(true)} 
+                  style={{ background: '#10b981', border: 'none', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }} 
+                  title="สแกน QR Code"
+                />
+
                 {!isMobile && (
                   <Badge count={3} dot offset={[-4, 4]}><Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: '20px', color: '#64748b' }} />} /></Badge>
                 )}
@@ -870,6 +886,29 @@ export default function App() {
                 </div>
               </Form>
             </div>
+          </Modal>
+
+          {/* 🌟 NEW SCANNER MODAL */}
+          <Modal 
+            title={<div className="flex items-center gap-2 text-emerald-600"><ScanOutlined className="text-xl"/> <span className="font-bold">สแกนตรวจสอบประวัติ (E-Passport)</span></div>} 
+            open={isScannerOpen} 
+            onCancel={() => setIsScannerOpen(false)} 
+            footer={null}
+            centered
+            destroyOnClose // 🟢 สำคัญมาก: เพื่อให้กล้องปิดตัวเมื่อกดยกเลิก
+          >
+            <QRScanner 
+              onScan={(text) => {
+                setIsScannerOpen(false); // ปิดหน้าต่างกล้อง
+                // เช็คว่า QR Code ที่สแกนมา เป็นลิงก์ E-Passport ของระบบเราไหม?
+                if (text.includes('/verify/')) {
+                  const id = text.split('/verify/')[1];
+                  setVerifyUserId(id); // 🚀 สั่งให้แอปเปลี่ยนเป็นหน้า Verification "สีเขียว/แดง" ทันที!
+                } else {
+                  message.error('QR Code นี้ไม่ใช่ของระบบ SafetyOS!');
+                }
+              }} 
+            />
           </Modal>
 
         </Layout>
