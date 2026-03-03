@@ -35,7 +35,7 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// ... (เก็บ WaveSeparator, ModernDateRange, ModernToggleChips, getStatusDisplayModern ไว้เหมือนเดิม ไม่ลบครับ)
+// ... (WaveSeparator, ModernDateRange, ModernToggleChips, getStatusDisplayModern)
 const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => (
   <div className="absolute z-10 pointer-events-none" style={{ right: isMobile ? 0 : -1, bottom: isMobile ? -1 : 0, width: isMobile ? '100%' : '150px', height: isMobile ? '120px' : '100%', display: 'flex', alignItems: isMobile ? 'flex-end' : 'stretch' }}>
     <svg viewBox={isMobile ? "0 0 1440 320" : "0 0 320 1440"} preserveAspectRatio="none" className="w-full h-full fill-white">
@@ -98,17 +98,14 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
   const [activeMenu, setActiveMenu] = useState('DASHBOARD'); 
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
-  const [isScannerOpen, setIsScannerOpen] = useState(false); // 🟢 เพิ่มบรรทัดนี้ 
+  const [isScannerOpen, setIsScannerOpen] = useState(false); 
   const [lineProfile, setLineProfile] = useState<any>(null);
 
   useEffect(() => {
-    // อ่านค่าจาก URL เช่น ?page=E_PASSPORT
     const queryParams = new URLSearchParams(window.location.search);
     const targetPage = queryParams.get('page');
     if (targetPage) {
-      // รายชื่อหน้าทั้งหมดที่มีในระบบ
       const validPages = ['DASHBOARD', 'E_PASSPORT', 'E_PERMIT', 'BBS', 'CONFINED_SPACE', 'CERTIFICATE', 'INCIDENT', 'E_LEARNING', 'EQUIPMENT'];
-      // ถ้าหน้าที่ส่งมามีอยู่จริง สั่งให้เปิดหน้านั้นทันที!
       if (validPages.includes(targetPage)) {
         setActiveMenu(targetPage);
       }
@@ -142,20 +139,17 @@ export default function App() {
   const [confinedForm] = Form.useForm();
   const [currentTime, setCurrentTime] = useState(dayjs());
 
-  // 🟢 ดักจับว่าเปิดมาจากลิงก์สแกน QR Code (Verification) หรือไม่?
   useEffect(() => {
     const path = window.location.pathname;
     if (path.startsWith('/verify/')) {
-      const id = path.split('/')[2]; // ดึง ID พนักงานออกจากลิงก์
+      const id = path.split('/')[2]; 
       setVerifyUserId(id);
     }
   }, []);
 
-  // 🟢 รวมระบบเช็คล็อกอินเดิม + LINE LIFF เข้าด้วยกัน
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // 1. เช็ค LocalStorage ก่อน (เผื่อเคยล็อกอินค้างไว้)
         const savedUser = localStorage.getItem('safetyos_user');
         if (savedUser) {
           try {
@@ -166,15 +160,12 @@ export default function App() {
           }
         }
 
-        // 2. สั่งเริ่มการทำงานของ LINE LIFF
-        // ⚠️ อย่าลืมแก้ 'YOUR_LIFF_ID' เป็นไอดีของคุณวิวนะครับ
         await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
 
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
           setLineProfile(profile);
 
-          // 3. ถ้าในเครื่องยังไม่ได้ล็อกอิน ให้ลอง Auto-Login ผ่าน LINE ID
           if (!savedUser) {
             try {
               const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: profile.userId });
@@ -187,18 +178,15 @@ export default function App() {
             }
           }
         } else if (liff.isInClient()) {
-          // ถ้าเปิดในแอป LINE แต่ยังไม่ได้ล็อกอิน ให้เด้งหน้าล็อกอิน LINE
           liff.login();
         }
 
       } catch (err) {
-        console.log("LIFF Init Failed (อาจจะเปิดผ่านเว็บปกติไม่ได้เปิดผ่าน LINE)", err);
+        console.log("LIFF Init Failed", err);
       } finally {
-        // 🔴 สำคัญที่สุด: ไม่ว่าจะสำเร็จหรือพัง ต้องสั่งปลดหน้าจอโหลด (Spin) ทิ้งเสมอ!
         setIsAuthChecking(false);
       }
     };
-
     initializeApp();
   }, []);
 
@@ -260,11 +248,9 @@ export default function App() {
     }
   }, [activeMenu, selectedConfinedPermit]);
 
-  // 🟢 2. ตอนล็อกอินปกติ ให้แนบ userId ไปด้วยเพื่อผูกบัญชี
   const handleLogin = async (values: any) => {
     setIsLoggingIn(true);
     try {
-      // เอาข้อมูล username/password มารวมกับ lineProfile.userId
       const payload = { 
         ...values, 
         line_id: lineProfile ? lineProfile.userId : null 
@@ -280,7 +266,6 @@ export default function App() {
       } else {
         message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
       }
-
     } catch (error: any) { 
       message.error(error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ'); 
     } finally { 
@@ -292,7 +277,7 @@ export default function App() {
     localStorage.removeItem('safetyos_user');
     setIsAuthenticated(false); 
     setCurrentUser(null); 
-    if (liff.isLoggedIn()) liff.logout(); // 🟢 4. Logout LINE ด้วย (ถ้ามี)
+    if (liff.isLoggedIn()) liff.logout(); 
     message.info('ออกจากระบบเรียบร้อย'); 
   };
 
@@ -346,6 +331,33 @@ export default function App() {
     try { let nextStatus = ''; if (action === 'REJECT') nextStatus = 'REJECTED'; else { if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; } await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: action === 'APPROVE' ? 'อนุมัติผ่านระบบ E-Permit' : 'ไม่อนุมัติตามมาตรการความปลอดภัย' }); message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); fetchPermits(); } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
   };
 
+  // 🚀 ฟังก์ชันเรียกกล้องสแกนสุดโกง (Native LINE Scanner)
+  const handleOpenScannerClick = async () => {
+    // 1. ถ้าแอปทำงานอยู่บน LINE LIFF มือถือ (และกดเปิดสวิตช์ในเว็บ Dev แล้ว)
+    if (liff.isInClient() && liff.scanCodeV2) {
+      try {
+        const result = await liff.scanCodeV2(); // เรียกกล้องของแอป LINE ขึ้นมาทันที!
+        if (result && result.value) {
+          const scannedText = result.value;
+          // ตรวจสอบข้อมูลเหมือนเดิม
+          if (scannedText.includes('/verify/')) {
+            const id = scannedText.split('/verify/')[1];
+            setVerifyUserId(id); 
+          } else {
+            message.error('QR Code นี้ไม่ใช่ของระบบ SafetyOS!');
+          }
+        }
+      } catch (error) {
+        console.error("LINE Scanner error:", error);
+        // ถ้าผู้ใช้กดปิดกล้อง หรือมี Error ค่อยเปิดกล้องเว็บเป็นแผนสำรอง
+        setIsScannerOpen(true);
+      }
+    } else {
+      // 2. ถ้าเปิดในคอมพิวเตอร์ หรือเบราว์เซอร์ปกติ ให้ใช้กล้องหน้าเว็บเหมือนเดิม
+      setIsScannerOpen(true);
+    }
+  };
+
   const getPermitTypeDisplay = (type: string) => { switch(type) { case 'HOT_WORK': return { icon: <FireOutlined />, color: 'volcano', text: 'Hot Work' }; case 'CONFINED_SPACE': return { icon: <BuildOutlined />, color: 'purple', text: 'Confined Space' }; case 'ELECTRICAL': return { icon: <ThunderboltOutlined />, color: 'gold', text: 'Electrical' }; default: return { icon: <BuildOutlined />, color: 'geekblue', text: 'Cold Work' }; } };
 
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
@@ -373,12 +385,10 @@ export default function App() {
     return ( <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}> <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}> <Spin size="large" description="กำลังโหลดข้อมูล..." /> </div> </ConfigProvider> );
   }
 
-  // 🟢 ถ้าจับได้ว่าเป็นลิงก์สแกน QR ให้โชว์หน้านี้แทนแอปหลักเลย!
   if (verifyUserId) {
     return <VerificationPage userId={verifyUserId} />;
   }
 
-  // 🔥 Login Screen (แก้ให้รองรับการแสดงผลเชื่อม LINE)
   if (!isAuthenticated) {
     const minimalInputStyle = { border: 'none', borderBottom: '2px solid #e2e8f0', borderRadius: '0', boxShadow: 'none', background: 'transparent', paddingLeft: '0', paddingBottom: '8px', fontSize: '16px' };
     return (
@@ -397,8 +407,6 @@ export default function App() {
 
           <div className={`${isMobile ? 'flex-1 pt-8' : 'w-1/2 flex items-center'} bg-white px-8 md:px-20 pb-10`}>
             <div className="w-full max-w-md mx-auto">
-              
-              {/* 🟢 5. แสดงข้อความทักทายถ้าเปิดจาก LINE */}
               {lineProfile ? (
                 <div className="mb-8 text-center animate-fade-in">
                   <Avatar src={lineProfile.pictureUrl} size={64} className="mb-3 border-2 border-green-500 shadow-md" />
@@ -420,7 +428,6 @@ export default function App() {
                 <Form.Item name="password" label={<span className="font-bold text-slate-700 text-xs uppercase tracking-wider">Password (รหัส: 1234)</span>} rules={[{ required: true, message: 'กรุณากรอก Password' }]}>
                   <Input.Password size="large" placeholder="Enter password" style={minimalInputStyle} autoComplete="current-password" />
                 </Form.Item>
-
                 <Button type="primary" htmlType="submit" loading={isLoggingIn} block style={{ height: '56px', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', background: '#2563eb', border: 'none', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)' }}>
                   Sign In
                 </Button>
@@ -432,7 +439,6 @@ export default function App() {
     );
   }
 
-  // --- ✨ อัปเกรด Main Layout (Sidebar Menu สวยขึ้น สไตล์ Modern) ---
   const menuItems = (
     <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent', padding: '0 12px', marginTop: '16px' }}>
       <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} style={{ borderRadius: '12px', marginBottom: '8px', fontWeight: activeMenu === 'DASHBOARD' ? 'bold' : 'normal', background: activeMenu === 'DASHBOARD' ? '#eff6ff' : 'transparent', color: activeMenu === 'DASHBOARD' ? '#2563eb' : '#475569' }}>Dashboard สรุปผล</Menu.Item>
@@ -495,13 +501,13 @@ export default function App() {
               
               <Space size={isMobile ? 'small' : 'middle'} align="center">
                 
-                {/* 🟢 ปุ่มเปิดกล้องสแกน QR */}
+                {/* 🟢 ปุ่มสีเขียว: เรียกใช้ฟังก์ชัน handleOpenScannerClick ที่เราเขียนใหม่ */}
                 <Button 
                   type="primary" 
                   shape="circle" 
                   icon={<ScanOutlined style={{ fontSize: '18px' }} />} 
                   size={isMobile ? "middle" : "large"} 
-                  onClick={() => setIsScannerOpen(true)} 
+                  onClick={handleOpenScannerClick} 
                   style={{ background: '#10b981', border: 'none', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }} 
                   title="สแกน QR Code"
                 />
@@ -512,7 +518,6 @@ export default function App() {
                 {!isMobile && <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 8px' }}></div>}
                 
                 <div style={{ background: '#ffffff', borderRadius: '100px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {/* 🟢 6. ถ้ายูสเซอร์เปิดจาก LINE ให้เอารูปโปรไฟล์ LINE มาโชว์เลย! */}
                   <Avatar 
                     src={lineProfile?.pictureUrl} 
                     size={isMobile ? "default" : "large"} 
@@ -888,22 +893,22 @@ export default function App() {
             </div>
           </Modal>
 
-          {/* 🌟 NEW SCANNER MODAL */}
+          {/* 🌟 NEW SCANNER MODAL (สำหรับกรณีเปิดบนคอม) */}
           <Modal 
             title={<div className="flex items-center gap-2 text-emerald-600"><ScanOutlined className="text-xl"/> <span className="font-bold">สแกนตรวจสอบประวัติ (E-Passport)</span></div>} 
             open={isScannerOpen} 
             onCancel={() => setIsScannerOpen(false)} 
             footer={null}
             centered
-            destroyOnClose // 🟢 สำคัญมาก: เพื่อให้กล้องปิดตัวเมื่อกดยกเลิก
+            destroyOnClose 
+            styles={{ body: { padding: '24px 12px', background: '#f8fafc' } }} // ตกแต่งหน้าต่างให้กลืนไปกับตัวสแกน
           >
             <QRScanner 
               onScan={(text) => {
-                setIsScannerOpen(false); // ปิดหน้าต่างกล้อง
-                // เช็คว่า QR Code ที่สแกนมา เป็นลิงก์ E-Passport ของระบบเราไหม?
+                setIsScannerOpen(false); 
                 if (text.includes('/verify/')) {
                   const id = text.split('/verify/')[1];
-                  setVerifyUserId(id); // 🚀 สั่งให้แอปเปลี่ยนเป็นหน้า Verification "สีเขียว/แดง" ทันที!
+                  setVerifyUserId(id); 
                 } else {
                   message.error('QR Code นี้ไม่ใช่ของระบบ SafetyOS!');
                 }

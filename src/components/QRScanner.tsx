@@ -1,23 +1,25 @@
 import React, { useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { ScanOutlined, InfoCircleOutlined } from '@ant-design/icons';
 
 export default function QRScanner({ onScan }: { onScan: (text: string) => void }) {
   useEffect(() => {
-    // 1. ตั้งค่าตัวสแกนแบบมาตรฐาน
+    const scanSize = window.innerWidth < 400 ? 220 : 260;
+
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
       { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
+        fps: 15,
+        qrbox: { width: scanSize, height: scanSize }, 
         aspectRatio: 1.0,
-        showTorchButtonIfSupported: true, // มีปุ่มเปิดไฟฉายให้ด้วยถ้ามือถือรองรับ
+        videoConstraints: { 
+          facingMode: "environment" 
+        }
       },
       false
     );
 
     const handleScanSuccess = (decodedText: string) => {
-      scanner.clear(); // ปิดกล้องเมื่อสแกนสำเร็จ
+      scanner.clear();
       onScan(decodedText);
     };
 
@@ -29,59 +31,77 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
   }, [onScan]);
 
   return (
-    <div className="flex flex-col items-center pb-4">
-      {/* 🌟 กล่องสแกนแบบเรียบหรู โค้งมน */}
-      <div 
-        id="qr-reader" 
-        className="w-full max-w-sm rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white"
-      ></div>
+    <div className="relative flex flex-col items-center w-full">
+      
+      {/* 🌟 กล่องสแกนเนอร์สไตล์ "แอปธนาคาร" (Clean & Minimal) */}
+      <div className="relative w-full max-w-sm bg-black rounded-[2rem] overflow-hidden shadow-xl border border-slate-200">
+        
+        {/* ตัวคอนเทนเนอร์กล้อง */}
+        <div id="qr-reader" className="w-full min-h-[400px] flex items-center justify-center"></div>
 
-      {/* ข้อความแนะนำผู้ใช้งานแบบคลีนๆ */}
-      <div className="mt-6 flex items-center gap-2 text-slate-600 bg-slate-50 px-5 py-2.5 rounded-full text-sm font-medium border border-slate-200 shadow-sm">
-        <ScanOutlined className="text-blue-500 text-lg" />
-        <span>กรุณาจัดให้ QR Code อยู่ในกรอบ</span>
+        {/* 🎨 Overlay กรอบโฟกัส (ฟิล์มดำเจาะช่องใสตรงกลาง) */}
+        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+           
+           {/* กล่องใสตรงกลาง + เงามืดรอบนอก (ใช้ CSS Shadow สร้างฟิล์มดำ) */}
+           <div className="relative w-[240px] h-[240px] rounded-3xl shadow-[0_0_0_999px_rgba(0,0,0,0.55)]">
+             
+             {/* มุม 4 ด้าน (Corner Brackets) สีขาวคลีนๆ แบบแอปธนาคาร */}
+             <div className="absolute -top-0.5 -left-0.5 w-12 h-12 border-t-[5px] border-l-[5px] border-white rounded-tl-3xl opacity-90"></div>
+             <div className="absolute -top-0.5 -right-0.5 w-12 h-12 border-t-[5px] border-r-[5px] border-white rounded-tr-3xl opacity-90"></div>
+             <div className="absolute -bottom-0.5 -left-0.5 w-12 h-12 border-b-[5px] border-l-[5px] border-white rounded-bl-3xl opacity-90"></div>
+             <div className="absolute -bottom-0.5 -right-0.5 w-12 h-12 border-b-[5px] border-r-[5px] border-white rounded-br-3xl opacity-90"></div>
+           </div>
+
+           {/* ข้อความบอกผู้ใช้สไตล์เรียบหรู */}
+           <p className="absolute bottom-12 text-white text-sm font-medium tracking-wide drop-shadow-md bg-black/30 px-4 py-1.5 rounded-full backdrop-blur-sm">
+             จัดคิวอาร์โค้ดให้อยู่ในกรอบ
+           </p>
+        </div>
       </div>
 
-      {/* 🎨 CSS ตกแต่งปุ่มและซ่อนข้อความรกๆ ของ Library เดิมทิ้งไป */}
+      {/* 🎨 CSS ล้างขยะของ Library และปรับแต่งให้เนียนกริบ */}
       <style>{`
-        /* ซ่อนข้อความที่ไม่จำเป็น */
+        /* ซ่อน UI ที่ไม่จำเป็นของ Library */
         #qr-reader__status_span,
-        #qr-reader__dashboard_section_csr span {
+        #qr-reader__dashboard_section_csr span,
+        #qr-reader img,
+        #qr-reader a {
           display: none !important;
         }
-        
-        /* ตกแต่งลิงก์สลับกล้องหน้า/หลัง */
-        #qr-reader__dashboard_section_swaplink {
-          text-decoration: none;
-          color: #2563eb;
-          font-weight: bold;
-          margin-top: 10px;
-          display: inline-block;
+
+        /* ซ่อนกรอบสแกนเดิมของ Library ทิ้งไป (เพื่อใช้กรอบสีขาวของเราแทน) */
+        #qr-reader__scan_region {
+          display: none !important; 
         }
 
-        /* ตกแต่งปุ่มขออนุญาตเปิดกล้อง */
+        /* ตกแต่งปุ่ม 'ขออนุญาตเปิดกล้อง' ให้ดูเป็นแอปจริงๆ */
         #html5-qrcode-button-camera-permission {
-          background-color: #2563eb !important;
+          background: #007AFF !important; /* สีน้ำเงิน iOS */
           color: white !important;
           border: none !important;
-          border-radius: 8px !important;
-          padding: 8px 16px !important;
+          border-radius: 12px !important;
+          padding: 14px 24px !important;
           font-weight: bold !important;
+          font-size: 16px !important;
           cursor: pointer;
-          margin-bottom: 12px;
-          box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+          margin: 0 auto;
+          display: block;
+          z-index: 20;
+          position: relative;
         }
 
-        /* ตกแต่งปุ่มหยุดสแกน */
+        /* ซ่อนปุ่ม 'หยุดสแกน' เพราะหน้าต่างมีกากบาทปิดให้อยู่แล้ว */
         #html5-qrcode-button-camera-stop {
-          background-color: #ef4444 !important;
-          color: white !important;
-          border: none !important;
-          border-radius: 8px !important;
-          padding: 6px 12px !important;
-          font-weight: bold !important;
-          cursor: pointer;
-          margin: 10px 0;
+          display: none !important;
+        }
+
+        /* ปรับวิดีโอให้เต็มจอแบบสวยงาม ไม่มีขอบดำ */
+        #qr-reader video {
+          object-fit: cover !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 400px !important;
+          transform: scale(1.05);
         }
       `}</style>
     </div>
