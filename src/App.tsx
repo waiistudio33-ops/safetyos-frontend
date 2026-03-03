@@ -35,7 +35,7 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// ... (WaveSeparator, ModernDateRange, ModernToggleChips, getStatusDisplayModern)
+// ... (WaveSeparator, ModernDateRange, ModernToggleChips)
 const WaveSeparator = ({ isMobile }: { isMobile: boolean }) => (
   <div className="absolute z-10 pointer-events-none" style={{ right: isMobile ? 0 : -1, bottom: isMobile ? -1 : 0, width: isMobile ? '100%' : '150px', height: isMobile ? '120px' : '100%', display: 'flex', alignItems: isMobile ? 'flex-end' : 'stretch' }}>
     <svg viewBox={isMobile ? "0 0 1440 320" : "0 0 320 1440"} preserveAspectRatio="none" className="w-full h-full fill-white">
@@ -78,13 +78,24 @@ const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-bl
   );
 };
 
+// 🌟 ปรับแต่ง Badge สถานะด้วย Tailwind ล้วน (ไม่มี Ant Design แข็งๆ)
 const getStatusDisplayModern = (status: string) => { 
   switch(status) { 
-    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-600"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
-    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-600"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-600"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
-    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600"><CloseOutlined /> ไม่อนุมัติ</span>; 
-    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">{status}</span>; 
+    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
+    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
+    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
+    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-red-50 text-red-600 border border-red-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status}</span>; 
+  } 
+};
+
+// 🌟 ปรับแต่ง Badge ประเภทงานด้วย Tailwind ล้วน
+const getPermitTypeDisplayModern = (type: string) => { 
+  switch(type) { 
+    case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-100 whitespace-nowrap"><FireOutlined /> Hot Work</span>; 
+    case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100 whitespace-nowrap"><BuildOutlined /> Confined Space</span>; 
+    case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100 whitespace-nowrap"><ThunderboltOutlined /> Electrical</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 whitespace-nowrap"><ToolOutlined /> Cold Work</span>; 
   } 
 };
 
@@ -331,15 +342,12 @@ export default function App() {
     try { let nextStatus = ''; if (action === 'REJECT') nextStatus = 'REJECTED'; else { if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; } await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: action === 'APPROVE' ? 'อนุมัติผ่านระบบ E-Permit' : 'ไม่อนุมัติตามมาตรการความปลอดภัย' }); message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); fetchPermits(); } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
   };
 
-  // 🚀 ฟังก์ชันเรียกกล้องสแกนสุดโกง (Native LINE Scanner)
   const handleOpenScannerClick = async () => {
-    // 1. ถ้าแอปทำงานอยู่บน LINE LIFF มือถือ (และกดเปิดสวิตช์ในเว็บ Dev แล้ว)
     if (liff.isInClient() && liff.scanCodeV2) {
       try {
-        const result = await liff.scanCodeV2(); // เรียกกล้องของแอป LINE ขึ้นมาทันที!
+        const result = await liff.scanCodeV2(); 
         if (result && result.value) {
           const scannedText = result.value;
-          // ตรวจสอบข้อมูลเหมือนเดิม
           if (scannedText.includes('/verify/')) {
             const id = scannedText.split('/verify/')[1];
             setVerifyUserId(id); 
@@ -349,33 +357,103 @@ export default function App() {
         }
       } catch (error) {
         console.error("LINE Scanner error:", error);
-        // ถ้าผู้ใช้กดปิดกล้อง หรือมี Error ค่อยเปิดกล้องเว็บเป็นแผนสำรอง
         setIsScannerOpen(true);
       }
     } else {
-      // 2. ถ้าเปิดในคอมพิวเตอร์ หรือเบราว์เซอร์ปกติ ให้ใช้กล้องหน้าเว็บเหมือนเดิม
       setIsScannerOpen(true);
     }
   };
 
-  const getPermitTypeDisplay = (type: string) => { switch(type) { case 'HOT_WORK': return { icon: <FireOutlined />, color: 'volcano', text: 'Hot Work' }; case 'CONFINED_SPACE': return { icon: <BuildOutlined />, color: 'purple', text: 'Confined Space' }; case 'ELECTRICAL': return { icon: <ThunderboltOutlined />, color: 'gold', text: 'Electrical' }; default: return { icon: <BuildOutlined />, color: 'geekblue', text: 'Cold Work' }; } };
-
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
   const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
 
+  // 🚀 คอลัมน์ตาราง E-Permit อัปเกรดด้วย Tailwind
   const columns: ColumnsType<any> = [
-    { title: 'Permit No.', dataIndex: 'permit_number', key: 'permit_number', width: 130, render: (text) => <Text style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007AFF', background: 'rgba(0, 122, 255, 0.1)', padding: '4px 8px', borderRadius: '8px' }}>{text || 'PTW-XX'}</Text> },
-    { title: 'รายละเอียดงาน', key: 'details', render: (_, record) => ( <Space direction="vertical" size={2}><Text strong style={{ color: '#1d1d1f', fontSize: '15px' }}>{record.title}</Text><Text type="secondary" style={{ fontSize: '12px' }}><TeamOutlined /> {record.applicant?.full_name || 'ไม่ทราบชื่อ'} ({record.applicant?.department})</Text><Text type="secondary" style={{ fontSize: '12px' }}><EnvironmentOutlined /> {record.location_detail}</Text>{record.attachment_url && (<Button type="dashed" size="small" icon={<FileTextOutlined />} onClick={() => handlePreviewFile(record.attachment_url)} style={{ marginTop: '4px', borderRadius: '8px', fontSize: '12px', color: '#007AFF', borderColor: '#007AFF' }}>ดูเอกสาร JSA</Button>)}</Space> ) },
-    { title: 'ประเภท', dataIndex: 'permit_type', key: 'type', width: 140, render: (type) => { const { icon, color, text } = getPermitTypeDisplay(type); return <Tag icon={icon} color={color} style={{ borderRadius: '10px', padding: '4px 10px', border: 'none', fontWeight: 600 }}>{text}</Tag>; }, responsive: ['md'] }, 
-    { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 160, render: (status) => getStatusDisplayModern(status) },
-    { title: 'Action', key: 'action', width: 190, render: (_, record) => {
-        const isAreaOwnerTurn = record.status === 'PENDING_AREA_OWNER' && currentUser?.role === 'AREA_OWNER'; const isSafetyTurn = record.status === 'PENDING_SAFETY' && currentUser?.role === 'SAFETY_ENGINEER';
+    { 
+      title: 'Permit No.', 
+      dataIndex: 'permit_number', 
+      key: 'permit_number', 
+      width: 140, 
+      render: (text) => <span className="bg-blue-50 text-blue-600 font-mono font-extrabold px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm whitespace-nowrap">{text || 'PTW-XX'}</span> 
+    },
+    { 
+      title: 'รายละเอียดงาน', 
+      key: 'details', 
+      render: (_, record) => ( 
+        <div className="flex flex-col gap-1.5 min-w-[280px] py-1">
+          <div className="font-extrabold text-slate-800 text-sm md:text-base leading-tight">{record.title}</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <Avatar size="small" icon={<UserOutlined />} className="bg-slate-200 text-slate-400" />
+            <span>{record.applicant?.full_name || 'ไม่ทราบชื่อ'} <span className="text-slate-400">({record.applicant?.department})</span></span>
+          </div>
+          <div className="text-xs text-slate-500 bg-slate-50 w-fit px-2 py-1 rounded-md border border-slate-100 flex items-center gap-1 mt-0.5">
+            <EnvironmentOutlined className="text-blue-500" /> {record.location_detail}
+          </div>
+          {record.attachment_url && (
+            <button 
+              onClick={() => handlePreviewFile(record.attachment_url)} 
+              className="mt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-1.5 rounded-full transition-colors w-fit"
+            >
+              <FileTextOutlined /> ดูเอกสาร JSA
+            </button>
+          )}
+        </div> 
+      ) 
+    },
+    { 
+      title: 'ประเภท', 
+      dataIndex: 'permit_type', 
+      key: 'type', 
+      width: 150, 
+      render: (type) => getPermitTypeDisplayModern(type)
+    }, 
+    { 
+      title: 'สถานะ', 
+      dataIndex: 'status', 
+      key: 'status', 
+      width: 160, 
+      render: (status) => getStatusDisplayModern(status) 
+    },
+    { 
+      title: 'Action', 
+      key: 'action', 
+      width: 180, 
+      render: (_, record) => {
+        const isAreaOwnerTurn = record.status === 'PENDING_AREA_OWNER' && currentUser?.role === 'AREA_OWNER'; 
+        const isSafetyTurn = record.status === 'PENDING_SAFETY' && currentUser?.role === 'SAFETY_ENGINEER';
         return (
-          <Space size="small" wrap>
-            <Button size="small" type="default" shape="round" icon={<EyeOutlined />} onClick={() => handleViewDetails(record)} style={{ fontSize: '12px' }}>รายละเอียด</Button>
-            {(isAreaOwnerTurn || isSafetyTurn) && ( <Space size="small"><Button type="primary" shape="round" icon={<CheckOutlined />} onClick={() => handleUpdateStatus(record.id, record.status, 'APPROVE')} style={{ background: '#34c759', border: 'none', fontSize: '12px' }}>อนุมัติ</Button><Button type="primary" shape="circle" icon={<CloseOutlined />} onClick={() => handleUpdateStatus(record.id, record.status, 'REJECT')} style={{ background: '#ff3b30', border: 'none' }} /></Space> )}
-            {(record.status === 'APPROVED' || record.status === 'REJECTED') && <Text type="secondary" style={{fontSize: '12px'}}><CheckOutlined /> จบงานแล้ว</Text>}
-          </Space>
+          <div className="flex flex-wrap gap-2 w-full">
+            <button 
+              onClick={() => handleViewDetails(record)} 
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-bold hover:bg-slate-200 transition-colors whitespace-nowrap"
+            >
+              <EyeOutlined /> รายละเอียด
+            </button>
+
+            {(isAreaOwnerTurn || isSafetyTurn) && ( 
+              <div className="flex gap-2 w-full mt-1 md:mt-0">
+                <button 
+                  onClick={() => handleUpdateStatus(record.id, record.status, 'APPROVE')} 
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-full text-xs font-bold shadow-md shadow-emerald-500/30 hover:bg-emerald-600 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  <CheckOutlined /> อนุมัติ
+                </button>
+                <button 
+                  onClick={() => handleUpdateStatus(record.id, record.status, 'REJECT')} 
+                  className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full border border-red-200 hover:bg-red-500 hover:text-white transition-colors"
+                  title="ไม่อนุมัติ"
+                >
+                  <CloseOutlined />
+                </button>
+              </div> 
+            )}
+            
+            {(record.status === 'APPROVED' || record.status === 'REJECTED') && (
+              <span className="flex-1 text-center text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full whitespace-nowrap">
+                <CheckCircleOutlined /> ทำรายการแล้ว
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -501,7 +579,6 @@ export default function App() {
               
               <Space size={isMobile ? 'small' : 'middle'} align="center">
                 
-                {/* 🟢 ปุ่มสีเขียว: เรียกใช้ฟังก์ชัน handleOpenScannerClick ที่เราเขียนใหม่ */}
                 <Button 
                   type="primary" 
                   shape="circle" 
@@ -540,11 +617,24 @@ export default function App() {
 
             <Content style={{ padding: isMobile ? '12px' : '24px', overflow: 'initial' }}>
               {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
+              
+              {/* 🟢 หน้า E-PERMIT ที่ปรับ RWD และสไตล์ใหม่ */}
               {activeMenu === 'E_PERMIT' && (
-                <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>รายการ Work Queue</b>} bordered={false} style={glassPanel} styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.05)' }, body: { padding: isMobile ? '0' : '24px' }}}>
-                  <Table columns={columns} dataSource={realPermits} loading={loading} pagination={{ pageSize: 8 }} size="small" scroll={{ x: 'max-content' }} />
+                <Card title={<div className="flex items-center gap-2 text-slate-800"><FileTextOutlined className="text-blue-500" /><b className="text-lg md:text-xl">รายการ Work Queue</b></div>} bordered={false} style={glassPanel} styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.05)' }, body: { padding: isMobile ? '12px' : '24px' }}}>
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <Table 
+                      columns={columns} 
+                      dataSource={realPermits} 
+                      loading={loading} 
+                      pagination={{ pageSize: 8 }} 
+                      size="small" 
+                      scroll={{ x: 1000 }} // 🟢 ไฮไลท์ RWD: บังคับสกอร์บาร์แนวนอนถ้าจอเล็กกว่า 1000px
+                      className="modern-table"
+                    />
+                  </div>
                 </Card>
               )}
+
               {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
               {activeMenu === 'BBS' && (
                 <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>ประวัติ BBS</b>} bordered={false} style={glassPanel}>
@@ -798,6 +888,7 @@ export default function App() {
             <div style={{ height: '70vh', display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '12px', overflow: 'hidden' }}>{previewType === 'image' ? <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} />}</div>
           </Modal>
 
+          {/* 🌟 ฟอร์มขอ Permit เปลี่ยนเป็น Tailwind แล้ว */}
           <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); }} width={750} centered styles={{ body: { padding: 0 } }}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-t-xl text-white shadow-sm">
               <h2 className="text-2xl font-bold m-0 flex items-center gap-3 text-white">
@@ -893,7 +984,6 @@ export default function App() {
             </div>
           </Modal>
 
-          {/* 🌟 NEW SCANNER MODAL (สำหรับกรณีเปิดบนคอม) */}
           <Modal 
             title={<div className="flex items-center gap-2 text-emerald-600"><ScanOutlined className="text-xl"/> <span className="font-bold">สแกนตรวจสอบประวัติ (E-Passport)</span></div>} 
             open={isScannerOpen} 
@@ -901,7 +991,7 @@ export default function App() {
             footer={null}
             centered
             destroyOnClose 
-            styles={{ body: { padding: '24px 12px', background: '#f8fafc' } }} // ตกแต่งหน้าต่างให้กลืนไปกับตัวสแกน
+            styles={{ body: { padding: '24px 12px', background: '#f8fafc' } }}
           >
             <QRScanner 
               onScan={(text) => {
@@ -916,6 +1006,28 @@ export default function App() {
             />
           </Modal>
 
+          <style>{`
+            /* 🌟 สไตล์พิเศษสำหรับทำให้ตาราง Ant Design ดูเป็น Tailwind มากขึ้น */
+            .modern-table .ant-table {
+              background: transparent;
+            }
+            .modern-table .ant-table-thead > tr > th {
+              background-color: #f8fafc;
+              color: #64748b;
+              font-weight: 800;
+              font-size: 13px;
+              border-bottom: 2px solid #e2e8f0;
+              padding: 16px;
+            }
+            .modern-table .ant-table-tbody > tr > td {
+              border-bottom: 1px solid #f1f5f9;
+              padding: 16px;
+              background: white;
+            }
+            .modern-table .ant-table-tbody > tr:hover > td {
+              background-color: #f8fafc;
+            }
+          `}</style>
         </Layout>
       </div>
     </ConfigProvider>
