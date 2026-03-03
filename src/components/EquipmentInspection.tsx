@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { message } from 'antd'; // เก็บไว้แค่ระบบแจ้งเตือน Toast
+import { message, Modal } from 'antd'; // 🟢 ดึง Modal มาใช้สำหรับกล้องสำรองบนคอม
+import liff from '@line/liff'; // 🟢 ดึง LIFF มาใช้เปิดกล้อง LINE
+import QRScanner from './QRScanner'; // 🟢 ดึงคอมโพเนนต์กล้องสแกนมา
 import { 
   QrcodeOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, 
   CloseCircleOutlined, SaveOutlined, HistoryOutlined, UserOutlined,
@@ -57,12 +59,14 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
   const [inspectionResult, setInspectionResult] = useState<Record<number, boolean>>({});
   const [isSuccess, setIsSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'FORM' | 'HISTORY'>('FORM');
+  const [isScannerOpen, setIsScannerOpen] = useState(false); // 🟢 State ควบคุมการเปิด/ปิดกล้อง
 
-  const handleSearchQR = async () => {
-    if (!qrCode) return message.warning('กรุณาระบุรหัส QR Code');
+  // 🟢 ฟังก์ชันค้นหาข้อมูล (ปรับให้รับค่าจากกล้องได้โดยตรง)
+  const executeSearch = async (codeToSearch: string) => {
+    if (!codeToSearch) return message.warning('กรุณาระบุรหัส QR Code');
     setIsLoading(true);
     try {
-      const res = await fetch(`https://safetyos-backend.onrender.com/equipment/${qrCode}`);
+      const res = await fetch(`https://safetyos-backend.onrender.com/equipment/${codeToSearch}`);
       if (!res.ok) throw new Error('ไม่พบอุปกรณ์');
       const data = await res.json();
       setEquipment(data);
@@ -73,11 +77,31 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
       setInspectionResult(initialResult);
       setIsSuccess(false);
       setActiveTab('FORM');
+      setQrCode(codeToSearch); // อัปเดตช่องพิมพ์ให้ตรงกับที่สแกนมา
     } catch (error) {
       message.error('ไม่พบอุปกรณ์ในระบบ หรือ QR Code ไม่ถูกต้อง');
       setEquipment(null);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSearchQR = () => executeSearch(qrCode);
+
+  // 🚀 🟢 ฟังก์ชันเปิดกล้องสแกน (สูตรโกงดึงกล้อง LINE)
+  const handleStartScan = async () => {
+    if (liff.isInClient() && liff.scanCodeV2) {
+      try {
+        const result = await liff.scanCodeV2();
+        if (result && result.value) {
+          executeSearch(result.value); // สแกนเสร็จ โยนรหัสไปค้นหาอัตโนมัติทันที!
+        }
+      } catch (error) {
+        console.error("LINE Scanner error:", error);
+        setIsScannerOpen(true); // ถ้าผิดพลาดให้เปิดกล้องสำรอง
+      }
+    } else {
+      setIsScannerOpen(true); // เปิดบนคอม ให้ใช้กล้องหน้าเว็บสำรอง
     }
   };
 
@@ -128,10 +152,10 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
           อัปเดตสถานะของ <strong className="text-emerald-600 block mt-1 text-xl">{equipment?.name}</strong> ลงฐานข้อมูลส่วนกลางสำเร็จ
         </p>
         <button 
-          onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); }} 
+          onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); handleStartScan(); }} // 🟢 กดสแกนชิ้นต่อไปได้เลย
           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl h-14 text-lg font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] transition-all"
         >
-          <QrcodeOutlined /> สแกนอุปกรณ์ชิ้นต่อไป
+          <ScanOutlined className="text-xl" /> สแกนอุปกรณ์ชิ้นต่อไป
         </button>
       </div>
     );
@@ -151,14 +175,13 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
         </div>
       </div>
 
-      {/* 🔍 Search Box (Tailwind Native) */}
+      {/* 🔍 Search Box */}
       <div className="bg-white p-6 md:p-8 rounded-[1.5rem] shadow-sm border border-slate-200 mb-8 transition-all hover:shadow-md">
         <label className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
           <QrcodeOutlined className="text-blue-500 text-xl" /> สแกนหรือพิมพ์รหัสอุปกรณ์
         </label>
         
         <div className="flex flex-col md:flex-row gap-3">
-          {/* Input กรองข้อมูล */}
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <SearchOutlined className="text-slate-400 text-lg" />
@@ -181,10 +204,10 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
             {isLoading ? <LoadingSpinner /> : 'ค้นหา'}
           </button>
 
-          {/* 🌟 ปุ่มเปิดกล้องสแกน (เตรียมไว้รับคำสั่งจาก App.tsx) */}
+          {/* 🌟 🟢 ปุ่มเปิดกล้องสแกน (ผูกฟังก์ชันแล้ว) */}
           <button 
-            onClick={() => message.info('เดี๋ยวเราเชื่อมปุ่มนี้เข้ากับกล้องในสเต็ปถัดไปครับ!')} 
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-500/30"
+            onClick={handleStartScan} 
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-500/30 active:scale-95"
           >
             <ScanOutlined className="text-xl" /> สแกน QR
           </button>
@@ -338,6 +361,24 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
           </div>
         </div>
       )}
+
+      {/* 🌟 🟢 หน้าต่าง Modal กล้องสำรอง (สำหรับใช้งานบนคอมพิวเตอร์) */}
+      <Modal 
+        title={<div className="flex items-center gap-2 text-emerald-600"><ScanOutlined className="text-xl"/> <span className="font-bold">สแกนรหัสอุปกรณ์</span></div>} 
+        open={isScannerOpen} 
+        onCancel={() => setIsScannerOpen(false)} 
+        footer={null}
+        centered
+        destroyOnClose 
+        styles={{ body: { padding: '24px 12px', background: '#f8fafc' } }}
+      >
+        <QRScanner 
+          onScan={(text) => {
+            setIsScannerOpen(false); 
+            executeSearch(text); // 🟢 สแกนบนคอมเสร็จ ก็ให้ค้นหาอัตโนมัติเช่นกัน
+          }} 
+        />
+      </Modal>
 
       <style>{`
         .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
