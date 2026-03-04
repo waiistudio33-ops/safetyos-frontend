@@ -22,7 +22,6 @@ import dayjs from 'dayjs';
 import html2pdf from 'html2pdf.js'; 
 import liff from '@line/liff'; 
 
-// 🟢 Import คอมโพเนนต์ที่เพิ่งแยกออกไป
 import WorkPermitQueue from './components/WorkPermitQueue';
 import BBSHistory from './components/BBSHistory';
 import ConfinedSpaceBoard from './components/ConfinedSpaceBoard';
@@ -80,16 +79,6 @@ const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-bl
       })}
     </div>
   );
-};
-
-const getStatusDisplayModern = (status: string) => { 
-  switch(status) { 
-    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
-    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
-    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-red-50 text-red-600 border border-red-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
-    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status}</span>; 
-  } 
 };
 
 export default function App() {
@@ -154,35 +143,57 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const savedUser = localStorage.getItem('safetyos_user');
-        if (savedUser) {
-          try {
-            setCurrentUser(JSON.parse(savedUser));
-            setIsAuthenticated(true);
-          } catch (e) {
-            localStorage.removeItem('safetyos_user');
-          }
-        }
-
+        let profile = null;
         await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
 
         if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
+          profile = await liff.getProfile();
           setLineProfile(profile);
-
-          if (!savedUser) {
-            try {
-              const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: profile.userId });
-              localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-              setCurrentUser(res.data.user);
-              setIsAuthenticated(true);
-              message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
-            } catch (e) {
-              console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE");
-            }
-          }
         } else if (liff.isInClient()) {
           liff.login();
+          return; // หยุดทำงานจนกว่าจะ Login เสร็จ
+        }
+
+        const savedUser = localStorage.getItem('safetyos_user');
+        
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            // 🟢 ทริกเล็กๆ: ถ้าใน Local Storage ไม่มีรูป แต่ดึงจาก LINE ได้ ให้ยัดรูปลงไปใน currentUser เลย (ลดการกระพริบ)
+            if (profile && profile.pictureUrl && !parsedUser.profile_url) {
+                parsedUser.profile_url = profile.pictureUrl;
+            }
+            setCurrentUser(parsedUser);
+            setIsAuthenticated(true);
+            
+            // 🟢 ถ้าเปิดผ่านไลน์และเคยล็อกอินแล้ว ให้ยิงไปอัปเดตรูปใน DB เผื่อไว้เลย
+            if (profile) {
+              axios.post('https://safetyos-backend.onrender.com/login/line', { 
+                line_id: profile.userId,
+                picture_url: profile.pictureUrl
+              }).then(res => {
+                 setCurrentUser(res.data.user);
+                 localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
+              }).catch(e => console.log("Silent update failed"));
+            }
+
+          } catch (e) {
+            localStorage.removeItem('safetyos_user');
+          }
+        } else if (profile) {
+          // ถ้าไม่มี LocalStorage แต่เปิดผ่าน LINE ให้ลอง Auto Login
+          try {
+            const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { 
+              line_id: profile.userId,
+              picture_url: profile.pictureUrl // 🟢 ส่งรูปไปด้วย
+            });
+            localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
+            setCurrentUser(res.data.user);
+            setIsAuthenticated(true);
+            message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
+          } catch (e) {
+            console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE");
+          }
         }
 
       } catch (err) {
@@ -257,7 +268,8 @@ export default function App() {
     try {
       const payload = { 
         ...values, 
-        line_id: lineProfile ? lineProfile.userId : null 
+        line_id: lineProfile ? lineProfile.userId : null,
+        picture_url: lineProfile ? lineProfile.pictureUrl : null // 🟢 ส่งรูปไปด้วยตอนล็อกอินปกติ
       };
 
       const response = await axios.post('https://safetyos-backend.onrender.com/login', payload);
@@ -453,6 +465,13 @@ export default function App() {
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
   const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
 
+  // 🟢 ฟังก์ชันสำหรับดึงรูปโปรไฟล์มาแสดง (ถ้ามีรูปจาก DB ใช้ก่อน ถ้าไม่มีใช้จาก LINE)
+  const getDisplayAvatar = () => {
+    if (currentUser?.profile_url) return currentUser.profile_url;
+    if (lineProfile?.pictureUrl) return lineProfile.pictureUrl;
+    return null;
+  };
+
   if (isAuthChecking) {
     return ( <ConfigProvider theme={{ token: { colorPrimary: '#007AFF' }}}> <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}> <Spin size="large" description="กำลังโหลดข้อมูล..." /> </div> </ConfigProvider> );
   }
@@ -589,11 +608,12 @@ export default function App() {
                 {!isMobile && <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 8px' }}></div>}
                 
                 <div style={{ background: '#ffffff', borderRadius: '100px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* 🟢 ดึงรูปจาก DB มาแสดงแทน */}
                   <Avatar 
-                    src={lineProfile?.pictureUrl} 
+                    src={getDisplayAvatar()} 
                     size={isMobile ? "default" : "large"} 
                     style={{ backgroundColor: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', border: '2px solid #fff' }} 
-                    icon={!lineProfile && <UserOutlined />} 
+                    icon={!getDisplayAvatar() && <UserOutlined />} 
                   />
                   {!isMobile && (
                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2', paddingRight: '8px' }}>
@@ -612,7 +632,6 @@ export default function App() {
             <Content style={{ padding: isMobile ? '12px' : '24px', overflow: 'initial' }}>
               {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
               
-              {/* 🟢 เรียกใช้งาน Component ที่แยกไว้ */}
               {activeMenu === 'E_PERMIT' && (
                 <Card title={<div className="flex items-center gap-2 text-slate-800"><FileTextOutlined className="text-blue-500" /><b className="text-lg md:text-xl">รายการ Work Queue</b></div>} bordered={false} style={glassPanel} styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.05)' }, body: { padding: isMobile ? '12px' : '24px' }}}>
                   <WorkPermitQueue 
@@ -628,14 +647,12 @@ export default function App() {
 
               {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
               
-              {/* 🟢 เรียกใช้งาน Component ที่แยกไว้ */}
               {activeMenu === 'BBS' && (
                 <Card title={<b style={{fontSize: '18px', color: '#1d1d1f'}}>ประวัติ BBS</b>} bordered={false} style={glassPanel}>
                   <BBSHistory records={bbsRecords} />
                 </Card>
               )}
 
-              {/* 🟢 เรียกใช้งาน Component ที่แยกไว้ */}
               {activeMenu === 'CONFINED_SPACE' && (
                 <ConfinedSpaceBoard 
                   activePermits={activeConfinedPermits}
@@ -673,6 +690,7 @@ export default function App() {
             </Form>
           </Modal>
 
+          {/* 🌟 NEW DETAILS MODAL */}
           <Modal 
             title={null} 
             open={isDetailModalOpen} 
