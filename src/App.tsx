@@ -81,6 +81,16 @@ const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-bl
   );
 };
 
+const getStatusDisplayModern = (status: string) => { 
+  switch(status) { 
+    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
+    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
+    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
+    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-red-50 text-red-600 border border-red-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status}</span>; 
+  } 
+};
+
 export default function App() {
   const screens = useBreakpoint(); 
   const isMobile = !screens.md; 
@@ -146,10 +156,9 @@ export default function App() {
         let profile = null;
         await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
 
-        // 1. เช็ค LINE ก่อน
         if (liff.isLoggedIn()) {
           profile = await liff.getProfile();
-          setLineProfile(profile); // สั่งให้หน้าบ้านจำรูปสดๆ จาก LINE ไว้ทันที!
+          setLineProfile(profile);
         } else if (liff.isInClient()) {
           liff.login();
           return; 
@@ -157,31 +166,31 @@ export default function App() {
 
         const savedUserStr = localStorage.getItem('safetyos_user');
         
-        // 2. ลอจิกการเข้าสู่ระบบแบบเสถียร
         if (profile) {
-          // 🟢 ถ้าเปิดผ่าน LINE ให้ยิง API ไปอัปเดตข้อมูล/รูปล่าสุดเสมอแบบเงียบๆ (Silent Sync)
           try {
             const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { 
               line_id: profile.userId,
               picture_url: profile.pictureUrl 
             });
-            // อัปเดตข้อมูลใหม่ล่าสุดลง LocalStorage เผื่อเอาไปเปิดในคอม
             localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
             setCurrentUser(res.data.user);
             setIsAuthenticated(true);
-            
-            // ถ้านี่คือการล็อกอินครั้งแรกที่ไม่มีข้อมูลเดิม ให้เด้งต้อนรับ
             if (!savedUserStr) {
                message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
             }
           } catch (e) {
-            console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE ต้องรอล็อกอินด้วยรหัสผ่าน");
+            console.log("เซิร์ฟเวอร์ยังไม่มี LINE ID นี้ (เพิ่งล้างข้อมูล)");
+            // 🟢 จุดที่แก้: ถ้าหาในฐานข้อมูลไม่เจอ ให้พยายามโหลดจากความจำในเครื่องแทน
+            if (savedUserStr) {
+              try {
+                setCurrentUser(JSON.parse(savedUserStr));
+                setIsAuthenticated(true);
+              } catch(err) {}
+            }
           }
         } else if (savedUserStr) {
-          // 🟢 ถ้าไม่ได้เปิดผ่าน LINE (เช่นเปิดในเว็บ) แต่เคยล็อกอินไว้แล้ว ก็ให้โหลดข้อมูลเดิมขึ้นมา
           try {
-            const parsedUser = JSON.parse(savedUserStr);
-            setCurrentUser(parsedUser);
+            setCurrentUser(JSON.parse(savedUserStr));
             setIsAuthenticated(true);
           } catch (e) {
             localStorage.removeItem('safetyos_user');
@@ -250,7 +259,7 @@ export default function App() {
   useEffect(() => {
     if (activeMenu === 'CONFINED_SPACE' && selectedConfinedPermit) {
       fetchEntries(selectedConfinedPermit);
-      const interval = setInterval(() => { fetchEntries(selectedConfinedPermit); setCurrentTime(dayjs()); }, 60000); 
+      const interval = setInterval(() => { fetchEntries(selectedConfinedPermit); }, 60000); 
       return () => clearInterval(interval);
     }
   }, [activeMenu, selectedConfinedPermit]);
@@ -270,7 +279,7 @@ export default function App() {
       setIsAuthenticated(true); 
       
       if (lineProfile) {
-        message.success(`เชื่อมต่อบัญชี LINE กับคุณ ${response.data.user.full_name} สำเร็จ! ครั้งหน้าไม่ต้องกรอกรหัสแล้ว 🎉`);
+        message.success(`เชื่อมต่อบัญชี LINE กับคุณ ${response.data.user.full_name} สำเร็จ!`);
       } else {
         message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
       }
@@ -689,7 +698,7 @@ export default function App() {
             </Form>
           </Modal>
 
-          {/* 🌟 NEW DETAILS MODAL */}
+          {/* 🌟 NEW DETAILS MODAL (แบบใส่เกราะกันหน้าขาว 100%) */}
           <Modal 
             title={null} 
             open={isDetailModalOpen} 
@@ -703,7 +712,7 @@ export default function App() {
               <div id="pdf-document-content" className="bg-slate-50 rounded-xl overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 md:p-8 text-white text-center rounded-t-xl relative">
                   <div className="absolute top-4 right-4">
-                    {getStatusDisplayModern(selectedPermitDetail.status)}
+                    {getStatusDisplayModern(selectedPermitDetail?.status || 'PENDING_AREA_OWNER')}
                   </div>
                   <FileTextOutlined className="text-4xl md:text-5xl mb-2 opacity-80" />
                   <h2 className="text-2xl md:text-3xl font-bold m-0 tracking-widest text-white">WORK PERMIT</h2>
@@ -714,28 +723,28 @@ export default function App() {
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
                     <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                       <span className="text-gray-500 font-bold text-sm">เลขที่เอกสาร</span>
-                      <span className="text-base font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{selectedPermitDetail.permit_number}</span>
+                      <span className="text-base font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{selectedPermitDetail?.permit_number || '-'}</span>
                     </div>
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><ToolOutlined /></div>
                         <div>
                           <p className="text-xs text-slate-400 m-0">หัวข้องาน</p>
-                          <p className="font-bold text-slate-800 m-0 text-base">{selectedPermitDetail.title}</p>
+                          <p className="font-bold text-slate-800 m-0 text-base">{selectedPermitDetail?.title || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><EnvironmentOutlined /></div>
                         <div>
                           <p className="text-xs text-slate-400 m-0">พื้นที่ปฏิบัติงาน</p>
-                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail.location_detail}</p>
+                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.location_detail || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><UserOutlined /></div>
                         <div>
                           <p className="text-xs text-slate-400 m-0">ผู้ขออนุญาต</p>
-                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail.applicant?.full_name} <span className="text-xs font-normal text-slate-400">({selectedPermitDetail.applicant?.department})</span></p>
+                          <p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.applicant?.full_name || 'ไม่ระบุชื่อ'} <span className="text-xs font-normal text-slate-400">({selectedPermitDetail?.applicant?.department || '-'})</span></p>
                         </div>
                       </div>
                     </div>
@@ -748,11 +757,11 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-400">เริ่ม</span>
-                        <span className="font-bold text-slate-700">{dayjs(selectedPermitDetail.start_time).format('DD/MM/YY')} <span className="text-blue-600 ml-1">{dayjs(selectedPermitDetail.start_time).format('HH:mm')}</span></span>
+                        <span className="font-bold text-slate-700">{selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('DD/MM/YY') : '-'} <span className="text-blue-600 ml-1">{selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('HH:mm') : '-'}</span></span>
                       </div>
                       <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-400">สิ้นสุด</span>
-                        <span className="font-bold text-slate-700">{dayjs(selectedPermitDetail.end_time).format('DD/MM/YY')} <span className="text-red-500 ml-1">{dayjs(selectedPermitDetail.end_time).format('HH:mm')}</span></span>
+                        <span className="font-bold text-slate-700">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('DD/MM/YY') : '-'} <span className="text-red-500 ml-1">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('HH:mm') : '-'}</span></span>
                       </div>
                     </div>
                   </div>
@@ -762,20 +771,20 @@ export default function App() {
                       <SafetyCertificateOutlined /> มาตรการความปลอดภัย
                     </div>
                     <div className="bg-orange-50/50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-orange-100 font-medium">
-                      {selectedPermitDetail.description}
+                      {String(selectedPermitDetail?.description || '-')}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
                     <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">
-                        {selectedPermitDetail.applicant?.full_name}
+                        {selectedPermitDetail?.applicant?.full_name || '-'}
                       </div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้ขออนุญาต</span>
                     </div>
                     <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <div className={`border-b-2 pb-2 mb-2 font-bold text-sm h-8 flex items-end justify-center ${selectedPermitDetail.status === 'APPROVED' ? 'text-emerald-600 border-emerald-200' : 'text-orange-500 border-orange-200'}`}>
-                        {selectedPermitDetail.status === 'APPROVED' ? 'APPROVER SIGNED' : 'WAITING APPROVAL'}
+                      <div className={`border-b-2 pb-2 mb-2 font-bold text-sm h-8 flex items-end justify-center ${selectedPermitDetail?.status === 'APPROVED' ? 'text-emerald-600 border-emerald-200' : 'text-orange-500 border-orange-200'}`}>
+                        {selectedPermitDetail?.status === 'APPROVED' ? 'APPROVER SIGNED' : 'WAITING APPROVAL'}
                       </div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้อนุมัติ (Area Owner / จป.)</span>
                     </div>
