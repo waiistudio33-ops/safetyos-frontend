@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Card, Table, Tag, Button, Space, Typography, Form, Input, 
-  Select, Upload, message, Badge, List, Avatar, Grid 
+  Table, Button, Form, Select, Upload, message, Avatar, Grid 
 } from 'antd'; 
 import { 
   SafetyCertificateOutlined, CheckCircleOutlined, CloseCircleOutlined, 
-  UploadOutlined, FileTextOutlined, ClockCircleOutlined, UserOutlined, CalendarOutlined, IdcardOutlined
+  UploadOutlined, FileTextOutlined, ClockCircleOutlined, UserOutlined, CalendarOutlined, IdcardOutlined, CheckOutlined, CloseOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { supabase } from '../supabase'; 
 
-const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// 🗓️ ✨ Component เลือกวันที่แบบ Native (เหมาะกับมือถือสุดๆ)
+// 🗓️ ✨ Component เลือกวันที่แบบ Native 
 const ModernDatePickerRange = ({ value, onChange }: any) => {
   const onStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const start = e.target.value ? dayjs(e.target.value) : null;
@@ -28,7 +26,7 @@ const ModernDatePickerRange = ({ value, onChange }: any) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="form-control bg-slate-50 p-3 rounded-2xl border border-slate-200">
+      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
           <CalendarOutlined className="text-blue-500"/> วันที่ออกบัตร
         </label>
@@ -39,7 +37,7 @@ const ModernDatePickerRange = ({ value, onChange }: any) => {
           onChange={onStartChange}
         />
       </div>
-      <div className="form-control bg-slate-50 p-3 rounded-2xl border border-slate-200">
+      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
           <ClockCircleOutlined className="text-orange-500"/> วันหมดอายุ
         </label>
@@ -61,7 +59,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
   const [certs, setCerts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [form] = Form.useForm();
-  
   const [fileList, setFileList] = useState<any[]>([]);
 
   const fetchCerts = async () => {
@@ -70,7 +67,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       const data = await res.json();
       setCerts(data);
     } catch (error) {
-      console.error('ดึงข้อมูลไม่ได้:', error);
       message.error('ไม่สามารถดึงข้อมูลใบ Certificate ได้');
     }
   };
@@ -94,16 +90,10 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         const fileExt = file.name.split('.').pop();
         const uniqueName = `certs/${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
 
-        const { data, error } = await supabase.storage
-          .from('permits')
-          .upload(uniqueName, file);
-
+        const { error } = await supabase.storage.from('permits').upload(uniqueName, file);
         if (error) throw error;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('permits')
-          .getPublicUrl(uniqueName);
-
+        
+        const { data: publicUrlData } = supabase.storage.from('permits').getPublicUrl(uniqueName);
         finalFileUrl = publicUrlData.publicUrl;
       }
 
@@ -127,10 +117,10 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       setFileList([]); 
       fetchCerts(); 
     } catch (error) {
-      console.error(error);
       message.error('เกิดข้อผิดพลาดในการอัปโหลด');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleVerify = async (certId: string, status: string) => {
@@ -147,13 +137,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     }
   };
 
-  // --- UI Helpers ---
+  // --- UI Helpers (Premium Tailwind Badges) ---
   const getStatusTag = (status: string) => {
     switch(status) {
-      case 'PENDING': return <span className="bg-blue-100 text-blue-600 px-2.5 py-1 rounded-md text-xs font-bold border border-blue-200"><div className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></div>รอตรวจสอบ</span>;
-      case 'APPROVED': return <span className="bg-emerald-100 text-emerald-600 px-2.5 py-1 rounded-md text-xs font-bold border border-emerald-200"><CheckCircleOutlined className="mr-1"/> ผ่าน</span>;
-      case 'REJECTED': return <span className="bg-red-100 text-red-600 px-2.5 py-1 rounded-md text-xs font-bold border border-red-200"><CloseCircleOutlined className="mr-1"/> ไม่ผ่าน</span>;
-      default: return <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-bold border border-gray-200">{status}</span>;
+      case 'PENDING': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] md:text-xs font-bold bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-500/20 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอตรวจสอบ</span>;
+      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] md:text-xs font-bold bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 whitespace-nowrap"><CheckCircleOutlined /> ผ่าน</span>;
+      case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] md:text-xs font-bold bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-500/20 whitespace-nowrap"><CloseCircleOutlined /> ไม่ผ่าน</span>;
+      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] md:text-xs font-bold bg-slate-50 text-slate-500 ring-1 ring-inset ring-slate-500/20 whitespace-nowrap">{status}</span>;
     }
   };
 
@@ -162,20 +152,27 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     const today = dayjs();
     const daysLeft = expiry.diff(today, 'day');
     
-    if (daysLeft < 0) return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">หมดอายุแล้ว</span>;
-    if (daysLeft <= 30) return <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">เหลือ {daysLeft} วัน</span>;
-    return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">เหลือ {daysLeft} วัน</span>;
+    if (daysLeft < 0) return <span className="inline-block mt-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">หมดอายุแล้ว</span>;
+    if (daysLeft <= 30) return <span className="inline-block mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">เหลือ {daysLeft} วัน</span>;
+    return <span className="inline-block mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">เหลือ {daysLeft} วัน</span>;
   };
 
   const ActionButtons = ({ record }: { record: any }) => {
     if (currentUser?.role === 'SAFETY_ENGINEER' && record.status === 'PENDING') {
       return (
-        <div className="flex gap-2 mt-3 md:mt-0 w-full md:w-auto">
-          <button onClick={() => handleVerify(record.id, 'APPROVED')} className="btn btn-sm bg-emerald-500 hover:bg-emerald-600 text-white border-none flex-1 md:flex-none shadow-sm">
-            <CheckCircleOutlined /> อนุมัติ
+        <div className="flex gap-2 w-full md:w-auto">
+          <button 
+            onClick={() => handleVerify(record.id, 'APPROVED')} 
+            className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold shadow hover:shadow-md hover:from-emerald-400 hover:to-teal-400 active:scale-95 transition-all whitespace-nowrap"
+          >
+            <CheckOutlined /> อนุมัติ
           </button>
-          <button onClick={() => handleVerify(record.id, 'REJECTED')} className="btn btn-sm bg-red-500 hover:bg-red-600 text-white border-none flex-1 md:flex-none shadow-sm">
-            <CloseCircleOutlined /> ปฏิเสธ
+          <button 
+            onClick={() => handleVerify(record.id, 'REJECTED')} 
+            className="w-8 h-8 md:w-auto md:px-3 md:py-1.5 flex-shrink-0 flex items-center justify-center gap-1.5 bg-white text-rose-500 rounded-lg border border-rose-200 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm active:scale-95 transition-all"
+            title="ปฏิเสธ"
+          >
+            <CloseOutlined /> <span className="hidden md:inline text-xs font-bold">ปฏิเสธ</span>
           </button>
         </div>
       );
@@ -189,10 +186,10 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       key: 'user', 
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-400" />
-          <div>
-            <div className="font-bold text-slate-800">{record.user?.full_name}</div>
-            <div className="text-xs text-slate-500">{record.user?.department}</div>
+          <Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-500 border border-slate-200" />
+          <div className="flex flex-col leading-tight">
+            <span className="font-bold text-slate-800 text-sm">{record.user?.full_name}</span>
+            <span className="text-xs text-slate-400 font-medium">{record.user?.department}</span>
           </div>
         </div>
       )
@@ -202,7 +199,7 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       dataIndex: 'cert_name', 
       key: 'cert_name',
       render: (text) => (
-        <div className="font-semibold text-slate-700 flex items-center gap-2">
+        <div className="font-bold text-slate-700 text-sm flex items-center gap-2">
           <SafetyCertificateOutlined className="text-blue-500" /> {text}
         </div>
       )
@@ -211,9 +208,9 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       title: 'วันหมดอายุ', 
       key: 'expiry_date',
       render: (_, record) => (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-slate-600">{dayjs(record.expiry_date).format('DD MMM YYYY')}</span>
-          <div>{getExpiryDisplay(record.expiry_date)}</div>
+        <div className="flex flex-col items-start leading-tight">
+          <span className="text-sm font-bold text-slate-700">{dayjs(record.expiry_date).format('DD MMM YYYY')}</span>
+          {getExpiryDisplay(record.expiry_date)}
         </div>
       )
     },
@@ -222,10 +219,10 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       key: 'document',
       render: (_, record) => (
         record.file_url ? (
-          <a href={record.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+          <a href={record.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">
             <FileTextOutlined /> ดูไฟล์แนบ
           </a>
-        ) : <span className="text-xs text-slate-400">-</span>
+        ) : <span className="text-xs text-slate-300 font-medium">-</span>
       )
     },
     {
@@ -235,7 +232,7 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       render: (status) => getStatusTag(status)
     },
     {
-      title: 'จัดการ', 
+      title: 'การจัดการ', 
       key: 'action',
       render: (_, record) => <ActionButtons record={record} />
     },
@@ -243,10 +240,9 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
 
   return (
     <div className="w-full pb-20 px-2 md:px-0">
-      
       {/* 🚀 Header */}
       <div className="flex items-center gap-3 mb-6 md:mb-8">
-        <div className="bg-gradient-to-tr from-blue-500 to-sky-500 p-3 md:p-4 rounded-2xl shadow-lg shadow-blue-500/30 text-white">
+        <div className="bg-gradient-to-tr from-blue-500 to-indigo-600 p-3 md:p-4 rounded-2xl shadow-lg shadow-blue-500/30 text-white">
           <IdcardOutlined className="text-2xl md:text-3xl" />
         </div>
         <div>
@@ -261,18 +257,17 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         {currentUser?.role === 'CONTRACTOR' && (
           <div className="xl:col-span-4">
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
-              <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-5 border-b border-blue-100">
-                <h3 className="text-lg font-bold text-blue-700 m-0 flex items-center gap-2">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 border-b border-blue-100">
+                <h3 className="text-lg font-bold text-blue-800 m-0 flex items-center gap-2">
                   <UploadOutlined /> นำส่งใบ Certificate
                 </h3>
-                <p className="text-xs text-blue-500 m-0 mt-1">อัปโหลดเอกสารเพื่อใช้ประกอบการขออนุญาตทำงาน</p>
+                <p className="text-xs font-medium text-blue-600/80 m-0 mt-1">อัปโหลดเอกสารเพื่อใช้ประกอบการขออนุญาตทำงาน</p>
               </div>
               
               <div className="p-5 md:p-6 bg-white">
                 <Form form={form} layout="vertical" onFinish={handleUploadCert} requiredMark={false}>
-                  
                   <Form.Item name="cert_name" label={<span className="font-bold text-slate-700">ประเภทใบ Certificate <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาเลือกประเภท' }]}>
-                    <Select size="large" placeholder="-- เลือกประเภทเอกสาร --" className="w-full">
+                    <Select size="large" placeholder="-- เลือกประเภทเอกสาร --" className="w-full rounded-xl">
                       <Select.Option value="ผู้ปฏิบัติงานในที่อับอากาศ (Confined Space)">🕳️ ผู้ปฏิบัติงานในที่อับอากาศ</Select.Option>
                       <Select.Option value="ผู้ควบคุมปั้นจั่น (Crane Operator)">🏗️ ผู้ควบคุมปั้นจั่น</Select.Option>
                       <Select.Option value="ช่างไฟฟ้า (Electrician)">⚡ ช่างไฟฟ้า</Select.Option>
@@ -301,7 +296,7 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
                     type="primary" 
                     htmlType="submit" 
                     loading={isLoading} 
-                    className="w-full h-14 rounded-2xl text-base font-bold bg-blue-600 hover:!bg-blue-700 border-none shadow-lg shadow-blue-500/30 flex items-center justify-center"
+                    className="w-full h-14 rounded-2xl text-base font-bold bg-indigo-600 hover:!bg-indigo-700 border-none shadow-lg shadow-indigo-500/30 flex items-center justify-center"
                   >
                     ส่งข้อมูลให้ จป. ตรวจสอบ
                   </Button>
@@ -314,7 +309,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         {/* 📋 ส่วนที่ 2: ตารางข้อมูลทะเบียนประวัติ */}
         <div className={currentUser?.role === 'CONTRACTOR' ? "xl:col-span-8" : "xl:col-span-12"}>
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
-            
             <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <h3 className="text-base md:text-lg font-bold text-slate-800 m-0 flex items-center gap-2">
                 <SafetyCertificateOutlined className="text-emerald-500" /> ทะเบียนประวัติ (Registry)
@@ -331,8 +325,9 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
                   columns={columns} 
                   dataSource={certs} 
                   loading={isLoading && certs.length === 0} 
-                  pagination={{ pageSize: 5 }} 
+                  pagination={{ pageSize: 8, className: "px-4 pb-2" }} 
                   rowKey="id" 
+                  size="middle"
                   className="modern-table"
                 />
               )}
@@ -342,51 +337,45 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
                 <div className="space-y-4">
                   {certs.length > 0 ? certs.map((item) => (
                     <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
-                      {/* ขีดสีบอกสถานะ */}
-                      <div className={`absolute top-0 left-0 w-1.5 h-full ${item.status === 'APPROVED' ? 'bg-emerald-500' : item.status === 'REJECTED' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                      
+                      <div className={`absolute top-0 left-0 w-1.5 h-full ${item.status === 'APPROVED' ? 'bg-emerald-500' : item.status === 'REJECTED' ? 'bg-rose-500' : 'bg-blue-500'}`}></div>
                       <div className="pl-2">
-                        {/* Header */}
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
                             <Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-500 border border-slate-200" />
-                            <div>
-                              <p className="text-sm font-bold text-slate-800 m-0 leading-tight">{item.user?.full_name}</p>
-                              <p className="text-[10px] font-semibold text-slate-400 m-0">{item.user?.department}</p>
+                            <div className="flex flex-col leading-tight">
+                              <span className="text-sm font-bold text-slate-800">{item.user?.full_name}</span>
+                              <span className="text-[10px] font-semibold text-slate-400">{item.user?.department}</span>
                             </div>
                           </div>
                           <div>{getStatusTag(item.status)}</div>
                         </div>
 
-                        {/* Content */}
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-3">
-                          <h4 className="text-sm font-bold text-slate-700 m-0 mb-2 flex items-start gap-1.5">
-                            <SafetyCertificateOutlined className="text-blue-500 mt-0.5" />
-                            <span className="leading-tight">{item.cert_name}</span>
+                          <h4 className="text-sm font-bold text-slate-700 m-0 mb-2 flex items-start gap-1.5 leading-tight">
+                            <SafetyCertificateOutlined className="text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span>{item.cert_name}</span>
                           </h4>
                           <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                            <span className="text-[10px] text-slate-400 font-medium">หมดอายุ: {dayjs(item.expiry_date).format('DD/MM/YYYY')}</span>
+                            <span className="text-[10px] text-slate-500 font-medium">หมดอายุ: {dayjs(item.expiry_date).format('DD/MM/YYYY')}</span>
                             {getExpiryDisplay(item.expiry_date)}
                           </div>
                         </div>
 
-                        {/* Footer / Actions */}
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-1">
                           {item.file_url ? (
-                            <a href={item.file_url} target="_blank" rel="noreferrer" className="w-full sm:w-auto btn btn-sm btn-outline border-slate-200 text-slate-600 bg-white hover:bg-slate-50 rounded-lg">
+                            <a href={item.file_url} target="_blank" rel="noreferrer" className="w-full sm:w-auto flex justify-center items-center gap-1.5 border border-indigo-200 text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
                               <FileTextOutlined /> ดูไฟล์แนบ
                             </a>
-                          ) : <span className="text-xs text-slate-400">-</span>}
+                          ) : <span className="text-xs text-slate-300 font-medium hidden sm:block">-</span>}
                           
-                          {/* ปุ่มของ จป. จะกางเต็มพื้นที่ในมือถือ */}
                           <ActionButtons record={item} />
                         </div>
                       </div>
                     </div>
                   )) : (
                     <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                      <IdcardOutlined className="text-5xl text-blue-300 mb-3 opacity-50" />
-                      <p className="font-medium text-lg text-slate-500">ยังไม่มีประวัติใบ Certificate</p>
+                      <IdcardOutlined className="text-5xl text-slate-200 mb-3" />
+                      <p className="font-medium text-slate-500">ยังไม่มีประวัติใบ Certificate</p>
                     </div>
                   )}
                 </div>
@@ -394,19 +383,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
             </div>
           </div>
         </div>
-
       </div>
 
       <style>{`
-        .modern-table .ant-table-thead > tr > th {
-          background-color: #f8fafc;
-          color: #475569;
-          font-weight: bold;
-          border-bottom: 2px solid #e2e8f0;
-        }
-        .modern-table .ant-table-tbody > tr:hover > td {
-          background-color: #f1f5f9;
-        }
+        .modern-table .ant-table { background: transparent; }
+        .modern-table .ant-table-thead > tr > th { background-color: #f8fafc; color: #64748b; font-weight: 700; font-size: 13px; border-bottom: 2px solid #e2e8f0; padding: 16px; }
+        .modern-table .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f5f9; padding: 16px; background: white; }
+        .modern-table .ant-table-tbody > tr:hover > td { background-color: #f8fafc; }
       `}</style>
     </div>
   );

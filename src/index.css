@@ -1,6 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 🟢 บังคับใช้ฟอนต์ Prompt ทั้งแอป (ทับพวก Ant Design ที่ชอบดึงฟอนต์ระบบมาใช้) */
+* {
+  font-family: 'Prompt', sans-serif !important;
+}
+
+body {
+  font-family: 'Prompt', sans-serif;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%; /* พื้นขาวบริสุทธิ์ */
