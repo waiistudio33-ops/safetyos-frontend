@@ -146,53 +146,45 @@ export default function App() {
         let profile = null;
         await liff.init({ liffId: '2009277207-jNY8QghJ' }); 
 
+        // 1. เช็ค LINE ก่อน
         if (liff.isLoggedIn()) {
           profile = await liff.getProfile();
-          setLineProfile(profile);
+          setLineProfile(profile); // สั่งให้หน้าบ้านจำรูปสดๆ จาก LINE ไว้ทันที!
         } else if (liff.isInClient()) {
           liff.login();
-          return; // หยุดทำงานจนกว่าจะ Login เสร็จ
+          return; 
         }
 
-        const savedUser = localStorage.getItem('safetyos_user');
+        const savedUserStr = localStorage.getItem('safetyos_user');
         
-        if (savedUser) {
-          try {
-            const parsedUser = JSON.parse(savedUser);
-            // 🟢 ทริกเล็กๆ: ถ้าใน Local Storage ไม่มีรูป แต่ดึงจาก LINE ได้ ให้ยัดรูปลงไปใน currentUser เลย (ลดการกระพริบ)
-            if (profile && profile.pictureUrl && !parsedUser.profile_url) {
-                parsedUser.profile_url = profile.pictureUrl;
-            }
-            setCurrentUser(parsedUser);
-            setIsAuthenticated(true);
-            
-            // 🟢 ถ้าเปิดผ่านไลน์และเคยล็อกอินแล้ว ให้ยิงไปอัปเดตรูปใน DB เผื่อไว้เลย
-            if (profile) {
-              axios.post('https://safetyos-backend.onrender.com/login/line', { 
-                line_id: profile.userId,
-                picture_url: profile.pictureUrl
-              }).then(res => {
-                 setCurrentUser(res.data.user);
-                 localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-              }).catch(e => console.log("Silent update failed"));
-            }
-
-          } catch (e) {
-            localStorage.removeItem('safetyos_user');
-          }
-        } else if (profile) {
-          // ถ้าไม่มี LocalStorage แต่เปิดผ่าน LINE ให้ลอง Auto Login
+        // 2. ลอจิกการเข้าสู่ระบบแบบเสถียร
+        if (profile) {
+          // 🟢 ถ้าเปิดผ่าน LINE ให้ยิง API ไปอัปเดตข้อมูล/รูปล่าสุดเสมอแบบเงียบๆ (Silent Sync)
           try {
             const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { 
               line_id: profile.userId,
-              picture_url: profile.pictureUrl // 🟢 ส่งรูปไปด้วย
+              picture_url: profile.pictureUrl 
             });
+            // อัปเดตข้อมูลใหม่ล่าสุดลง LocalStorage เผื่อเอาไปเปิดในคอม
             localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
             setCurrentUser(res.data.user);
             setIsAuthenticated(true);
-            message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
+            
+            // ถ้านี่คือการล็อกอินครั้งแรกที่ไม่มีข้อมูลเดิม ให้เด้งต้อนรับ
+            if (!savedUserStr) {
+               message.success(`เข้าสู่ระบบอัตโนมัติ: ${res.data.user.full_name}`);
+            }
           } catch (e) {
-            console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE");
+            console.log("ผู้ใช้นี้ยังไม่ได้ผูกบัญชี LINE ต้องรอล็อกอินด้วยรหัสผ่าน");
+          }
+        } else if (savedUserStr) {
+          // 🟢 ถ้าไม่ได้เปิดผ่าน LINE (เช่นเปิดในเว็บ) แต่เคยล็อกอินไว้แล้ว ก็ให้โหลดข้อมูลเดิมขึ้นมา
+          try {
+            const parsedUser = JSON.parse(savedUserStr);
+            setCurrentUser(parsedUser);
+            setIsAuthenticated(true);
+          } catch (e) {
+            localStorage.removeItem('safetyos_user');
           }
         }
 
@@ -465,10 +457,17 @@ export default function App() {
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
   const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
 
-  // 🟢 ฟังก์ชันสำหรับดึงรูปโปรไฟล์มาแสดง (ถ้ามีรูปจาก DB ใช้ก่อน ถ้าไม่มีใช้จาก LINE)
+
   const getDisplayAvatar = () => {
-    if (currentUser?.profile_url) return currentUser.profile_url;
-    if (lineProfile?.pictureUrl) return lineProfile.pictureUrl;
+    // 1. ถ้าเปิดผ่านแอป LINE ดึงรูปสดๆ จาก LINE มาโชว์ก่อนเลย (ชัวร์สุด)
+    if (lineProfile && lineProfile.pictureUrl) {
+      return lineProfile.pictureUrl;
+    }
+    // 2. ถ้าไม่ได้เปิดผ่าน LINE ให้ใช้รูปจากฐานข้อมูลที่บันทึกไว้
+    if (currentUser && currentUser.profile_url) {
+      return currentUser.profile_url;
+    }
+    // 3. ถ้าไม่มีเลยจริงๆ ส่งค่า null กลับไปเพื่อโชว์ไอคอน Default
     return null;
   };
 
