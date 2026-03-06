@@ -4,7 +4,7 @@ import {
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, ConfigProvider, Space, Button, Modal, 
   Form, Input, Select, message, Badge, Upload, 
-  InputNumber, Radio, Drawer, Grid, Spin, Tabs // 🟢 เพิ่ม Tabs เข้ามาตรงนี้
+  InputNumber, Radio, Drawer, Grid, Spin, Tabs
 } from 'antd';
 import { 
   DashboardOutlined, SafetyCertificateOutlined, WarningOutlined,
@@ -13,8 +13,8 @@ import {
   IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined, BellOutlined,
   EyeOutlined, FilePdfOutlined, LogoutOutlined, CheckCircleOutlined, 
   MenuOutlined, RocketOutlined, CalendarOutlined, ClockCircleOutlined, 
-  ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined, ScanOutlined, FormOutlined, // 🟢 อย่าลืมเพิ่มตัวนี้! (ต้องมีลูกน้ำต่อท้ายด้วย)
-  FileAddOutlined // 🟢 และเพิ่มตัวนี้!
+  ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined, ScanOutlined, FormOutlined, 
+  FileAddOutlined 
 } from '@ant-design/icons';
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
@@ -121,9 +121,8 @@ export default function App() {
   
   const [isSubmitting, setIsSubmitting] = useState(false); 
   
-  // 🟢 State สำหรับหน้า BBS โดยเฉพาะ
   const [isSubmittingBbs, setIsSubmittingBbs] = useState(false); 
-  const [activeBbsTab, setActiveBbsTab] = useState('form'); // ตัวแปรคุมการเปลี่ยน Tab
+  const [activeBbsTab, setActiveBbsTab] = useState('form'); 
 
   const [fileList, setFileList] = useState<any[]>([]); 
   const [form] = Form.useForm();
@@ -246,7 +245,7 @@ export default function App() {
       await axios.post('https://safetyos-backend.onrender.com/bbs', formattedValues);
       message.success('บันทึกข้อมูล BBS สำเร็จ!'); 
       fetchBbs(); 
-      setActiveBbsTab('history'); // 🟢 สั่งให้เด้งไปหน้า Tab ประวัติทันที
+      setActiveBbsTab('history'); 
       return Promise.resolve();
     } catch (error: any) { 
       console.error("BBS Save Error:", error.response?.data || error);
@@ -343,7 +342,10 @@ export default function App() {
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-slate-50 overflow-hidden">
           <div className={`${isMobile ? 'h-[40vh]' : 'w-1/2 h-screen'} bg-gradient-to-br from-blue-600 to-indigo-700 relative flex items-center justify-center text-white px-10 text-center`}>
             <div className="z-20">
-              <div className="bg-white/20 backdrop-blur-md rounded-full w-20 h-20 md:w-24 md:h-24 flex items-center justify-center shadow-lg mb-6 mx-auto"><RocketOutlined style={{ fontSize: isMobile ? '40px' : '48px' }} /></div>
+              {/* 🟢 อัปเดตโลโก้หน้า Login */}
+              <div className="bg-white p-3 rounded-2xl shadow-lg mb-6 mx-auto w-24 h-24 flex items-center justify-center">
+                <img src="/Safetylogo.svg" alt="SafetyOS Logo" className="w-full h-full object-contain" />
+              </div>
               <h1 className="text-3xl md:text-5xl font-bold mb-2">SafetyOS</h1><p className="text-blue-100 text-sm md:text-lg opacity-90">Enterprise Safety Management</p>
             </div>
             <WaveSeparator isMobile={isMobile} />
@@ -380,21 +382,36 @@ export default function App() {
   );
 
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', borderRadius: 16, fontFamily: "-apple-system, BlinkMacSystemFont, 'San Francisco', 'Prompt', sans-serif" }}}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', borderRadius: 16, fontFamily: "'Prompt', sans-serif" }}}>
       <div className="app-container">
         <Layout style={{ minHeight: '100vh', background: 'radial-gradient(circle at 10% 20%, rgb(239, 246, 249) 0%, rgb(206, 239, 253) 90%)' }}>
           
           {!isMobile && (
             <Sider width={260} style={{ ...glassPanel, margin: '16px 0 16px 16px', position: 'fixed', left: 0, zIndex: 100, height: 'calc(100vh - 32px)' }} theme="light">
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <div style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', padding: '8px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(37,99,235,0.3)' }}><SafetyCertificateOutlined style={{ fontSize: '24px', color: '#fff' }} /></div>
+                {/* 🟢 อัปเดตโลโก้ Sidebar (Desktop) */}
+                <div style={{ background: '#ffffff', padding: '6px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(37,99,235,0.1)' }}>
+                  <img src="/Safetylogo.svg" alt="SafetyOS" className="w-8 h-8 object-contain" />
+                </div>
                 <Text strong style={{ fontSize: '20px', color: '#1e293b', letterSpacing: '-0.5px' }}>Safety<span style={{color: '#2563eb'}}>OS</span></Text>
               </div>
               {menuItems}
             </Sider>
           )}
 
-          <Drawer title={<div className="flex items-center gap-2"><SafetyCertificateOutlined className="text-blue-600 text-xl"/> <span className="font-bold text-slate-800">SafetyOS</span></div>} placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} styles={{ body: { padding: 0 } }}>
+          {/* 🟢 อัปเดตโลโก้ Drawer (Mobile Menu) */}
+          <Drawer 
+            title={
+              <div className="flex items-center gap-2">
+                <img src="/Safetylogo.svg" alt="Logo" className="w-7 h-7 object-contain" /> 
+                <span className="font-bold text-slate-800">SafetyOS</span>
+              </div>
+            } 
+            placement="left" 
+            onClose={() => setMobileMenuOpen(false)} 
+            open={mobileMenuOpen} 
+            styles={{ body: { padding: 0 } }}
+          >
             {menuItems}
           </Drawer>
 
@@ -421,7 +438,7 @@ export default function App() {
                   {!isMobile && (<div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2', paddingRight: '8px' }}><Text strong style={{ fontSize: '13px', color: '#1e293b' }}>{currentUser?.full_name}</Text><Text style={{ fontSize: '11px', color: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', fontWeight: 700 }}>{currentUser?.role}</Text></div>)}
                   <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: '#ef4444' }} title="ออกจากระบบ" />
                 </div>
-                {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (<Button type="primary" shape={isMobile ? "circle" : "round"} icon={<PlusOutlined />} size={isMobile ? "middle" : "large"} onClick={() => setIsModalOpen(true)} style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', border: 'none', boxShadow: '0 4px 15px rgba(37,99,235,0.3)', fontWeight: 600 }}>{!isMobile && 'ขอ Permit ใหม่'}</Button>)}
+                {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (<Button type="primary" shape={isMobile ? "circle" : "round"} icon={<FileAddOutlined />} size={isMobile ? "middle" : "large"} onClick={() => setIsModalOpen(true)} style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', border: 'none', boxShadow: '0 4px 15px rgba(37,99,235,0.3)', fontWeight: 600 }}>{!isMobile && 'ขอ Permit ใหม่'}</Button>)}
               </Space>
             </Header>
 
@@ -430,7 +447,6 @@ export default function App() {
               {activeMenu === 'E_PERMIT' && (<Card title={<div className="flex items-center gap-2 text-slate-800"><FileTextOutlined className="text-blue-500" /><b className="text-lg md:text-xl">รายการ Work Queue</b></div>} bordered={false} style={glassPanel} styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.05)' }, body: { padding: isMobile ? '12px' : '24px' }}}><WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} /></Card>)}
               {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
               
-              {/* 🟢 หน้า BBS แบบมี Tab เลือกสลับไปมา (ฟอร์ม / ประวัติ) */}
               {activeMenu === 'BBS' && (
                 <Card bordered={false} style={{ ...glassPanel, padding: 0, overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
                   <Tabs
