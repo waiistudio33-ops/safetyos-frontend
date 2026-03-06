@@ -4,7 +4,7 @@ import {
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, ConfigProvider, Space, Button, Modal, 
   Form, Input, Select, message, Badge, Upload, 
-  InputNumber, Radio, Drawer, Grid, Spin, Tabs
+  InputNumber, Drawer, Grid, Spin, Tabs
 } from 'antd';
 import { 
   DashboardOutlined, SafetyCertificateOutlined, WarningOutlined,
@@ -104,6 +104,10 @@ export default function App() {
   const [isScannerOpen, setIsScannerOpen] = useState(false); 
   const [lineProfile, setLineProfile] = useState<any>(null);
 
+  // 🟢 State สำหรับระบบแจ้งเตือนอพยพฉุกเฉิน (Real-time)
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [emergencyMessage, setEmergencyMsg] = useState('');
+
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const targetPage = queryParams.get('page');
@@ -192,6 +196,29 @@ export default function App() {
     initializeApp();
   }, []);
 
+  // 🟢 เปิดคลื่นวิทยุรับสัญญาณจาก Supabase (ทำงานตลอดเวลาที่เปิดแอป)
+  useEffect(() => {
+    const safetyChannel = supabase.channel('safety-alert-channel');
+
+    safetyChannel
+      .on('broadcast', { event: 'EMERGENCY_EVACUATE' }, (payload) => {
+        // ทันทีที่มีคนกดปุ่มอพยพ ให้หน้าจอแดงเด้งขึ้นมา!
+        setEmergencyMsg(payload.payload.message);
+        setIsEmergency(true);
+      })
+      .on('broadcast', { event: 'CONFINED_SPACE_UPDATE' }, (payload) => {
+        // ทันทีที่มีคนเข้า/ออก ให้รีเฟรชข้อมูลบอร์ดอับอากาศอัตโนมัติ
+        if (payload.payload.permit_id) {
+          fetchEntries(payload.payload.permit_id);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(safetyChannel);
+    };
+  }, []);
+
   const fetchUsers = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/users'); setUsers(res.data); } catch (error) {} };
   const fetchPermits = async () => { setLoading(true); try { const response = await axios.get('https://safetyos-backend.onrender.com/permits'); setRealPermits(response.data); } catch (error) {} finally { setLoading(false); } };
   const fetchBbs = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/bbs'); setBbsRecords(res.data); } catch (error) {} };
@@ -238,10 +265,18 @@ export default function App() {
     setIsSubmittingBbs(true);
     try {
       const formattedValues = {
-        ...values,
         date: values.date ? values.date.toISOString() : new Date().toISOString(),
+        location: values.location,
+        observed_group: values.observed_group || 'EMPLOYEE',
+        behavior_type: values.behavior_type,
+        category: values.category,
+        action_taken: values.action_taken,
+        description: values.description,
+        root_cause: values.root_cause || null,
+        suggestion: values.suggestion || null,
         observer_id: currentUser.id
       };
+
       await axios.post('https://safetyos-backend.onrender.com/bbs', formattedValues);
       message.success('บันทึกข้อมูล BBS สำเร็จ!'); 
       fetchBbs(); 
@@ -257,9 +292,47 @@ export default function App() {
     }
   };
 
-  const handleCheckIn = async (values: any) => { try { await axios.post('https://safetyos-backend.onrender.com/confined-space/in', { ...values, permit_id: selectedConfinedPermit }); message.success('Check-in สำเร็จ!'); fetchEntries(selectedConfinedPermit!); } catch (error) { message.error('Check-in ไม่สำเร็จ'); } };
-  const handleCheckOut = async (entryId: string) => { try { await axios.put(`https://safetyos-backend.onrender.com/confined-space/out/${entryId}`); message.success('นำรายชื่อออกสำเร็จ'); fetchEntries(selectedConfinedPermit!); } catch (error) { message.error('Check-out ไม่สำเร็จ'); } };
-  const handleEvacuateAll = async () => { try { await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); message.success('สั่งอพยพและส่งแจ้งเตือนฉุกเฉินแล้ว!'); fetchEntries(selectedConfinedPermit!); } catch (error) { message.error('เกิดข้อผิดพลาดในการสั่งอพยพ'); } };
+  // 👷 ฟังก์ชัน Check-in พร้อมส่งสัญญาณ Real-time
+  const handleCheckIn = async (values: any) => { 
+    try { 
+      await axios.post('https://safetyos-backend.onrender.com/confined-space/in', { ...values, permit_id: selectedConfinedPermit }); 
+      message.success('Check-in สำเร็จ!'); 
+      fetchEntries(selectedConfinedPermit!); 
+      
+      await supabase.channel('safety-alert-channel').send({
+        type: 'broadcast', event: 'CONFINED_SPACE_UPDATE',
+        payload: { permit_id: selectedConfinedPermit }
+      });
+    } catch (error) { message.error('Check-in ไม่สำเร็จ'); } 
+  };
+
+  // 👷 ฟังก์ชัน Check-out พร้อมส่งสัญญาณ Real-time
+  const handleCheckOut = async (entryId: string) => { 
+    try { 
+      await axios.put(`https://safetyos-backend.onrender.com/confined-space/out/${entryId}`); 
+      message.success('นำรายชื่อออกสำเร็จ'); 
+      fetchEntries(selectedConfinedPermit!); 
+
+      await supabase.channel('safety-alert-channel').send({
+        type: 'broadcast', event: 'CONFINED_SPACE_UPDATE',
+        payload: { permit_id: selectedConfinedPermit }
+      });
+    } catch (error) { message.error('Check-out ไม่สำเร็จ'); } 
+  };
+
+  // 🚨 ฟังก์ชันสั่งอพยพฉุกเฉิน พร้อมส่งสัญญาณวิทยุให้หน้าจอทุกคนเด้ง!
+  const handleEvacuateAll = async () => { 
+    try { 
+      await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); 
+      message.success('ส่งคำสั่งอพยพเรียบร้อย!'); 
+      fetchEntries(selectedConfinedPermit!); 
+
+      await supabase.channel('safety-alert-channel').send({
+        type: 'broadcast', event: 'EMERGENCY_EVACUATE',
+        payload: { message: `สั่งอพยพพื้นที่โดย: ${currentUser.full_name}` }
+      });
+    } catch (error) { message.error('เกิดข้อผิดพลาดในการสั่งอพยพ'); } 
+  };
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
@@ -342,7 +415,6 @@ export default function App() {
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-slate-50 overflow-hidden">
           <div className={`${isMobile ? 'h-[40vh]' : 'w-1/2 h-screen'} bg-gradient-to-br from-blue-600 to-indigo-700 relative flex items-center justify-center text-white px-10 text-center`}>
             <div className="z-20">
-              {/* 🟢 อัปเดตโลโก้หน้า Login */}
               <div className="bg-white p-3 rounded-2xl shadow-lg mb-6 mx-auto w-24 h-24 flex items-center justify-center">
                 <img src="Safetylogo.svg" alt="SafetyOS Logo" className="w-full h-full object-contain" />
               </div>
@@ -389,7 +461,6 @@ export default function App() {
           {!isMobile && (
             <Sider width={260} style={{ ...glassPanel, margin: '16px 0 16px 16px', position: 'fixed', left: 0, zIndex: 100, height: 'calc(100vh - 32px)' }} theme="light">
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                {/* 🟢 อัปเดตโลโก้ Sidebar (Desktop) */}
                 <div style={{ background: '#ffffff', padding: '6px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(37,99,235,0.1)' }}>
                   <img src="Safetylogo.svg" alt="SafetyOS" className="w-8 h-8 object-contain" />
                 </div>
@@ -399,7 +470,6 @@ export default function App() {
             </Sider>
           )}
 
-          {/* 🟢 อัปเดตโลโก้ Drawer (Mobile Menu) */}
           <Drawer 
             title={
               <div className="flex items-center gap-2">
@@ -605,9 +675,47 @@ export default function App() {
             <QRScanner onScan={(text) => { setIsScannerOpen(false); if (text.includes('/verify/')) { const id = text.split('/verify/')[1]; setVerifyUserId(id); } else { message.error('QR Code นี้ไม่ใช่ของระบบ SafetyOS!'); } }} />
           </Modal>
 
+          {/* =========================================================
+              🚨 EMERGENCY ALERT SCREEN (หน้าจอแดงเด้งทับทุกอย่าง)
+             ========================================================= */}
+          <Modal
+            title={null}
+            open={isEmergency}
+            closable={false} // ห้ามกดปิด (จนกว่าจะกดยืนยัน)
+            footer={null}
+            width="100%"
+            centered
+            wrapClassName="emergency-modal"
+            styles={{ body: { padding: 0, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' } }}
+          >
+            <div className="bg-red-600 w-full h-full flex flex-col items-center justify-center p-8 text-center animate-pulse-fast relative overflow-hidden">
+              {/* ลวดลายไซเรนด้านหลัง */}
+              <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2HQ9IjQwIj4KPHBhdGggZD0iTTAgMGw0MCA0MHYtMjBMMjAgMGgwem0wIDIwbDIwIDIwSDBWMjB6bTQwIDBoLTIwTDAgNDBoNDBWMjB6IiBmaWxsPSIjMDAwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGwtb3BhY2l0eT0iMSIvPgo8L3N2Zz4=')]"></div>
+              
+              <WarningOutlined className="text-white text-[120px] md:text-[180px] mb-6 drop-shadow-2xl relative z-10" />
+              <h1 className="text-5xl md:text-8xl font-black text-white tracking-widest mb-4 drop-shadow-lg relative z-10">
+                EMERGENCY!
+              </h1>
+              <p className="text-2xl md:text-4xl font-bold text-white mb-2 relative z-10">
+                ประกาศอพยพฉุกเฉิน
+              </p>
+              <p className="text-lg md:text-2xl font-medium text-red-200 bg-black/40 px-6 py-2 rounded-full mb-12 relative z-10">
+                {emergencyMessage}
+              </p>
+
+              <Button 
+                size="large" 
+                className="h-16 md:h-20 px-12 rounded-full text-xl md:text-3xl font-black bg-white text-red-600 border-none shadow-[0_0_40px_rgba(255,255,255,0.5)] hover:bg-slate-100 hover:scale-105 transition-transform relative z-10"
+                onClick={() => setIsEmergency(false)} // กดยืนยันเพื่อปิดหน้าต่าง
+              >
+                รับทราบและอพยพทันที!
+              </Button>
+            </div>
+          </Modal>
+
           <style>{`
             .modern-table .ant-table { background: transparent; }
-            .modern-table .ant-table-thead > tr > th { background-color: #f8fafc; color: #64748b; font-weight: 7  00; font-size: 13px; border-bottom: 2px solid #e2e8f0; padding: 16px; }
+            .modern-table .ant-table-thead > tr > th { background-color: #f8fafc; color: #64748b; font-weight: 700; font-size: 13px; border-bottom: 2px solid #e2e8f0; padding: 16px; }
             .modern-table .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f5f9; padding: 16px; background: white; }
             .modern-table .ant-table-tbody > tr:hover > td { background-color: #f8fafc; }
             .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -617,6 +725,25 @@ export default function App() {
             /* แต่งสี Tab ของ Ant Design ให้ดูโมเดิร์น */
             .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: #2563eb !important; }
             .ant-tabs-ink-bar { background: #2563eb !important; height: 3px !important; border-radius: 3px; }
+
+            /* สไตล์สำหรับหน้าจอฉุกเฉิน */
+            .emergency-modal .ant-modal-content {
+              background-color: transparent !important;
+              box-shadow: none !important;
+            }
+            .emergency-modal .ant-modal {
+              max-width: 100vw !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              top: 0 !important;
+            }
+            .animate-pulse-fast {
+              animation: pulse-red 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes pulse-red {
+              0%, 100% { background-color: #dc2626; } /* red-600 */
+              50% { background-color: #991b1b; } /* red-800 */
+            }
           `}</style>
         </Layout>
       </div>
