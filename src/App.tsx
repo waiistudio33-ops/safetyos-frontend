@@ -607,7 +607,7 @@ export default function App() {
 
           <style>{`
             .modern-table .ant-table { background: transparent; }
-            .modern-table .ant-table-thead > tr > th { background-color: #f8fafc; color: #64748b; font-weight: 800; font-size: 13px; border-bottom: 2px solid #e2e8f0; padding: 16px; }
+            .modern-table .ant-table-thead > tr > th { background-color: #f8fafc; color: #64748b; font-weight: 7  00; font-size: 13px; border-bottom: 2px solid #e2e8f0; padding: 16px; }
             .modern-table .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f5f9; padding: 16px; background: white; }
             .modern-table .ant-table-tbody > tr:hover > td { background-color: #f8fafc; }
             .custom-scrollbar::-webkit-scrollbar { width: 6px; }
