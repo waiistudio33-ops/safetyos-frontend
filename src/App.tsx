@@ -4,7 +4,7 @@ import {
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, ConfigProvider, Space, Button, Modal, 
   Form, Input, Select, message, Badge, Upload, 
-  InputNumber, Drawer, Grid, Spin, Tabs
+  InputNumber, Drawer, Grid, Spin, Tabs, Divider
 } from 'antd';
 import { 
   DashboardOutlined, SafetyCertificateOutlined, WarningOutlined,
@@ -14,7 +14,7 @@ import {
   EyeOutlined, FilePdfOutlined, LogoutOutlined, CheckCircleOutlined, 
   MenuOutlined, RocketOutlined, CalendarOutlined, ClockCircleOutlined, 
   ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined, ScanOutlined, FormOutlined, 
-  FileAddOutlined 
+  FileAddOutlined, PhoneOutlined
 } from '@ant-design/icons';
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
@@ -107,6 +107,9 @@ export default function App() {
   // 🟢 State สำหรับระบบแจ้งเตือนอพยพฉุกเฉิน (Real-time)
   const [isEmergency, setIsEmergency] = useState(false);
   const [emergencyMessage, setEmergencyMsg] = useState('');
+
+  // 🟢 State ควบคุม Dynamic Form (เฟส 1)
+  const [selectedPermitTypeForm, setSelectedPermitTypeForm] = useState<string>('');
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -202,12 +205,10 @@ export default function App() {
 
     safetyChannel
       .on('broadcast', { event: 'EMERGENCY_EVACUATE' }, (payload) => {
-        // ทันทีที่มีคนกดปุ่มอพยพ ให้หน้าจอแดงเด้งขึ้นมา!
         setEmergencyMsg(payload.payload.message);
         setIsEmergency(true);
       })
       .on('broadcast', { event: 'CONFINED_SPACE_UPDATE' }, (payload) => {
-        // ทันทีที่มีคนเข้า/ออก ให้รีเฟรชข้อมูลบอร์ดอับอากาศอัตโนมัติ
         if (payload.payload.permit_id) {
           fetchEntries(payload.payload.permit_id);
         }
@@ -292,7 +293,6 @@ export default function App() {
     }
   };
 
-  // 👷 ฟังก์ชัน Check-in พร้อมส่งสัญญาณ Real-time
   const handleCheckIn = async (values: any) => { 
     try { 
       await axios.post('https://safetyos-backend.onrender.com/confined-space/in', { ...values, permit_id: selectedConfinedPermit }); 
@@ -306,7 +306,6 @@ export default function App() {
     } catch (error) { message.error('Check-in ไม่สำเร็จ'); } 
   };
 
-  // 👷 ฟังก์ชัน Check-out พร้อมส่งสัญญาณ Real-time
   const handleCheckOut = async (entryId: string) => { 
     try { 
       await axios.put(`https://safetyos-backend.onrender.com/confined-space/out/${entryId}`); 
@@ -320,7 +319,6 @@ export default function App() {
     } catch (error) { message.error('Check-out ไม่สำเร็จ'); } 
   };
 
-  // 🚨 ฟังก์ชันสั่งอพยพฉุกเฉิน พร้อมส่งสัญญาณวิทยุให้หน้าจอทุกคนเด้ง!
   const handleEvacuateAll = async () => { 
     try { 
       await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); 
@@ -372,16 +370,62 @@ export default function App() {
       const ppeString = values.ppe && values.ppe.length > 0 ? `\n🛡️ อุปกรณ์ PPE: ${values.ppe.join(', ')}` : ''; 
       const safetyString = values.safety_measures && values.safety_measures.length > 0 ? `\n⚠️ มาตรการ: ${values.safety_measures.join(', ')}` : ''; 
       const workerString = values.workers ? `\n👷 จำนวนผู้ปฏิบัติงาน: ${values.workers} คน` : ''; 
-      const finalDescription = `${values.description || 'ไม่มีรายละเอียดเพิ่มเติม'}${workerString}${ppeString}${safetyString}`;
+      
+      // 🟢 เฟส 1: รวบรวมข้อมูลพิเศษที่เพิ่มเข้ามา (ถ้ามี) จับยัดเข้า Description ชั่วคราวเพื่อให้หลังบ้านเดิมรับได้
+      const gasTesterStr = values.gas_tester_name ? `\n🔎 ผู้ตรวจสอบก๊าซ: ${values.gas_tester_name}` : '';
+      const standbyStr = values.standby_person_name ? `\n👁️ ผู้เฝ้าระวัง: ${values.standby_person_name}` : '';
+      const commsStr = values.communication_equip ? `\n📱 อุปกรณ์สื่อสาร: ${values.communication_equip}` : '';
+      const isolationStr = values.isolation_checklist && values.isolation_checklist.length > 0 
+        ? `\n🔒 การตัดแยกระบบ: ${values.isolation_checklist.join(', ')}` : '';
+
+      const finalDescription = `${values.description || 'ไม่มีรายละเอียดเพิ่มเติม'}${workerString}${ppeString}${safetyString}${gasTesterStr}${standbyStr}${commsStr}${isolationStr}`;
       
       const payload = { title: values.title, description: finalDescription, permit_type: values.permit_type, location_detail: values.location_detail, start_time: startTime, end_time: endTime, applicant_id: currentUser.id, attachment_url: fileUrl, attachment_name: fileNameToSave, workers: values.workers };
       await axios.post('https://safetyos-backend.onrender.com/permits', payload);
-      message.success('ส่งคำขอ Permit สำเร็จ!'); setIsModalOpen(false); form.resetFields(); setFileList([]); fetchPermits();
+      message.success('ส่งคำขอ Permit สำเร็จ!'); 
+      setIsModalOpen(false); 
+      form.resetFields(); 
+      setFileList([]); 
+      setSelectedPermitTypeForm(''); // รีเซ็ตสถานะฟอร์ม
+      fetchPermits();
     } catch (error: any) { message.error(`ผิดพลาด: ${error.response?.data?.error || 'สร้างรายการไม่สำเร็จ'}`); } finally { setIsSubmitting(false); }
   };
 
-  const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT') => {
-    try { let nextStatus = ''; if (action === 'REJECT') nextStatus = 'REJECTED'; else { if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; } await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: action === 'APPROVE' ? 'อนุมัติผ่านระบบ E-Permit' : 'ไม่อนุมัติตามมาตรการความปลอดภัย' }); message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); fetchPermits(); } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
+  // 🟢 เฟส 2: ฟังก์ชันอัปเดตสถานะที่รองรับวงจรชีวิต Permit ครบถ้วน (Approve, Reject, Close, Revoke)
+  const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT' | 'CLOSE' | 'REVOKE') => {
+    try { 
+      let nextStatus = ''; 
+      let commentLog = '';
+
+      if (action === 'REJECT') {
+        nextStatus = 'REJECTED'; 
+        commentLog = 'ไม่อนุมัติตามมาตรการความปลอดภัย';
+      } 
+      else if (action === 'CLOSE') {
+        nextStatus = 'CLOSED';
+        commentLog = 'ปิดงานและคืนพื้นที่เรียบร้อย';
+      }
+      else if (action === 'REVOKE') {
+        nextStatus = 'REVOKED';
+        commentLog = 'ถูกสั่งระงับงานฉุกเฉินโดย จป./เจ้าของพื้นที่';
+      }
+      else if (action === 'APPROVE') { 
+        if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; 
+        else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; 
+        commentLog = 'อนุมัติผ่านระบบ E-Permit';
+      } 
+
+      await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { 
+        status: nextStatus, 
+        approver_id: currentUser.id, 
+        comment: commentLog 
+      }); 
+      
+      message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); 
+      fetchPermits(); 
+    } catch (error) { 
+      message.error('ไม่สามารถอัปเดตสถานะได้'); 
+    }
   };
 
   const handleOpenScannerClick = async () => {
@@ -625,32 +669,85 @@ export default function App() {
             <div style={{ height: '70vh', display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '12px', overflow: 'hidden' }}>{previewType === 'image' ? <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} />}</div>
           </Modal>
 
-          <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); }} width={750} centered styles={{ body: { padding: 0 } }}>
+          {/* 🟢 เฟส 1: อัปเกรดฟอร์มขอ Permit ให้ฉลาดขึ้น (Dynamic Form) */}
+          <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); }} width={750} centered styles={{ body: { padding: 0 } }}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-t-xl text-white shadow-sm">
               <h2 className="text-2xl font-bold m-0 flex items-center gap-3 text-white"><div className="bg-white/20 p-2 rounded-lg"><FileTextOutlined /></div>ระบบขออนุญาตทำงาน (E-Permit)</h2>
               <p className="text-blue-100 text-sm mt-2 opacity-90 mb-0">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการปฏิบัติงาน และเพื่อความรวดเร็วในการอนุมัติ</p>
             </div>
-            <div className="p-4 md:p-8 bg-slate-50 overflow-y-auto max-h-[80vh]">
+            
+            <div className="p-4 md:p-8 bg-slate-50 overflow-y-auto max-h-[80vh] custom-scrollbar">
               <Form form={form} layout="vertical" onFinish={handleCreatePermit} requiredMark={false}>
+                
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-blue-700 font-bold border-b border-slate-100 pb-3"><AppstoreAddOutlined className="text-lg" /> ข้อมูลพื้นฐานของงาน</div>
                   <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้องาน (Title) <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุหัวข้องาน' }]} extra={<span className="text-xs text-slate-400">ระบุชื่องานหรือรหัสอุปกรณ์ให้ชัดเจน</span>}><Input size="large" placeholder="เช่น ซ่อมบำรุงปั๊มน้ำ P-101, งานเชื่อมโครงหลังคา" className="rounded-xl border-slate-300" /></Form.Item>
                   <Row gutter={16}>
-                    <Col xs={24} sm={12}><Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'เลือกประเภทงาน' }]}><Select size="large" placeholder="เลือกประเภทงาน" className="w-full"><Select.Option value="HOT_WORK">🔥 Hot Work (งานร้อน)</Select.Option><Select.Option value="CONFINED_SPACE">🕳️ Confined Space (ที่อับอากาศ)</Select.Option><Select.Option value="ELECTRICAL">⚡ Electrical (ไฟฟ้า)</Select.Option><Select.Option value="COLD_WORK">❄️ Cold Work (ทั่วไป)</Select.Option></Select></Form.Item></Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'เลือกประเภทงาน' }]}>
+                        {/* 🟢 อัปเดต State ทันทีที่เปลี่ยนประเภทงาน */}
+                        <Select size="large" placeholder="เลือกประเภทงาน" className="w-full" onChange={(val) => setSelectedPermitTypeForm(val)}>
+                          <Select.Option value="HOT_WORK">🔥 Hot Work (งานร้อน)</Select.Option>
+                          <Select.Option value="CONFINED_SPACE">🕳️ Confined Space (ที่อับอากาศ)</Select.Option>
+                          <Select.Option value="ELECTRICAL">⚡ Electrical (ไฟฟ้า)</Select.Option>
+                          <Select.Option value="COLD_WORK">❄️ Cold Work (ทั่วไป)</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
                     <Col xs={24} sm={12}><Form.Item name="workers" label={<span className="font-bold text-slate-700">จำนวนคนปฏิบัติงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุจำนวนคน' }]}><InputNumber size="large" min={1} placeholder="0" className="w-full rounded-xl" /></Form.Item></Col>
                   </Row>
                   <Form.Item name="location_detail" label={<span className="font-bold text-slate-700">สถานที่ปฏิบัติงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุสถานที่' }]} style={{marginBottom: 0}}><Input size="large" prefix={<EnvironmentOutlined className="text-slate-400 mr-2" />} placeholder="ระบุตึก / ชั้น / แผนก / โซน" className="rounded-xl border-slate-300" /></Form.Item>
                 </div>
+
                 <div className="bg-blue-50 p-5 rounded-2xl shadow-sm border border-blue-100 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-blue-800 font-bold border-b border-blue-200 pb-3"><HourglassOutlined className="text-lg" /> ระยะเวลาปฏิบัติงาน <span className="text-red-500">*</span></div>
                   <Form.Item name="timeRange" rules={[{ required: true, message: 'กรุณาระบุเวลาเริ่มและสิ้นสุด' }]} style={{marginBottom: 0}}><ModernDateRange /></Form.Item>
                 </div>
+
+                {/* 🟢 ส่วน Dynamic Form: จะแสดงเฉพาะเมื่อเลือก Hot Work หรือ Confined Space เท่านั้น */}
+                {(selectedPermitTypeForm === 'HOT_WORK' || selectedPermitTypeForm === 'CONFINED_SPACE') && (
+                  <div className="bg-rose-50 p-5 rounded-2xl shadow-sm border border-rose-200 mb-6 animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
+                    <div className="flex items-center gap-2 mb-4 text-rose-700 font-extrabold border-b border-rose-200 pb-3">
+                      <WarningOutlined className="text-lg" /> ข้อมูลบังคับทางกฎหมาย (Mandatory Fields)
+                    </div>
+                    
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="gas_tester_name" label={<span className="font-bold text-slate-700">ผู้ตรวจสอบสภาพอากาศ (Gas Tester) <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุชื่อผู้ตรวจสอบก๊าซ' }]}>
+                          <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-xl border-slate-300" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="standby_person_name" label={<span className="font-bold text-slate-700">ผู้เฝ้าระวัง (Standby Person) <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุชื่อผู้เฝ้าระวัง' }]}>
+                          <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-xl border-slate-300" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {selectedPermitTypeForm === 'CONFINED_SPACE' && (
+                      <Form.Item name="communication_equip" label={<span className="font-bold text-slate-700">อุปกรณ์สื่อสารกรณีฉุกเฉิน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุอุปกรณ์สื่อสาร' }]}>
+                        <Select size="large" placeholder="ระบุอุปกรณ์ที่ใช้ติดต่อกับผู้เฝ้าระวัง" className="w-full">
+                          <Select.Option value="วิทยุสื่อสาร (Walkie Talkie)"><PhoneOutlined /> วิทยุสื่อสาร (Walkie Talkie)</Select.Option>
+                          <Select.Option value="โทรศัพท์มือถือ (Mobile Phone)"><PhoneOutlined /> โทรศัพท์มือถือ (Mobile Phone)</Select.Option>
+                          <Select.Option value="อื่นๆ (Others)"><PhoneOutlined /> อื่นๆ</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    )}
+
+                    <Form.Item name="isolation_checklist" label={<span className="font-bold text-slate-700">มาตรการตัดแยกระบบ (Isolation)</span>} style={{marginBottom: 0}}>
+                      <ModernToggleChips activeColor="bg-rose-500 text-white border-rose-500" options={[{label:'Process Isolation (ปิดวาล์ว/ระบายแรงดัน)', value:'PROCESS'}, {label:'Energy Isolation (LOTO/ตัดไฟ)', value:'ENERGY'}]} />
+                    </Form.Item>
+                  </div>
+                )}
+
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-orange-600 font-bold border-b border-slate-100 pb-3"><SafetyCertificateOutlined className="text-lg" /> การเตรียมความพร้อมด้านความปลอดภัย</div>
                   <Form.Item name="ppe" label={<span className="font-bold text-slate-700">อุปกรณ์ป้องกันภัย (PPE) ที่จำเป็น</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อเลือกอุปกรณ์ที่ต้องใช้ในงานนี้ (เลือกได้มากกว่า 1)</span>}><ModernToggleChips activeColor="bg-blue-600 text-white border-blue-600" options={[{label:'หมวกนิรภัย', value:'Helmet'}, {label:'รองเท้านิรภัย', value:'Shoes'}, {label:'ถุงมือ', value:'Gloves'}, {label:'แว่นตานิรภัย', value:'Glasses'}, {label:'เข็มขัดกันตก', value:'Harness'}, {label:'ที่อุดหู', value:'Earplugs'}]} /></Form.Item>
-                  <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 mt-2 block">มาตรการควบคุมพื้นที่</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อยืนยันมาตรการที่เตรียมไว้แล้ว</span>}><ModernToggleChips activeColor="bg-emerald-500 text-white border-emerald-500" options={[{label:'ถังดับเพลิง', value:'Fire Extinguisher'}, {label:'ผู้เฝระวัง', value:'Standby Person'}, {label:'ตรวจวัดก๊าซ', value:'Gas Testing'}, {label:'กั้นพื้นที่', value:'Barricade'}, {label:'ตัดระบบ (LOTO)', value:'LOTO'}]} /></Form.Item>
+                  <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 mt-2 block">มาตรการควบคุมพื้นที่</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อยืนยันมาตรการที่เตรียมไว้แล้ว</span>}><ModernToggleChips activeColor="bg-emerald-500 text-white border-emerald-500" options={[{label:'ถังดับเพลิง', value:'Fire Extinguisher'}, {label:'ผู้เฝ้าระวัง', value:'Standby Person'}, {label:'ตรวจวัดก๊าซ', value:'Gas Testing'}, {label:'กั้นพื้นที่', value:'Barricade'}, {label:'ตัดระบบ (LOTO)', value:'LOTO'}]} /></Form.Item>
                   <Form.Item name="description" label={<span className="font-bold text-slate-700 mt-2 block">รายละเอียดเพิ่มเติม / หมายเหตุ</span>} style={{marginBottom: 0}}><Input.TextArea rows={2} placeholder="เช่น ข้อควรระวังพิเศษ, ชื่อผู้เฝ้าระวัง" className="rounded-xl border-slate-300" /></Form.Item>
                 </div>
+                
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-8">
                   <div className="flex items-center gap-2 mb-2"><span className="font-bold text-slate-700">เอกสาร JSA (Job Safety Analysis) <span className="text-red-500">*</span></span></div>
                   <div className="text-xs text-slate-500 mb-4"><InfoCircleOutlined /> จำเป็นต้องแนบเอกสารประเมินความเสี่ยงก่อนเริ่มงาน</div>
@@ -663,9 +760,10 @@ export default function App() {
                     </Upload>
                   </Form.Item>
                 </div>
-                <div className="flex gap-4 sticky bottom-0 bg-slate-50 py-2 border-t border-slate-200 mt-[-10px] pt-4 z-10">
-                  <Button size="large" onClick={() => setIsModalOpen(false)} style={{ flex: 1, borderRadius: '16px', height: '56px', fontWeight: 'bold' }}>ยกเลิก</Button>
-                  <Button size="large" type="primary" htmlType="submit" loading={isSubmitting} style={{ flex: 1, borderRadius: '16px', height: '56px', fontWeight: 'bold', background: '#2563eb', border: 'none', boxShadow: '0 10px 15px -3px rgba(37,99,235,0.3)' }}>ส่งคำขออนุญาต</Button>
+                
+                <div className="flex gap-4 sticky bottom-0 bg-slate-50 py-4 border-t border-slate-200 mt-[-10px] z-10">
+                  <Button size="large" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-2xl h-[56px] font-bold bg-white text-slate-600 border border-slate-300 hover:border-slate-400 hover:text-slate-800">ยกเลิก</Button>
+                  <Button size="large" type="primary" htmlType="submit" loading={isSubmitting} className="flex-1 rounded-2xl h-[56px] font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-xl shadow-indigo-500/30">ส่งคำขออนุญาต</Button>
                 </div>
               </Form>
             </div>
