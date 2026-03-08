@@ -333,7 +333,26 @@ export default function App() {
   };
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
-  const handleViewDetails = (record: any) => { setSelectedPermitDetail(record); setIsDetailModalOpen(true); };
+  
+  // 🟢 เพิ่ม State สำหรับเก็บประวัติก๊าซของ Permit ที่กำลังเปิดดู
+  const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
+
+  // 🟢 อัปเกรดฟังก์ชันตอนกดดูรายละเอียด ให้มันวิ่งไปดึงค่าก๊าซจากหลังบ้านมาด้วย
+  const handleViewDetails = async (record: any) => { 
+    setSelectedPermitDetail(record); 
+    setIsDetailModalOpen(true); 
+    setGasLogsDetail([]); // เคลียร์ของเก่าก่อน
+    
+    // ถ้าเป็น Hot Work หรือ Confined Space ให้ไปดึงประวัติก๊าซมาโชว์
+    if (record.permit_type === 'HOT_WORK' || record.permit_type === 'CONFINED_SPACE') {
+      try {
+        const res = await axios.get(`https://safetyos-backend.onrender.com/permits/${record.id}/gas-logs`);
+        setGasLogsDetail(res.data);
+      } catch (error) {
+        console.error('ไม่สามารถดึงประวัติก๊าซได้', error);
+      }
+    }
+  };
   
   const handleExportPDF = async () => { 
     const element = document.getElementById('pdf-document-content'); 
@@ -380,8 +399,27 @@ export default function App() {
 
       const finalDescription = `${values.description || 'ไม่มีรายละเอียดเพิ่มเติม'}${workerString}${ppeString}${safetyString}${gasTesterStr}${standbyStr}${commsStr}${isolationStr}`;
       
-      const payload = { title: values.title, description: finalDescription, permit_type: values.permit_type, location_detail: values.location_detail, start_time: startTime, end_time: endTime, applicant_id: currentUser.id, attachment_url: fileUrl, attachment_name: fileNameToSave, workers: values.workers };
+      const payload = { 
+        title: values.title, 
+        description: finalDescription, 
+        permit_type: values.permit_type, 
+        location_detail: values.location_detail, 
+        start_time: startTime, 
+        end_time: endTime, 
+        applicant_id: currentUser.id, 
+        attachment_url: fileUrl, 
+        attachment_name: fileNameToSave, 
+        workers: values.workers,
+        
+        // 👇 เพิ่ม 4 บรรทัดนี้ เพื่อให้ข้อมูลวิ่งเข้าตารางใหม่ตรงๆ ไม่เป็น NULL
+        gas_tester_name: values.gas_tester_name || null,
+        standby_person_name: values.standby_person_name || null,
+        communication_equip: values.communication_equip || null,
+        isolation_checklist: values.isolation_checklist || null
+      };
+
       await axios.post('https://safetyos-backend.onrender.com/permits', payload);
+      
       message.success('ส่งคำขอ Permit สำเร็จ!'); 
       setIsModalOpen(false); 
       form.resetFields(); 
@@ -644,10 +682,43 @@ export default function App() {
                       <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between"><span className="text-xs font-bold text-slate-400">สิ้นสุด</span><span className="font-bold text-slate-700">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('DD/MM/YY') : '-'} <span className="text-red-500 ml-1">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('HH:mm') : '-'}</span></span></div>
                     </div>
                   </div>
+                  
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
                     <div className="flex items-center gap-2 mb-3 text-orange-600 font-bold text-sm"><SafetyCertificateOutlined /> มาตรการความปลอดภัย</div>
                     <div className="bg-orange-50/50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-orange-100 font-medium">{String(selectedPermitDetail?.description || '-')}</div>
                   </div>
+
+                  {/* 🟢 วางโค้ดนี้แทรกตรงนี้เลยครับ! (กล่องแสดงปริมาณก๊าซ) */}
+                  {gasLogsDetail.length > 0 && (
+                    <div className="bg-cyan-50 p-4 rounded-2xl shadow-sm border border-cyan-200 mb-6">
+                      <div className="flex items-center gap-2 mb-3 text-cyan-800 font-bold text-sm">
+                        <DashboardOutlined /> ผลตรวจวัดสภาพอากาศหน้างาน (Gas Test Logs)
+                      </div>
+                      <div className="space-y-3">
+                        {gasLogsDetail.map((log: any, index: number) => (
+                          <div key={log.id || index} className="bg-white p-3 rounded-xl border border-cyan-100 shadow-sm text-xs">
+                            <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
+                              <span className="font-bold text-slate-600 flex items-center gap-1">
+                                <ClockCircleOutlined /> {dayjs(log.recorded_at).format('DD/MM/YYYY HH:mm')}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {log.safety_talk_done && <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[10px]">Safety Talk ✓</span>}
+                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[10px]"><UserOutlined /> {log.tester?.full_name || 'ผู้ตรวจสอบ'}</span>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">O₂</div><div className="font-bold text-blue-600 text-sm">{log.o2_level}%</div></div>
+                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">LEL</div><div className="font-bold text-orange-500 text-sm">{log.lel_level}%</div></div>
+                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">CO</div><div className="font-bold text-rose-500 text-sm">{log.co_level}</div></div>
+                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">H₂S</div><div className="font-bold text-purple-600 text-sm">{log.h2s_level}</div></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* 🟢 จบส่วนแทรก */}
+
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
                     <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">{selectedPermitDetail?.applicant?.full_name || '-'}</div><span className="text-[10px] font-bold text-slate-500 uppercase">ผู้ขออนุญาต</span>
@@ -744,7 +815,7 @@ export default function App() {
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
                   <div className="flex items-center gap-2 mb-4 text-orange-600 font-bold border-b border-slate-100 pb-3"><SafetyCertificateOutlined className="text-lg" /> การเตรียมความพร้อมด้านความปลอดภัย</div>
                   <Form.Item name="ppe" label={<span className="font-bold text-slate-700">อุปกรณ์ป้องกันภัย (PPE) ที่จำเป็น</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อเลือกอุปกรณ์ที่ต้องใช้ในงานนี้ (เลือกได้มากกว่า 1)</span>}><ModernToggleChips activeColor="bg-blue-600 text-white border-blue-600" options={[{label:'หมวกนิรภัย', value:'Helmet'}, {label:'รองเท้านิรภัย', value:'Shoes'}, {label:'ถุงมือ', value:'Gloves'}, {label:'แว่นตานิรภัย', value:'Glasses'}, {label:'เข็มขัดกันตก', value:'Harness'}, {label:'ที่อุดหู', value:'Earplugs'}]} /></Form.Item>
-                  <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 mt-2 block">มาตรการควบคุมพื้นที่</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อยืนยันมาตรการที่เตรียมไว้แล้ว</span>}><ModernToggleChips activeColor="bg-emerald-500 text-white border-emerald-500" options={[{label:'ถังดับเพลิง', value:'Fire Extinguisher'}, {label:'ผู้เฝ้าระวัง', value:'Standby Person'}, {label:'ตรวจวัดก๊าซ', value:'Gas Testing'}, {label:'กั้นพื้นที่', value:'Barricade'}, {label:'ตัดระบบ (LOTO)', value:'LOTO'}]} /></Form.Item>
+                  <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 mt-2 block">มาตรการควบคุมพื้นที่</span>} extra={<span className="text-xs text-slate-400">แตะเพื่อยืนยันมาตรการที่เตรียมไว้แล้ว</span>}><ModernToggleChips activeColor="bg-emerald-500 text-white border-emerald-500" options={[{label:'ถังดับเพลิง', value:'Fire Extinguisher'}, {label:'ผู้เฝระวัง', value:'Standby Person'}, {label:'ตรวจวัดก๊าซ', value:'Gas Testing'}, {label:'กั้นพื้นที่', value:'Barricade'}, {label:'ตัดระบบ (LOTO)', value:'LOTO'}]} /></Form.Item>
                   <Form.Item name="description" label={<span className="font-bold text-slate-700 mt-2 block">รายละเอียดเพิ่มเติม / หมายเหตุ</span>} style={{marginBottom: 0}}><Input.TextArea rows={2} placeholder="เช่น ข้อควรระวังพิเศษ, ชื่อผู้เฝ้าระวัง" className="rounded-xl border-slate-300" /></Form.Item>
                 </div>
                 
