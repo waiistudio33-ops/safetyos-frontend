@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   Layout, Menu, Typography, Card, Row, Col, 
@@ -18,16 +18,10 @@ import {
 } from '@ant-design/icons';
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
-import 'dayjs/locale/th';
-// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ ไม่ว่าเซิร์ฟเวอร์จะอยู่ที่ไหน
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.locale('th');
-dayjs.tz.setDefault('Asia/Bangkok');
-import html2pdf from 'html2pdf.js'; 
 import liff from '@line/liff'; 
+
+// 🟢 อิมพอร์ตพระเอกตัวใหม่ของเรา (react-to-print)
+import { useReactToPrint } from 'react-to-print';
 
 import WorkPermitQueue from "./components/WorkPermitQueue";
 import BBSHistory from "./components/BBSHistory";
@@ -42,6 +36,15 @@ import ELearning from './components/ELearning';
 import EquipmentInspection from './components/EquipmentInspection'; 
 import Dashboard from './components/Dashboard'; 
 import { supabase } from './supabase'; 
+
+// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ (ถ้ายังไม่ได้ลง plugin timezone ให้ใช้แบบเดิมไปก่อนได้ครับ)
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import 'dayjs/locale/th';
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('th');
+dayjs.tz.setDefault('Asia/Bangkok');
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -135,10 +138,8 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false); 
-  
   const [isSubmittingBbs, setIsSubmittingBbs] = useState(false); 
   const [activeBbsTab, setActiveBbsTab] = useState('form'); 
-
   const [fileList, setFileList] = useState<any[]>([]); 
   const [form] = Form.useForm();
   const [loginForm] = Form.useForm(); 
@@ -149,7 +150,24 @@ export default function App() {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedPermitDetail, setSelectedPermitDetail] = useState<any>(null);
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  // 🌟 [ระบบ Print ตัวใหม่] สร้าง Ref สำหรับพิมพ์ PDF
+  const documentRef = useRef<HTMLDivElement>(null);
+  
+  const handlePrint = useReactToPrint({
+    // 🟢 แก้ไขจุดนี้: เวอร์ชันใหม่ต้องเขียนแบบนี้ครับ
+    contentRef: documentRef, 
+    documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
+    onBeforeGetContent: () => {
+      if (liff.isInClient()) {
+        message.warning('⚠️ แอป LINE อาจไม่รองรับการเซฟไฟล์ ให้กดเมนูขวาบนแล้วเลือก "เปิดในเบราว์เซอร์"', 8);
+      }
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
+      message.success('เตรียมไฟล์ PDF เรียบร้อย');
+    }
+  });
 
   const [bbsRecords, setBbsRecords] = useState<any[]>([]);
   const [activeConfinedPermits, setActiveConfinedPermits] = useState<any[]>([]);
@@ -207,10 +225,8 @@ export default function App() {
     initializeApp();
   }, []);
 
-  // 🟢 เปิดคลื่นวิทยุรับสัญญาณจาก Supabase (ทำงานตลอดเวลาที่เปิดแอป)
   useEffect(() => {
     const safetyChannel = supabase.channel('safety-alert-channel');
-
     safetyChannel
       .on('broadcast', { event: 'EMERGENCY_EVACUATE' }, (payload) => {
         setEmergencyMsg(payload.payload.message);
@@ -223,9 +239,7 @@ export default function App() {
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(safetyChannel);
-    };
+    return () => { supabase.removeChannel(safetyChannel); };
   }, []);
 
   const fetchUsers = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/users'); setUsers(res.data); } catch (error) {} };
@@ -292,9 +306,7 @@ export default function App() {
       setActiveBbsTab('history'); 
       return Promise.resolve();
     } catch (error: any) { 
-      console.error("BBS Save Error:", error.response?.data || error);
-      const errMsg = error.response?.data?.error || error.response?.data?.message || 'โปรดตรวจสอบข้อมูลให้ครบถ้วน';
-      message.error(`บันทึกไม่สำเร็จ: ${errMsg}`); 
+      message.error(`บันทึกไม่สำเร็จ: โปรดตรวจสอบข้อมูลให้ครบถ้วน`); 
       return Promise.reject(error);
     } finally {
       setIsSubmittingBbs(false);
@@ -306,11 +318,7 @@ export default function App() {
       await axios.post('https://safetyos-backend.onrender.com/confined-space/in', { ...values, permit_id: selectedConfinedPermit }); 
       message.success('Check-in สำเร็จ!'); 
       fetchEntries(selectedConfinedPermit!); 
-      
-      await supabase.channel('safety-alert-channel').send({
-        type: 'broadcast', event: 'CONFINED_SPACE_UPDATE',
-        payload: { permit_id: selectedConfinedPermit }
-      });
+      await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } });
     } catch (error) { message.error('Check-in ไม่สำเร็จ'); } 
   };
 
@@ -319,11 +327,7 @@ export default function App() {
       await axios.put(`https://safetyos-backend.onrender.com/confined-space/out/${entryId}`); 
       message.success('นำรายชื่อออกสำเร็จ'); 
       fetchEntries(selectedConfinedPermit!); 
-
-      await supabase.channel('safety-alert-channel').send({
-        type: 'broadcast', event: 'CONFINED_SPACE_UPDATE',
-        payload: { permit_id: selectedConfinedPermit }
-      });
+      await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } });
     } catch (error) { message.error('Check-out ไม่สำเร็จ'); } 
   };
 
@@ -332,26 +336,19 @@ export default function App() {
       await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); 
       message.success('ส่งคำสั่งอพยพเรียบร้อย!'); 
       fetchEntries(selectedConfinedPermit!); 
-
-      await supabase.channel('safety-alert-channel').send({
-        type: 'broadcast', event: 'EMERGENCY_EVACUATE',
-        payload: { message: `สั่งอพยพพื้นที่โดย: ${currentUser.full_name}` }
-      });
+      await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'EMERGENCY_EVACUATE', payload: { message: `สั่งอพยพพื้นที่โดย: ${currentUser.full_name}` } });
     } catch (error) { message.error('เกิดข้อผิดพลาดในการสั่งอพยพ'); } 
   };
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) setPreviewType('image'); else setPreviewType('pdf'); setIsPreviewOpen(true); };
   
-  // 🟢 เพิ่ม State สำหรับเก็บประวัติก๊าซของ Permit ที่กำลังเปิดดู
   const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
 
-  // 🟢 อัปเกรดฟังก์ชันตอนกดดูรายละเอียด ให้มันวิ่งไปดึงค่าก๊าซจากหลังบ้านมาด้วย
   const handleViewDetails = async (record: any) => { 
     setSelectedPermitDetail(record); 
     setIsDetailModalOpen(true); 
-    setGasLogsDetail([]); // เคลียร์ของเก่าก่อน
+    setGasLogsDetail([]); 
     
-    // ถ้าเป็น Hot Work หรือ Confined Space ให้ไปดึงประวัติก๊าซมาโชว์
     if (record.permit_type === 'HOT_WORK' || record.permit_type === 'CONFINED_SPACE') {
       try {
         const res = await axios.get(`https://safetyos-backend.onrender.com/permits/${record.id}/gas-logs`);
@@ -360,19 +357,6 @@ export default function App() {
         console.error('ไม่สามารถดึงประวัติก๊าซได้', error);
       }
     }
-  };
-  
-  const handleExportPDF = async () => { 
-    const element = document.getElementById('pdf-document-content'); 
-    if (!element) return; 
-    if (liff.isInClient()) message.warning('⚠️ แอป LINE อาจไม่รองรับการโหลดไฟล์ แนะนำให้เปิดผ่าน Chrome/Safari (กดเมนูขวาบน)', 8);
-    setIsExportingPDF(true); 
-    const hideLoadingMsg = message.loading('กำลังประมวลผลไฟล์ PDF กรุณารอสักครู่...', 0); 
-    try {
-      const opt = { margin: 0.5, filename: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
-      await html2pdf().set(opt).from(element).save(); 
-      hideLoadingMsg(); message.success('ดาวน์โหลดไฟล์ PDF สำเร็จ!'); 
-    } catch (error) { hideLoadingMsg(); message.error('ระบบสร้างไฟล์ขัดข้อง', 6); } finally { setIsExportingPDF(false); }
   };
   
   const handleCreatePermit = async (values: any) => {
@@ -398,7 +382,6 @@ export default function App() {
       const safetyString = values.safety_measures && values.safety_measures.length > 0 ? `\n⚠️ มาตรการ: ${values.safety_measures.join(', ')}` : ''; 
       const workerString = values.workers ? `\n👷 จำนวนผู้ปฏิบัติงาน: ${values.workers} คน` : ''; 
       
-      // 🟢 เฟส 1: รวบรวมข้อมูลพิเศษที่เพิ่มเข้ามา (ถ้ามี) จับยัดเข้า Description ชั่วคราวเพื่อให้หลังบ้านเดิมรับได้
       const gasTesterStr = values.gas_tester_name ? `\n🔎 ผู้ตรวจสอบก๊าซ: ${values.gas_tester_name}` : '';
       const standbyStr = values.standby_person_name ? `\n👁️ ผู้เฝ้าระวัง: ${values.standby_person_name}` : '';
       const commsStr = values.communication_equip ? `\n📱 อุปกรณ์สื่อสาร: ${values.communication_equip}` : '';
@@ -418,8 +401,6 @@ export default function App() {
         attachment_url: fileUrl, 
         attachment_name: fileNameToSave, 
         workers: values.workers,
-        
-        // 👇 เพิ่ม 4 บรรทัดนี้ เพื่อให้ข้อมูลวิ่งเข้าตารางใหม่ตรงๆ ไม่เป็น NULL
         gas_tester_name: values.gas_tester_name || null,
         standby_person_name: values.standby_person_name || null,
         communication_equip: values.communication_equip || null,
@@ -427,51 +408,31 @@ export default function App() {
       };
 
       await axios.post('https://safetyos-backend.onrender.com/permits', payload);
-      
       message.success('ส่งคำขอ Permit สำเร็จ!'); 
       setIsModalOpen(false); 
       form.resetFields(); 
       setFileList([]); 
-      setSelectedPermitTypeForm(''); // รีเซ็ตสถานะฟอร์ม
+      setSelectedPermitTypeForm('');
       fetchPermits();
-    } catch (error: any) { message.error(`ผิดพลาด: ${error.response?.data?.error || 'สร้างรายการไม่สำเร็จ'}`); } finally { setIsSubmitting(false); }
+    } catch (error: any) { message.error(`ผิดพลาด: สร้างรายการไม่สำเร็จ`); } finally { setIsSubmitting(false); }
   };
 
-  // 🟢 เฟส 2: ฟังก์ชันอัปเดตสถานะที่รองรับวงจรชีวิต Permit ครบถ้วน (Approve, Reject, Close, Revoke)
   const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT' | 'CLOSE' | 'REVOKE') => {
     try { 
       let nextStatus = ''; 
       let commentLog = '';
-
-      if (action === 'REJECT') {
-        nextStatus = 'REJECTED'; 
-        commentLog = 'ไม่อนุมัติตามมาตรการความปลอดภัย';
-      } 
-      else if (action === 'CLOSE') {
-        nextStatus = 'CLOSED';
-        commentLog = 'ปิดงานและคืนพื้นที่เรียบร้อย';
-      }
-      else if (action === 'REVOKE') {
-        nextStatus = 'REVOKED';
-        commentLog = 'ถูกสั่งระงับงานฉุกเฉินโดย จป./เจ้าของพื้นที่';
-      }
+      if (action === 'REJECT') { nextStatus = 'REJECTED'; commentLog = 'ไม่อนุมัติตามมาตรการความปลอดภัย'; } 
+      else if (action === 'CLOSE') { nextStatus = 'CLOSED'; commentLog = 'ปิดงานและคืนพื้นที่เรียบร้อย'; }
+      else if (action === 'REVOKE') { nextStatus = 'REVOKED'; commentLog = 'ถูกสั่งระงับงานฉุกเฉินโดย จป./เจ้าของพื้นที่'; }
       else if (action === 'APPROVE') { 
         if (currentStatus === 'PENDING_AREA_OWNER') nextStatus = 'PENDING_SAFETY'; 
         else if (currentStatus === 'PENDING_SAFETY') nextStatus = 'APPROVED'; 
         commentLog = 'อนุมัติผ่านระบบ E-Permit';
       } 
-
-      await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { 
-        status: nextStatus, 
-        approver_id: currentUser.id, 
-        comment: commentLog 
-      }); 
-      
+      await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id, comment: commentLog }); 
       message.success(`ดำเนินการ ${action} เรียบร้อยแล้ว`); 
       fetchPermits(); 
-    } catch (error) { 
-      message.error('ไม่สามารถอัปเดตสถานะได้'); 
-    }
+    } catch (error) { message.error('ไม่สามารถอัปเดตสถานะได้'); }
   };
 
   const handleOpenScannerClick = async () => {
@@ -661,84 +622,106 @@ export default function App() {
             </Content>
           </Layout>
 
-          {/* 🌟 NEW DETAILS MODAL */}
+          {/* =========================================================
+              🌟 NEW DETAILS MODAL (ปรับมาใช้ react-to-print)
+             ========================================================= */}
           <Modal title={null} open={isDetailModalOpen} onCancel={() => setIsDetailModalOpen(false)} width={700} footer={null} styles={{ body: { padding: 0 } }} centered>
             {selectedPermitDetail && (
-              <div id="pdf-document-content" className="bg-slate-50 rounded-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 md:p-8 text-white text-center rounded-t-xl relative">
-                  <div className="absolute top-4 right-4">{getStatusDisplayModern(selectedPermitDetail?.status || 'PENDING_AREA_OWNER')}</div>
-                  <FileTextOutlined className="text-4xl md:text-5xl mb-2 opacity-80" />
-                  <h2 className="text-2xl md:text-3xl font-bold m-0 tracking-widest text-white">WORK PERMIT</h2>
-                  <p className="text-blue-200 text-xs md:text-sm mt-1 mb-0">SafetyOS Enterprise Management</p>
-                </div>
-                <div className="p-4 md:p-6">
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
-                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                      <span className="text-gray-500 font-bold text-sm">เลขที่เอกสาร</span>
-                      <span className="text-base font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{selectedPermitDetail?.permit_number || '-'}</span>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><ToolOutlined /></div><div><p className="text-xs text-slate-400 m-0">หัวข้องาน</p><p className="font-bold text-slate-800 m-0 text-base">{selectedPermitDetail?.title || '-'}</p></div></div>
-                      <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><EnvironmentOutlined /></div><div><p className="text-xs text-slate-400 m-0">พื้นที่ปฏิบัติงาน</p><p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.location_detail || '-'}</p></div></div>
-                      <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><UserOutlined /></div><div><p className="text-xs text-slate-400 m-0">ผู้ขออนุญาต</p><p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.applicant?.full_name || 'ไม่ระบุชื่อ'} <span className="text-xs font-normal text-slate-400">({selectedPermitDetail?.applicant?.department || '-'})</span></p></div></div>
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">
-                    <div className="flex items-center gap-2 mb-3 text-blue-800 font-bold text-sm"><ClockCircleOutlined /> ระยะเวลาดำเนินการ</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between"><span className="text-xs font-bold text-slate-400">เริ่ม</span><span className="font-bold text-slate-700">{selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('DD/MM/YY') : '-'} <span className="text-blue-600 ml-1">{selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('HH:mm') : '-'}</span></span></div>
-                      <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between"><span className="text-xs font-bold text-slate-400">สิ้นสุด</span><span className="font-bold text-slate-700">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('DD/MM/YY') : '-'} <span className="text-red-500 ml-1">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('HH:mm') : '-'}</span></span></div>
-                    </div>
+              <div className="bg-slate-50 rounded-xl overflow-hidden">
+                
+                {/* 🟢 คอนเทนเนอร์เป้าหมายที่จะถูก Print (ใช้ ref ตัวนี้) */}
+                <div id="pdf-document-content" ref={documentRef} className="bg-slate-50 pb-6" style={{ padding: '0.1px' }}>
+                  
+                  {/* Header ของเอกสาร */}
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 md:p-8 text-white text-center rounded-t-xl relative">
+                    <div className="absolute top-4 right-4">{getStatusDisplayModern(selectedPermitDetail?.status || 'PENDING_AREA_OWNER')}</div>
+                    <FileTextOutlined className="text-4xl md:text-5xl mb-2 opacity-80" />
+                    <h2 className="text-2xl md:text-3xl font-bold m-0 tracking-widest text-white">WORK PERMIT</h2>
+                    <p className="text-blue-200 text-xs md:text-sm mt-1 mb-0">SafetyOS Enterprise Management</p>
                   </div>
                   
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                    <div className="flex items-center gap-2 mb-3 text-orange-600 font-bold text-sm"><SafetyCertificateOutlined /> มาตรการความปลอดภัย</div>
-                    <div className="bg-orange-50/50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-orange-100 font-medium">{String(selectedPermitDetail?.description || '-')}</div>
-                  </div>
-
-                  {/* 🟢 วางโค้ดนี้แทรกตรงนี้เลยครับ! (กล่องแสดงปริมาณก๊าซ) */}
-                  {gasLogsDetail.length > 0 && (
-                    <div className="bg-cyan-50 p-4 rounded-2xl shadow-sm border border-cyan-200 mb-6">
-                      <div className="flex items-center gap-2 mb-3 text-cyan-800 font-bold text-sm">
-                        <DashboardOutlined /> ผลตรวจวัดสภาพอากาศหน้างาน (Gas Test Logs)
+                  <div className="p-4 md:p-6">
+                    {/* ข้อมูลพื้นฐาน */}
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
+                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                        <span className="text-gray-500 font-bold text-sm">เลขที่เอกสาร</span>
+                        <span className="text-base font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{selectedPermitDetail?.permit_number || '-'}</span>
                       </div>
-                      <div className="space-y-3">
-                        {gasLogsDetail.map((log: any, index: number) => (
-                          <div key={log.id || index} className="bg-white p-3 rounded-xl border border-cyan-100 shadow-sm text-xs">
-                            <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
-                              <span className="font-bold text-slate-600 flex items-center gap-1">
-                                <ClockCircleOutlined /> {dayjs(log.recorded_at).format('DD/MM/YYYY HH:mm')}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {log.safety_talk_done && <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[10px]">Safety Talk ✓</span>}
-                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[10px]"><UserOutlined /> {log.tester?.full_name || 'ผู้ตรวจสอบ'}</span>
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><ToolOutlined /></div><div><p className="text-xs text-slate-400 m-0">หัวข้องาน</p><p className="font-bold text-slate-800 m-0 text-base">{selectedPermitDetail?.title || '-'}</p></div></div>
+                        <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><EnvironmentOutlined /></div><div><p className="text-xs text-slate-400 m-0">พื้นที่ปฏิบัติงาน</p><p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.location_detail || '-'}</p></div></div>
+                        <div className="flex items-start gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><UserOutlined /></div><div><p className="text-xs text-slate-400 m-0">ผู้ขออนุญาต</p><p className="font-semibold text-slate-700 m-0">{selectedPermitDetail?.applicant?.full_name || 'ไม่ระบุชื่อ'} <span className="text-xs font-normal text-slate-400">({selectedPermitDetail?.applicant?.department || '-'})</span></p></div></div>
+                      </div>
+                    </div>
+
+                    {/* ระยะเวลา */}
+                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">
+                      <div className="flex items-center gap-2 mb-3 text-blue-800 font-bold text-sm"><ClockCircleOutlined /> ระยะเวลาดำเนินการ</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between"><span className="text-xs font-bold text-slate-400">เริ่ม</span><span className="font-bold text-slate-700">{selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('DD/MM/YYYY HH:mm') : '-'}</span></div>
+                        <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between"><span className="text-xs font-bold text-slate-400">สิ้นสุด</span><span className="font-bold text-red-600">{selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('DD/MM/YYYY HH:mm') : '-'}</span></div>
+                      </div>
+                    </div>
+                    
+                    {/* มาตรการ */}
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                      <div className="flex items-center gap-2 mb-3 text-orange-600 font-bold text-sm"><SafetyCertificateOutlined /> มาตรการความปลอดภัย</div>
+                      <div className="bg-orange-50/50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-orange-100 font-medium">{String(selectedPermitDetail?.description || '-')}</div>
+                    </div>
+
+                    {/* ค่าก๊าซ */}
+                    {gasLogsDetail.length > 0 && (
+                      <div className="bg-cyan-50 p-4 rounded-2xl shadow-sm border border-cyan-200 mb-6">
+                        <div className="flex items-center gap-2 mb-3 text-cyan-800 font-bold text-sm">
+                          <DashboardOutlined /> ผลตรวจวัดสภาพอากาศหน้างาน (Gas Test Logs)
+                        </div>
+                        <div className="space-y-3">
+                          {gasLogsDetail.map((log: any, index: number) => (
+                            <div key={log.id || index} className="bg-white p-3 rounded-xl border border-cyan-100 shadow-sm text-xs">
+                              <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
+                                <span className="font-bold text-slate-600 flex items-center gap-1">
+                                  <ClockCircleOutlined /> {dayjs(log.recorded_at).format('DD/MM/YYYY HH:mm')}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {log.safety_talk_done && <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[10px]">Safety Talk ✓</span>}
+                                  <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[10px]"><UserOutlined /> {log.tester?.full_name || 'ผู้ตรวจสอบ'}</span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                                <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">O₂</div><div className="font-bold text-blue-600 text-sm">{log.o2_level}%</div></div>
+                                <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">LEL</div><div className="font-bold text-orange-500 text-sm">{log.lel_level}%</div></div>
+                                <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">CO</div><div className="font-bold text-rose-500 text-sm">{log.co_level}</div></div>
+                                <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">H₂S</div><div className="font-bold text-purple-600 text-sm">{log.h2s_level}</div></div>
                               </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center font-mono">
-                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">O₂</div><div className="font-bold text-blue-600 text-sm">{log.o2_level}%</div></div>
-                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">LEL</div><div className="font-bold text-orange-500 text-sm">{log.lel_level}%</div></div>
-                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">CO</div><div className="font-bold text-rose-500 text-sm">{log.co_level}</div></div>
-                              <div className="bg-slate-50 rounded-lg py-1.5 border border-slate-100"><div className="text-[10px] text-slate-400 font-sans font-bold">H₂S</div><div className="font-bold text-purple-600 text-sm">{log.h2s_level}</div></div>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🌟 ลายเซ็นต์: ไฮไลท์การแก้ปัญหาตัดทับลายเซ็นคือใส่คำว่า `break-inside-avoid` */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 mt-6 break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+                      <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">{selectedPermitDetail?.applicant?.full_name || '-'}</div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้ขออนุญาต (Applicant)</span>
+                      </div>
+                      <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className={`border-b-2 pb-2 mb-2 font-bold text-sm h-8 flex items-end justify-center ${selectedPermitDetail?.status === 'APPROVED' ? 'text-emerald-600 border-emerald-200' : 'text-orange-500 border-orange-200'}`}>{selectedPermitDetail?.status === 'APPROVED' ? 'APPROVER SIGNED' : 'WAITING APPROVAL'}</div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">ผู้อนุมัติ (Area Owner / จป.)</span>
                       </div>
                     </div>
-                  )}
-                  {/* 🟢 จบส่วนแทรก */}
 
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-                    <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">{selectedPermitDetail?.applicant?.full_name || '-'}</div><span className="text-[10px] font-bold text-slate-500 uppercase">ผู้ขออนุญาต</span>
-                    </div>
-                    <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <div className={`border-b-2 pb-2 mb-2 font-bold text-sm h-8 flex items-end justify-center ${selectedPermitDetail?.status === 'APPROVED' ? 'text-emerald-600 border-emerald-200' : 'text-orange-500 border-orange-200'}`}>{selectedPermitDetail?.status === 'APPROVED' ? 'APPROVER SIGNED' : 'WAITING APPROVAL'}</div><span className="text-[10px] font-bold text-slate-500 uppercase">ผู้อนุมัติ (Area Owner / จป.)</span>
-                    </div>
                   </div>
                 </div>
+
+                {/* ปุ่ม Action */}
                 <div className="bg-white p-4 border-t border-slate-200 flex gap-3 sticky bottom-0 z-10">
                   <Button size="large" onClick={() => setIsDetailModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">ปิดหน้าต่าง</Button>
-                  <Button size="large" type="primary" onClick={handleExportPDF} loading={isExportingPDF} icon={<FilePdfOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-md shadow-indigo-500/30">{isExportingPDF ? 'กำลังสร้างไฟล์...' : 'โหลด PDF'}</Button>
+                  
+                  {/* 🟢 ปุ่มกดแล้วจะเรียกหน้า Print ให้เบราว์เซอร์เซฟเป็น PDF ให้เลย สวยๆ */}
+                  <Button size="large" type="primary" onClick={handlePrint} icon={<FilePdfOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-indigo-600 hover:bg-indigo-700 border-none shadow-md shadow-indigo-500/30">
+                    พิมพ์ / โหลด PDF
+                  </Button>
                 </div>
               </div>
             )}
@@ -748,7 +731,7 @@ export default function App() {
             <div style={{ height: '70vh', display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '12px', overflow: 'hidden' }}>{previewType === 'image' ? <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} />}</div>
           </Modal>
 
-          {/* 🟢 เฟส 1: อัปเกรดฟอร์มขอ Permit ให้ฉลาดขึ้น (Dynamic Form) */}
+          {/* ฟอร์มขอ Permit ใหม่ (Dynamic Form) */}
           <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); }} width={750} centered styles={{ body: { padding: 0 } }}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-t-xl text-white shadow-sm">
               <h2 className="text-2xl font-bold m-0 flex items-center gap-3 text-white"><div className="bg-white/20 p-2 rounded-lg"><FileTextOutlined /></div>ระบบขออนุญาตทำงาน (E-Permit)</h2>
@@ -764,7 +747,6 @@ export default function App() {
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
                       <Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'เลือกประเภทงาน' }]}>
-                        {/* 🟢 อัปเดต State ทันทีที่เปลี่ยนประเภทงาน */}
                         <Select size="large" placeholder="เลือกประเภทงาน" className="w-full" onChange={(val) => setSelectedPermitTypeForm(val)}>
                           <Select.Option value="HOT_WORK">🔥 Hot Work (งานร้อน)</Select.Option>
                           <Select.Option value="CONFINED_SPACE">🕳️ Confined Space (ที่อับอากาศ)</Select.Option>
@@ -783,7 +765,6 @@ export default function App() {
                   <Form.Item name="timeRange" rules={[{ required: true, message: 'กรุณาระบุเวลาเริ่มและสิ้นสุด' }]} style={{marginBottom: 0}}><ModernDateRange /></Form.Item>
                 </div>
 
-                {/* 🟢 ส่วน Dynamic Form: จะแสดงเฉพาะเมื่อเลือก Hot Work หรือ Confined Space เท่านั้น */}
                 {(selectedPermitTypeForm === 'HOT_WORK' || selectedPermitTypeForm === 'CONFINED_SPACE') && (
                   <div className="bg-rose-50 p-5 rounded-2xl shadow-sm border border-rose-200 mb-6 animate-fade-in relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
@@ -852,13 +833,10 @@ export default function App() {
             <QRScanner onScan={(text) => { setIsScannerOpen(false); if (text.includes('/verify/')) { const id = text.split('/verify/')[1]; setVerifyUserId(id); } else { message.error('QR Code นี้ไม่ใช่ของระบบ SafetyOS!'); } }} />
           </Modal>
 
-          {/* =========================================================
-              🚨 EMERGENCY ALERT SCREEN (หน้าจอแดงเด้งทับทุกอย่าง)
-             ========================================================= */}
           <Modal
             title={null}
             open={isEmergency}
-            closable={false} // ห้ามกดปิด (จนกว่าจะกดยืนยัน)
+            closable={false}
             footer={null}
             width="100%"
             centered
@@ -866,27 +844,14 @@ export default function App() {
             styles={{ body: { padding: 0, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' } }}
           >
             <div className="bg-red-600 w-full h-full flex flex-col items-center justify-center p-8 text-center animate-pulse-fast relative overflow-hidden">
-              {/* ลวดลายไซเรนด้านหลัง */}
               <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2HQ9IjQwIj4KPHBhdGggZD0iTTAgMGw0MCA0MHYtMjBMMjAgMGgwem0wIDIwbDIwIDIwSDBWMjB6bTQwIDBoLTIwTDAgNDBoNDBWMjB6IiBmaWxsPSIjMDAwIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGwtb3BhY2l0eT0iMSIvPgo8L3N2Zz4=')]"></div>
               
               <WarningOutlined className="text-white text-[120px] md:text-[180px] mb-6 drop-shadow-2xl relative z-10" />
-              <h1 className="text-5xl md:text-8xl font-black text-white tracking-widest mb-4 drop-shadow-lg relative z-10">
-                EMERGENCY!
-              </h1>
-              <p className="text-2xl md:text-4xl font-bold text-white mb-2 relative z-10">
-                ประกาศอพยพฉุกเฉิน
-              </p>
-              <p className="text-lg md:text-2xl font-medium text-red-200 bg-black/40 px-6 py-2 rounded-full mb-12 relative z-10">
-                {emergencyMessage}
-              </p>
+              <h1 className="text-5xl md:text-8xl font-black text-white tracking-widest mb-4 drop-shadow-lg relative z-10">EMERGENCY!</h1>
+              <p className="text-2xl md:text-4xl font-bold text-white mb-2 relative z-10">ประกาศอพยพฉุกเฉิน</p>
+              <p className="text-lg md:text-2xl font-medium text-red-200 bg-black/40 px-6 py-2 rounded-full mb-12 relative z-10">{emergencyMessage}</p>
 
-              <Button 
-                size="large" 
-                className="h-16 md:h-20 px-12 rounded-full text-xl md:text-3xl font-black bg-white text-red-600 border-none shadow-[0_0_40px_rgba(255,255,255,0.5)] hover:bg-slate-100 hover:scale-105 transition-transform relative z-10"
-                onClick={() => setIsEmergency(false)} // กดยืนยันเพื่อปิดหน้าต่าง
-              >
-                รับทราบและอพยพทันที!
-              </Button>
+              <Button size="large" className="h-16 md:h-20 px-12 rounded-full text-xl md:text-3xl font-black bg-white text-red-600 border-none shadow-[0_0_40px_rgba(255,255,255,0.5)] hover:bg-slate-100 hover:scale-105 transition-transform relative z-10" onClick={() => setIsEmergency(false)}>รับทราบและอพยพทันที!</Button>
             </div>
           </Modal>
 
@@ -899,28 +864,13 @@ export default function App() {
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
             .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
             
-            /* แต่งสี Tab ของ Ant Design ให้ดูโมเดิร์น */
             .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: #2563eb !important; }
             .ant-tabs-ink-bar { background: #2563eb !important; height: 3px !important; border-radius: 3px; }
 
-            /* สไตล์สำหรับหน้าจอฉุกเฉิน */
-            .emergency-modal .ant-modal-content {
-              background-color: transparent !important;
-              box-shadow: none !important;
-            }
-            .emergency-modal .ant-modal {
-              max-width: 100vw !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              top: 0 !important;
-            }
-            .animate-pulse-fast {
-              animation: pulse-red 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            }
-            @keyframes pulse-red {
-              0%, 100% { background-color: #dc2626; } /* red-600 */
-              50% { background-color: #991b1b; } /* red-800 */
-            }
+            .emergency-modal .ant-modal-content { background-color: transparent !important; box-shadow: none !important; }
+            .emergency-modal .ant-modal { max-width: 100vw !important; margin: 0 !important; padding: 0 !important; top: 0 !important; }
+            .animate-pulse-fast { animation: pulse-red 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+            @keyframes pulse-red { 0%, 100% { background-color: #dc2626; } 50% { background-color: #991b1b; } }
           `}</style>
         </Layout>
       </div>
