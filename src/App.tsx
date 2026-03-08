@@ -18,6 +18,14 @@ import {
 } from '@ant-design/icons';
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import 'dayjs/locale/th';
+// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ ไม่ว่าเซิร์ฟเวอร์จะอยู่ที่ไหน
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('th');
+dayjs.tz.setDefault('Asia/Bangkok');
 import html2pdf from 'html2pdf.js'; 
 import liff from '@line/liff'; 
 

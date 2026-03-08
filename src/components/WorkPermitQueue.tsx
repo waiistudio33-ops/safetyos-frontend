@@ -10,6 +10,14 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import 'dayjs/locale/th';
+// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ ไม่ว่าเซิร์ฟเวอร์จะอยู่ที่ไหน
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('th');
+dayjs.tz.setDefault('Asia/Bangkok');
 
 export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus }: any) {
   
