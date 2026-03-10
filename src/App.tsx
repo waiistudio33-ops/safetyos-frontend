@@ -19,8 +19,6 @@ import {
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
 import liff from '@line/liff'; 
-
-// 🟢 อิมพอร์ตพระเอกตัวใหม่ของเรา (react-to-print)
 import { useReactToPrint } from 'react-to-print';
 
 import WorkPermitQueue from "./components/WorkPermitQueue";
@@ -37,10 +35,10 @@ import EquipmentInspection from './components/EquipmentInspection';
 import Dashboard from './components/Dashboard'; 
 import { supabase } from './supabase'; 
 
-// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ (ถ้ายังไม่ได้ลง plugin timezone ให้ใช้แบบเดิมไปก่อนได้ครับ)
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('th');
@@ -105,6 +103,8 @@ const getStatusDisplayModern = (status: string) => {
 export default function App() {
   const screens = useBreakpoint(); 
   const isMobile = !screens.md; 
+  // เพิ่มเงื่อนไขเช็คหน้าจอขนาดกลาง (เช่น iPad แนวตั้ง/มือถือแนวนอน) เพื่อซ่อนบางองค์ประกอบ
+  const isTablet = screens.md && !screens.lg;
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true); 
@@ -115,11 +115,8 @@ export default function App() {
   const [isScannerOpen, setIsScannerOpen] = useState(false); 
   const [lineProfile, setLineProfile] = useState<any>(null);
 
-  // 🟢 State สำหรับระบบแจ้งเตือนอพยพฉุกเฉิน (Real-time)
   const [isEmergency, setIsEmergency] = useState(false);
   const [emergencyMessage, setEmergencyMsg] = useState('');
-
-  // 🟢 State ควบคุม Dynamic Form (เฟส 1)
   const [selectedPermitTypeForm, setSelectedPermitTypeForm] = useState<string>('');
 
   useEffect(() => {
@@ -151,11 +148,9 @@ export default function App() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedPermitDetail, setSelectedPermitDetail] = useState<any>(null);
 
-  // 🌟 [ระบบ Print ตัวใหม่] สร้าง Ref สำหรับพิมพ์ PDF
   const documentRef = useRef<HTMLDivElement>(null);
   
   const handlePrint = useReactToPrint({
-    // 🟢 แก้ไขจุดนี้: เวอร์ชันใหม่ต้องเขียนแบบนี้ครับ
     contentRef: documentRef, 
     documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
     onBeforeGetContent: () => {
@@ -448,7 +443,24 @@ export default function App() {
   };
 
   const glassPanel = { background: 'rgba(255, 255, 255, 0.4)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.4)' };
-  const modernHeaderStyle = { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: isMobile ? '0px' : '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', border: 'none', margin: isMobile ? '0' : '16px 24px 0', padding: isMobile ? '0 12px' : '0 24px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', top: 0 };
+  
+  // 🟢 ปรับ CSS ของ Header สำหรับ RWD 
+  const modernHeaderStyle = { 
+    background: 'rgba(255, 255, 255, 0.9)', 
+    backdropFilter: 'blur(20px)', 
+    borderRadius: isMobile ? '0px' : '24px', 
+    boxShadow: '0 4px 24px rgba(0,0,0,0.04)', 
+    border: 'none', 
+    margin: isMobile ? '0' : '16px 24px 0', 
+    padding: isMobile ? '0 12px' : '0 24px', 
+    height: '70px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    zIndex: 10, 
+    position: isMobile ? 'sticky' as 'sticky' : 'relative' as 'relative', 
+    top: 0 
+  };
 
   const getDisplayAvatar = () => {
     if (lineProfile && lineProfile.pictureUrl) return lineProfile.pictureUrl;
@@ -538,28 +550,67 @@ export default function App() {
 
           <Layout style={{ marginLeft: isMobile ? 0 : 280, transition: 'all 0.2s', background: 'transparent' }}>
             
+            {/* 🟢 RWD Header Section */}
             <Header style={modernHeaderStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {isMobile && (<Button type="text" icon={<MenuOutlined style={{fontSize: '20px'}} />} onClick={() => setMobileMenuOpen(true)} style={{ padding: 0 }} />)}
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <Title level={isMobile ? 4 : 3} style={{ margin: 0, lineHeight: '1.1', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px', fontSize: isMobile ? '16px' : 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                {isMobile && (
+                  <Button type="text" icon={<MenuOutlined style={{fontSize: '20px'}} />} onClick={() => setMobileMenuOpen(true)} style={{ padding: 0, flexShrink: 0 }} />
+                )}
+                
+                {/* 🟢 หัวข้อเว็บ (ยืดหยุ่น หดได้ถ้าโดนบีบ) */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+                  <Title level={isMobile ? 4 : 3} style={{ margin: 0, lineHeight: '1.1', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px', fontSize: isMobile ? '16px' : 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {activeMenu === 'DASHBOARD' ? 'ภาพรวม (Dashboard)' : activeMenu === 'E_PASSPORT' ? 'บัตรประจำตัว (E-Passport)' : activeMenu === 'E_PERMIT' ? 'E-Permit Control Room' : activeMenu === 'BBS' ? 'พฤติกรรมความปลอดภัย (BBS)' : activeMenu === 'CONFINED_SPACE' ? 'Confined Space Board' : activeMenu === 'CERTIFICATE' ? 'จัดการใบ Certificate' : activeMenu === 'INCIDENT' ? 'จุดเสี่ยง (Incident)' : activeMenu === 'EQUIPMENT' ? 'ตรวจสอบอุปกรณ์ (QR)' : 'ระบบอบรม (E-Learning)'}
                   </Title>
-                  {!isMobile && (<div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}><EnvironmentOutlined style={{ color: '#2563eb', fontSize: '14px' }} /><Text type="secondary" style={{ fontSize: '13px', fontWeight: 500 }}>Map Ta Phut - Enterprise Level</Text></div>)}
+                  {!isMobile && !isTablet && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                      <EnvironmentOutlined style={{ color: '#2563eb', fontSize: '14px' }} />
+                      <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap' }}>Map Ta Phut - Enterprise Level</Text>
+                    </div>
+                  )}
                 </div>
               </div>
               
-              <Space size={isMobile ? 'small' : 'middle'} align="center">
+              <Space size={isMobile ? 'small' : 'middle'} align="center" style={{ flexShrink: 0 }}>
+                {/* ปุ่มสแกน QR - ซ่อนคำว่า สแกน ในมือถือ/ไอแพดแนวนอน */}
                 <Button type="primary" shape="circle" icon={<ScanOutlined style={{ fontSize: '18px' }} />} size={isMobile ? "middle" : "large"} onClick={handleOpenScannerClick} style={{ background: '#10b981', border: 'none', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }} title="สแกน QR Code" />
-                {!isMobile && (<Badge count={3} dot offset={[-4, 4]}><Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: '20px', color: '#64748b' }} />} /></Badge>)}
-                {!isMobile && <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 8px' }}></div>}
                 
+                {/* แจ้งเตือนกระดิ่ง - ซ่อนในมือถือ */}
+                {!isMobile && (
+                  <Badge count={3} dot offset={[-4, 4]}>
+                    <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: '20px', color: '#64748b' }} />} />
+                  </Badge>
+                )}
+
+                {/* เส้นกั้น - ซ่อนในมือถือ */}
+                {!isMobile && <div style={{ width: '1px', height: '32px', background: '#e2e8f0', margin: '0 4px' }}></div>}
+                
+                {/* 🟢 กล่องโปรไฟล์ผู้ใช้งาน (RWD: ซ่อนชื่อในจอมือถือ/ไอแพดแนวนอน) */}
                 <div style={{ background: '#ffffff', borderRadius: '100px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Avatar src={getDisplayAvatar()} size={isMobile ? "default" : "large"} style={{ backgroundColor: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', border: '2px solid #fff' }} icon={!getDisplayAvatar() && <UserOutlined />} />
-                  {!isMobile && (<div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2', paddingRight: '8px' }}><Text strong style={{ fontSize: '13px', color: '#1e293b' }}>{currentUser?.full_name}</Text><Text style={{ fontSize: '11px', color: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', fontWeight: 700 }}>{currentUser?.role}</Text></div>)}
+                  
+                  {/* 🟢 คลาส hidden lg:flex จะโชว์ชื่อเฉพาะในจอคอม/จอใหญ่เท่านั้น */}
+                  <div className="hidden lg:flex flex-col pr-2" style={{ lineHeight: '1.2' }}>
+                    <Text strong style={{ fontSize: '13px', color: '#1e293b', whiteSpace: 'nowrap' }}>{currentUser?.full_name}</Text>
+                    <Text style={{ fontSize: '11px', color: currentUser?.role === 'SAFETY_ENGINEER' ? '#4f46e5' : currentUser?.role === 'AREA_OWNER' ? '#f59e0b' : '#2563eb', fontWeight: 700 }}>{currentUser?.role}</Text>
+                  </div>
+                  
                   <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: '#ef4444' }} title="ออกจากระบบ" />
                 </div>
-                {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (<Button type="primary" shape={isMobile ? "circle" : "round"} icon={<FileAddOutlined />} size={isMobile ? "middle" : "large"} onClick={() => setIsModalOpen(true)} style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', border: 'none', boxShadow: '0 4px 15px rgba(37,99,235,0.3)', fontWeight: 600 }}>{!isMobile && 'ขอ Permit ใหม่'}</Button>)}
+
+                {/* 🟢 ปุ่มขอ Permit (ถ้าจอเล็กเปลี่ยนเป็นไอคอนวงกลม) */}
+                {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (
+                  <Button 
+                    type="primary" 
+                    shape={isMobile || isTablet ? "circle" : "round"} 
+                    icon={<FileAddOutlined />} 
+                    size={isMobile ? "middle" : "large"} 
+                    onClick={() => setIsModalOpen(true)} 
+                    style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', border: 'none', boxShadow: '0 4px 15px rgba(37,99,235,0.3)', fontWeight: 600 }}
+                  >
+                    {!isMobile && !isTablet && 'ขอ Permit ใหม่'}
+                  </Button>
+                )}
               </Space>
             </Header>
 
@@ -699,7 +750,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 🌟 ลายเซ็นต์: ไฮไลท์การแก้ปัญหาตัดทับลายเซ็นคือใส่คำว่า `break-inside-avoid` */}
+                    {/* 🌟 ลายเซ็นต์ */}
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 mt-6 break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
                       <div className="text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                         <div className="border-b-2 border-slate-300 pb-2 mb-2 font-mono text-base text-slate-800 h-8 flex items-end justify-center">{selectedPermitDetail?.applicant?.full_name || '-'}</div>
