@@ -6,7 +6,7 @@ import {
   PauseCircleOutlined, SafetyCertificateOutlined, CloseCircleOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import ReactPlayer from 'react-player';
-import axios from 'axios';
+import axios from 'axios'; 
 
 const { Title, Text } = Typography;
 
@@ -26,11 +26,9 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   const [timeLeft, setTimeLeft] = useState(30); 
   const [isSaving, setIsSaving] = useState(false); 
 
-  // 🟢 State สำหรับเก็บข้อมูลคอร์สเรียนที่ดึงมาจาก API
   const [courses, setCourses] = useState<any[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
 
-  // 🧪 [Mock Data] คลังข้อสอบ (ในอนาคตสามารถดึงจาก DB ได้เช่นกัน)
   const mockExamPool = [
     { q: "อุปกรณ์ PPE ใดที่จำเป็นที่สุดเมื่อทำงานบนที่สูง?", choices: ["เข็มขัดนิรภัยแบบเต็มตัว (Full Body Harness)", "แว่นตานิรภัย", "ถุงมือหนัง", "ที่อุดหู"], ans: "เข็มขัดนิรภัยแบบเต็มตัว (Full Body Harness)" },
     { q: "ระดับก๊าซออกซิเจน (O2) ที่ปลอดภัยสำหรับการทำงานคือเท่าใด?", choices: ["19.5% - 23.5%", "15.0% - 18.0%", "25.0% - 30.0%", "ต่ำกว่า 19.5%"], ans: "19.5% - 23.5%" },
@@ -44,13 +42,8 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     const fetchCourses = async () => {
       try {
         setIsLoadingCourses(true);
-        
-        // 🟢 ไฮไลท์: ยิง API พร้อมแนบ user_id ของคนที่ล็อกอินไปบอกหลังบ้าน
-        const res = await axios.get(`https://safetyos-backend.onrender.com/courses?user_id=${currentUser.id}`);
-        
-        // ข้อมูลที่ตอบกลับมาจะกลายเป็น Data จริงๆ จาก Supabase พร้อมบอกสถานะว่า ผ่านหรือยัง!
+        const res = await axios.get(`https://safetyos-backend.onrender.com/courses?user_id=${currentUser?.id}`);
         setCourses(res.data);
-        
       } catch (error) {
         console.error('ไม่สามารถดึงข้อมูลคอร์สเรียนได้', error);
         message.error('ระบบขัดข้อง: ดึงข้อมูลวิชาเรียนไม่สำเร็จ');
@@ -63,6 +56,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
       fetchCourses();
     }
   }, [currentUser]);
+
   // ==========================================
   // ⚙️ Logic วิดีโอ (Auto-pause)
   // ==========================================
@@ -140,25 +134,19 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     setIsSaving(true);
     
     try {
-      // แปลงคะแนนเป็นเปอร์เซ็นต์
       const finalPercentage = Math.floor((finalScore / questions.length) * 100);
 
-      // 🚀 ยิง API ส่งคะแนนไปที่ Backend
       const res = await axios.post('https://safetyos-backend.onrender.com/training-records', {
         user_id: currentUser.id,
         course_id: selectedCourse.id,
         score: finalPercentage
       });
       
-      // ถ้า API ตอบกลับว่าผ่าน ระบบจะสร้าง Certificate ให้ที่หลังบ้านอัตโนมัติ
       if (res.data.isPassed) {
         message.success('🎉 บันทึกผลการสอบสำเร็จ! คุณได้รับใบ Certificate แล้ว');
-        
-        // อัปเดตสถานะในหน้าบ้านให้เป็นผ่านแล้ว (ชั่วคราว ไม่ต้องดึง API ใหม่)
         setCourses(prev => prev.map(c => 
           c.id === selectedCourse.id ? { ...c, status: 'COMPLETED', progress: 100 } : c
         ));
-
       } else {
         message.warning('บันทึกผลสอบแล้ว แต่คะแนนยังไม่ผ่านเกณฑ์ 80%');
       }
@@ -300,7 +288,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   }
 
   // ==========================================
-  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER)
+  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER - MP4 Support)
   // ==========================================
   if (currentView === 'PLAYER' && selectedCourse) {
     return (
@@ -319,11 +307,13 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             <div className="w-full h-full relative">
               <ReactPlayer
                 ref={playerRef}
-                url={selectedCourse.videoUrl} 
+                // 🟢 ไฮไลท์ที่ 1: ดักจับชื่อตัวแปรทั้ง videoUrl และ video_url (เผื่อหลังบ้านส่งมาไม่ตรงกัน)
+                url={selectedCourse?.videoUrl || selectedCourse?.video_url} 
                 playing={isPlaying}
                 controls={false} 
                 width="100%"
                 height="100%"
+                playsinline={true} // 🟢 ไฮไลท์ที่ 2: บังคับให้เล่นวิดีโอบน iOS/Safari ได้โดยไม่โดนบล็อก
                 style={{ position: 'absolute', top: 0, left: 0 }}
                 onProgress={(state) => setPlayedPercent(Math.floor(state.played * 100))}
                 onEnded={() => setIsCompleted(true)}
@@ -333,7 +323,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             <div 
               className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer transition-colors hover:bg-black/10" 
               onClick={(e) => {
-                e.stopPropagation(); // ป้องกันการส่งคำสั่งซ้ำซ้อน
+                e.stopPropagation(); 
                 setIsPlaying(!isPlaying);
               }}
             >
