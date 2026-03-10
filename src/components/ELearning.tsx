@@ -332,7 +332,10 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             
             <div 
               className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer transition-colors hover:bg-black/10" 
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={(e) => {
+                e.stopPropagation(); // ป้องกันการส่งคำสั่งซ้ำซ้อน
+                setIsPlaying(!isPlaying);
+              }}
             >
               {!isPlaying && (
                 <div className="bg-blue-600/80 backdrop-blur-md w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.6)] transform transition-transform hover:scale-110">
