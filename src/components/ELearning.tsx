@@ -473,7 +473,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
               <div>
                 <h4 className="text-rose-800 font-black text-sm md:text-lg m-0 leading-tight">คุณมีวิชาที่ต้องเรียน!</h4>
                 <p className="text-rose-600/90 text-[10px] md:text-sm font-medium m-0 mt-0.5 md:mt-1 leading-snug">
-                  กรุณาสอบให้ผ่าน เพื่อปลดล็อก Work Permit
+                  กรุณาสอบให้ผ่านเพื่อรับอนุญาตเข้าพื้นที่
                 </p>
               </div>
             </div>
