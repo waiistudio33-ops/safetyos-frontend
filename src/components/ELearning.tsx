@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Typography, Button, Progress, Tabs, Badge, message, Divider, Spin } from 'antd';
+import { Typography, Button, Progress, Tabs, Badge, message, Divider, Spin, Modal } from 'antd';
 import { 
   PlayCircleOutlined, CheckCircleOutlined, LockOutlined, 
   ClockCircleOutlined, BookOutlined, WarningOutlined, LeftOutlined, 
-  PauseCircleOutlined, SafetyCertificateOutlined, CloseCircleOutlined, ReloadOutlined
+  PauseCircleOutlined, SafetyCertificateOutlined, CloseCircleOutlined, ReloadOutlined,
+  DownOutlined, UpOutlined, FastBackwardOutlined
 } from '@ant-design/icons';
 import axios from 'axios'; 
 
@@ -17,6 +18,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playedPercent, setPlayedPercent] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false); // สำหรับย่อ-ขยายคำอธิบาย
   
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -30,6 +32,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   const [courses, setCourses] = useState<any[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
 
+  // 🚀 ดึงข้อมูลคอร์สเรียนทั้งหมดจาก Backend
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -49,20 +52,23 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     }
   }, [currentUser]);
 
+  // ==========================================
+  // ⚙️ Logic วิดีโอ (HTML5 Video + Auto-pause + Resume)
+  // ==========================================
   useEffect(() => {
     if (currentView !== 'PLAYER') return;
     const handleWindowBlur = () => {
-      if (isPlaying) {
+      if (isPlaying && !isCompleted) {
         handlePlayPause(false);
         message.warning({ content: '⚠️ วิดีโอหยุดเล่น เนื่องจากคุณสลับหน้าต่างการทำงาน', key: 'blur-warning', duration: 4 });
       }
     };
     window.addEventListener('blur', handleWindowBlur);
     return () => window.removeEventListener('blur', handleWindowBlur);
-  }, [isPlaying, currentView]);
+  }, [isPlaying, isCompleted, currentView]);
 
   const handlePlayPause = (forceState?: boolean) => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || isCompleted) return;
     const nextState = forceState !== undefined ? forceState : !isPlaying;
     
     if (nextState) {
@@ -77,11 +83,22 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     if (!videoRef.current) return;
     const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
     setPlayedPercent(Math.floor(progress) || 0);
+
+    // 💾 บันทึกความคืบหน้าลง LocalStorage ทุกๆ การอัปเดตเวลา (ยกเว้นตอนดูจบแล้ว)
+    if (!isCompleted && currentUser?.id && selectedCourse?.id && videoRef.current.currentTime > 5) {
+      const storageKey = `course_progress_${currentUser.id}_${selectedCourse.id}`;
+      localStorage.setItem(storageKey, videoRef.current.currentTime.toString());
+    }
   };
 
   const handleVideoEnded = () => {
     setIsCompleted(true);
     setIsPlaying(false);
+    
+    // ลบความคืบหน้าที่บันทึกไว้เมื่อดูจบ
+    if (currentUser?.id && selectedCourse?.id) {
+       localStorage.removeItem(`course_progress_${currentUser.id}_${selectedCourse.id}`);
+    }
   };
 
   const handleStartCourse = (course: any) => {
@@ -89,34 +106,69 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     setPlayedPercent(0);
     setIsCompleted(false);
     setIsPlaying(false); 
+    setIsDescriptionExpanded(false); // ปิดการขยายคำอธิบายเสมอเมื่อเริ่มคอร์สใหม่
+    
+    // 🔍 เช็คว่ามีความคืบหน้าเดิมบันทึกไว้หรือไม่
+    if (currentUser?.id) {
+      const storageKey = `course_progress_${currentUser.id}_${course.id}`;
+      const savedTime = localStorage.getItem(storageKey);
+
+      if (savedTime && parseFloat(savedTime) > 10) { // ถ้าดูไปแล้วเกิน 10 วินาที ค่อยถาม
+        Modal.confirm({
+          title: 'ต้องการดูต่อจากเดิมหรือไม่?',
+          content: 'ระบบพบว่าคุณเคยเรียนวิชานี้ค้างไว้',
+          okText: 'ดูต่อจากเดิม',
+          cancelText: 'เริ่มใหม่ตั้งแต่ต้น',
+          icon: <PlayCircleOutlined className="text-blue-500" />,
+          centered: true,
+          onOk: () => {
+            setCurrentView('PLAYER');
+            // รอให้ Video โหลดเสร็จก่อนค่อยข้ามเวลา
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = parseFloat(savedTime);
+                handlePlayPause(true); // สั่งเล่นต่อเลย
+              }
+            }, 500); 
+          },
+          onCancel: () => {
+             // เริ่มใหม่ ลบข้อมูลเก่าทิ้ง
+             localStorage.removeItem(storageKey);
+             setCurrentView('PLAYER');
+          }
+        });
+        return; // หยุดการทำงานตรงนี้ เพื่อรอผู้ใช้ตอบ Modal
+      }
+    }
+    
+    // ถ้าไม่มีประวัติ ก็ไปหน้า PLAYER เลย
     setCurrentView('PLAYER');
   };
 
+  // ==========================================
+  // ⚙️ Logic ห้องสอบ
+  // ==========================================
   const shuffleArray = (array: any[]) => [...array].sort(() => Math.random() - 0.5);
 
-  // 🟢 ดึงข้อสอบจาก Database ของจริง
   const handleStartExam = async () => {
     setIsFetchingExam(true);
     try {
-      // ยิง API ไปขอข้อสอบของวิชานี้
       const res = await axios.get(`https://safetyos-backend.onrender.com/courses/${selectedCourse.id}/questions`);
       const dbQuestions = res.data;
 
-      // ถ้าแอดมินยังไม่ได้ใส่ข้อสอบในระบบ
       if (!dbQuestions || dbQuestions.length === 0) {
         message.warning('ยังไม่มีข้อสอบสำหรับวิชานี้ในระบบ');
         setIsFetchingExam(false);
         return;
       }
 
-      // จัดเตรียมข้อสอบและสุ่มชอยส์ ก, ข, ค, ง
       const preparedQuestions = dbQuestions.map((q: any) => ({
         q: q.question,
-        shuffledChoices: shuffleArray(q.choices), // สลับตำแหน่งตัวเลือก
+        shuffledChoices: shuffleArray(q.choices), 
         ans: q.answer
       }));
       
-      setQuestions(shuffleArray(preparedQuestions)); // สลับลำดับข้อสอบ
+      setQuestions(shuffleArray(preparedQuestions)); 
       setCurrentQIndex(0);
       setScore(0);
       setTimeLeft(30);
@@ -273,11 +325,11 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     return (
       <div className="w-full max-w-3xl mx-auto pt-4 md:pt-6 pb-16 px-4 animate-fade-in">
         <div className="flex justify-between items-end mb-4">
-          <div>
+          <div className="flex-1 pr-4">
             <h2 className="text-lg md:text-2xl font-black text-slate-800 m-0">Final Exam</h2>
-            <p className="text-slate-500 text-[10px] md:text-sm font-medium m-0 truncate max-w-[180px] md:max-w-md">{selectedCourse.title}</p>
+            <p className="text-slate-500 text-[10px] md:text-sm font-medium m-0 truncate w-full">{selectedCourse.title}</p>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest block mb-0.5 md:mb-1">คำถามที่</span>
             <span className="text-lg md:text-xl font-black text-indigo-600">{currentQIndex + 1} <span className="text-slate-300">/ {questions.length}</span></span>
           </div>
@@ -319,108 +371,134 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   }
 
   // ==========================================
-  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER) - 🌟 อัปเกรด UI ให้ดูหรูหราขึ้น
+  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER) 
   // ==========================================
   if (currentView === 'PLAYER' && selectedCourse) {
     return (
-      <div className="w-full max-w-5xl mx-auto pb-16 px-0 md:px-4 animate-fade-in">
+      <div className="w-full max-w-4xl mx-auto pb-16 px-0 md:px-4 animate-fade-in">
         
-        {/* Header - กระชับขึ้นบนมือถือ */}
-        <div className="mb-3 md:mb-6 flex items-center gap-3 px-4 md:px-0 pt-2 md:pt-0">
+        {/* Header */}
+        <div className="mb-3 md:mb-5 flex items-center gap-3 px-4 md:px-0 pt-2 md:pt-0">
           <Button 
             type="default" 
             icon={<LeftOutlined />} 
             onClick={handleBackToList} 
-            className="rounded-xl font-bold bg-white text-slate-600 border-slate-200 shadow-sm hover:border-slate-300 flex items-center justify-center h-9 md:h-10 text-xs md:text-sm px-3"
+            className="rounded-xl font-bold bg-white text-slate-600 border-slate-200 shadow-sm hover:border-slate-300 flex items-center justify-center h-9 md:h-10 text-xs md:text-sm px-3 shrink-0"
           >
             <span className="hidden sm:inline">กลับ</span>
           </Button>
-          <div className="hidden sm:block w-px h-5 bg-slate-300"></div>
-          <h2 className="text-sm md:text-xl font-black text-slate-800 m-0 truncate leading-none pt-1">
+          <div className="w-px h-5 bg-slate-300"></div>
+          <h2 className="text-sm md:text-xl font-black text-slate-800 m-0 line-clamp-1 leading-normal pt-1">
             {selectedCourse.title}
           </h2>
         </div>
 
-        {/* 📺 Cinematic Player: กรอบซ้อน 2 ชั้น + Glassmorphism Play Button */}
-        <div className="bg-slate-900 md:bg-white md:p-2 md:rounded-[2rem] md:shadow-2xl md:shadow-slate-200/50 md:border border-slate-100 mb-5 md:mb-8 w-full">
+        {/* 📺 Cinematic Player Container */}
+        <div className="bg-slate-900 md:bg-white md:p-2 md:rounded-[2rem] md:shadow-xl md:border border-slate-100 mb-5 md:mb-6 w-full relative">
+          
           <div className="bg-black md:rounded-[1.5rem] overflow-hidden relative aspect-video group w-full">
             
+            {/* วิดีโอหลัก */}
             <video 
               ref={videoRef}
               src={selectedCourse?.video_url || selectedCourse?.videoUrl} 
-              className="w-full h-full object-contain absolute top-0 left-0"
+              className={`w-full h-full object-contain absolute top-0 left-0 transition-all duration-700 ${isCompleted ? 'blur-md scale-105 opacity-50' : ''}`}
               playsInline
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleVideoEnded}
               disablePictureInPicture 
-              controlsList="nodownload nofullscreen" 
+              controlsList="nodownload nofullscreen noplaybackrate" 
             />
             
-            {/* 🌟 Glassmorphism Overlay Button */}
-            <div 
-              className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer transition-all duration-300 bg-black/40 hover:bg-black/20" 
-              onClick={() => handlePlayPause()}
-            >
-              {!isPlaying && (
-                <div className="bg-white/20 border border-white/30 backdrop-blur-md w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] transform transition-transform hover:scale-105 active:scale-95">
-                  <PlayCircleOutlined className="text-white text-3xl md:text-4xl ml-1 drop-shadow-md" />
-                </div>
-              )}
-            </div>
-
-            {/* Progress Bar ด้านล่าง */}
-            <div className={`absolute bottom-0 left-0 right-0 px-3 md:px-5 pb-2 md:pb-4 pt-12 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20 pointer-events-none transition-opacity duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
-              <div className="flex justify-between items-center text-white/90 text-[10px] md:text-xs font-bold mb-1.5 md:mb-2 uppercase tracking-wider drop-shadow-md">
-                <span className="flex items-center gap-1 md:gap-2">
-                  {isPlaying ? <span className="text-emerald-400 flex items-center gap-1"><PlayCircleOutlined /> <span className="hidden sm:inline">กำลังเล่น</span></span> : <span className="text-amber-400 flex items-center gap-1"><PauseCircleOutlined /> <span className="hidden sm:inline">หยุดชั่วคราว</span></span>}
-                </span>
-                <span>ความคืบหน้า <span className="text-blue-400 text-xs md:text-sm ml-1 font-black">{playedPercent}%</span></span>
+            {/* 🎬 สถานะ: กำลังเล่น/หยุด (ซ่อนเมื่อดูจบ) */}
+            {!isCompleted && (
+              <div 
+                className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer transition-all duration-300 bg-black/40 hover:bg-black/20" 
+                onClick={() => handlePlayPause()}
+              >
+                {!isPlaying && (
+                  <div className="bg-white/20 border border-white/30 backdrop-blur-md w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] transform transition-transform hover:scale-105 active:scale-95">
+                    <PlayCircleOutlined className="text-white text-3xl md:text-4xl ml-1 drop-shadow-md" />
+                  </div>
+                )}
               </div>
-              <Progress percent={playedPercent} showInfo={false} strokeColor="#3b82f6" trailColor="rgba(255,255,255,0.2)" size={["100%", 4]} className="m-0 md:!h-1.5" />
-            </div>
+            )}
+
+            {/* 🌟 สถานะ: ดูจบแล้ว (End Screen & Call to Action) */}
+            {isCompleted && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center animate-fade-in bg-black/40 backdrop-blur-sm px-4 text-center">
+                 <div className="bg-emerald-500/20 p-3 md:p-4 rounded-full mb-3 md:mb-4 border border-emerald-400/30">
+                    <CheckCircleOutlined className="text-3xl md:text-5xl text-emerald-400" />
+                 </div>
+                 <h3 className="text-white font-black text-lg md:text-2xl mb-1 md:mb-2 drop-shadow-lg">รับชมวิดีโอจบแล้ว</h3>
+                 <p className="text-slate-300 text-xs md:text-sm mb-4 md:mb-6 drop-shadow-md">กรุณาทำแบบทดสอบเพื่อรับใบ E-Passport</p>
+                 
+                 <Button 
+                    size="large" 
+                    type="primary" 
+                    loading={isFetchingExam} 
+                    onClick={handleStartExam} 
+                    className="h-12 md:h-14 px-8 md:px-10 rounded-xl md:rounded-2xl text-sm md:text-base font-black bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_10px_30px_rgba(16,185,129,0.4)] animate-bounce"
+                 >
+                    เริ่มทำข้อสอบทันที
+                 </Button>
+              </div>
+            )}
+
+            {/* Progress Bar ด้านล่าง (ซ่อนเมื่อดูจบ) */}
+            {!isCompleted && (
+              <div className={`absolute bottom-0 left-0 right-0 px-3 md:px-5 pb-2 md:pb-4 pt-12 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20 pointer-events-none transition-opacity duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                <div className="flex justify-between items-center text-white/90 text-[10px] md:text-xs font-bold mb-1.5 md:mb-2 uppercase tracking-wider drop-shadow-md">
+                  <span className="flex items-center gap-1 md:gap-2">
+                    {isPlaying ? <span className="text-emerald-400 flex items-center gap-1"><PlayCircleOutlined /> <span className="hidden sm:inline">กำลังเล่น</span></span> : <span className="text-amber-400 flex items-center gap-1"><PauseCircleOutlined /> <span className="hidden sm:inline">หยุดชั่วคราว</span></span>}
+                  </span>
+                  <span>ความคืบหน้า <span className="text-blue-400 text-xs md:text-sm ml-1 font-black">{playedPercent}%</span></span>
+                </div>
+                <Progress percent={playedPercent} showInfo={false} strokeColor="#3b82f6" trailColor="rgba(255,255,255,0.2)" size={["100%", 4]} className="m-0 md:!h-1.5" />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ข้อมูลคอร์สและปุ่มสอบ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 px-4 md:px-0">
-          
-          <div className="lg:col-span-2 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm border border-slate-200/80">
-            <div className="flex items-center gap-2 text-slate-500 font-bold mb-2 md:mb-4 text-xs md:text-sm">
-              <BookOutlined className="text-blue-500 text-base" /> รายละเอียดหลักสูตร
+        {/* ข้อมูลคอร์ส */}
+        <div className="px-4 md:px-0">
+          <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-200">
+            
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-2 text-slate-800 font-black text-sm md:text-base">
+                <BookOutlined className="text-blue-500" /> ข้อมูลหลักสูตร
+              </div>
             </div>
-            <p className="text-slate-600 text-xs md:text-sm leading-relaxed m-0">{selectedCourse.description}</p>
+
+            {/* 📖 ระบบย่อ-ขยาย คำอธิบาย (Read More/Less) */}
+            <div className="relative">
+              <p className={`text-slate-600 text-xs md:text-sm leading-relaxed m-0 transition-all duration-300 ${!isDescriptionExpanded ? 'line-clamp-2' : ''}`}>
+                {selectedCourse.description || 'ไม่มีคำอธิบายเพิ่มเติม'}
+              </p>
+              
+              {/* ปุ่มดูเพิ่มเติม (แสดงเฉพาะเมื่อข้อความยาว) */}
+              {selectedCourse.description && selectedCourse.description.length > 100 && (
+                <button 
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  className="text-blue-500 text-[10px] md:text-xs font-bold mt-1.5 flex items-center gap-1 hover:text-blue-700 bg-transparent border-none p-0 cursor-pointer"
+                >
+                  {isDescriptionExpanded ? <>ย่อข้อความ <UpOutlined className="text-[8px]" /></> : <>อ่านเพิ่มเติม <DownOutlined className="text-[8px]" /></>}
+                </button>
+              )}
+            </div>
             
-            <Divider className="my-4 md:my-6 border-slate-100" />
+            <Divider className="my-4 border-slate-100" />
             
-            <div className="bg-rose-50/50 border border-rose-100 p-3 md:p-4 rounded-xl flex items-start gap-2.5 md:gap-3">
-              <WarningOutlined className="text-rose-500 text-base md:text-xl mt-0.5" />
-              <div>
-                <h4 className="text-rose-700 font-bold text-xs md:text-sm m-0 mb-0.5 md:mb-1">กฎการเรียนรู้ (Strict Mode)</h4>
-                <p className="text-rose-600/80 text-[10px] md:text-xs m-0 leading-relaxed font-medium">
-                  1. ห้ามกดกรอวิดีโอข้าม<br/>
-                  2. วิดีโอจะหยุดอัตโนมัติหากสลับหน้าจอ<br/>
-                  3. ต้องรับชมครบ 100% เพื่อปลดล็อกข้อสอบ
+            <div className="bg-rose-50/80 border border-rose-100 p-3 rounded-xl flex items-start gap-2.5">
+              <WarningOutlined className="text-rose-500 text-base mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-rose-800 font-bold text-[11px] md:text-xs m-0 mb-0.5">กฎการเรียนรู้ (Strict Mode)</h4>
+                <p className="text-rose-600/90 text-[10px] md:text-xs m-0 leading-relaxed font-medium">
+                  วิดีโอจะหยุดอัตโนมัติหากสลับหน้าจอ ต้องรับชมให้ครบ 100% เพื่อปลดล็อกปุ่มทำข้อสอบ
                 </p>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-slate-50/80 p-5 md:p-8 rounded-2xl md:rounded-[2rem] shadow-inner border border-slate-200/60 flex flex-col justify-center items-center text-center h-full">
-            <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 md:mb-4 border border-slate-100">
-              <SafetyCertificateOutlined className="text-2xl md:text-3xl text-slate-400" />
-            </div>
-            <h3 className="text-sm md:text-lg font-black text-slate-700 mb-1">ทำแบบทดสอบ</h3>
-            <p className="text-[10px] md:text-xs text-slate-500 mb-4 md:mb-6 font-medium">เกณฑ์ผ่าน: 80% ขึ้นไป</p>
 
-            {isCompleted ? (
-              <Button size="large" type="primary" loading={isFetchingExam} onClick={handleStartExam} className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl text-sm md:text-base font-black bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_10px_20px_rgba(16,185,129,0.3)] animate-bounce">
-                เริ่มทำข้อสอบทันที
-              </Button>
-            ) : (
-              <Button size="large" disabled className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold bg-slate-200/50 text-slate-400 border border-slate-200 flex items-center justify-center gap-2">
-                <LockOutlined /> รอวิดีโอจบ 100%
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -428,7 +506,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   }
 
   // ==========================================
-  // 📚 RENDER: หน้ารวมหลักสูตร (Dashboard) - 🌟 กระชับขึ้น
+  // 📚 RENDER: หน้ารวมหลักสูตร (Dashboard)
   // ==========================================
   const filteredCourses = courses.filter(course => {
     if (activeTab === 'REQUIRED') return course.status === 'REQUIRED' || course.status === 'IN_PROGRESS';
@@ -448,13 +526,13 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   return (
     <div className="w-full max-w-6xl mx-auto pb-12 px-3 md:px-6 lg:px-8">
       
-      {/* 🚀 Header ปรับให้เล็กกะทัดรัดขึ้นบนมือถือ */}
-      <div className="mb-5 md:mb-8 text-left">
+      {/* 🚀 Header */}
+      <div className="mb-4 md:mb-8 text-left">
         <h2 className="text-xl md:text-3xl font-black text-slate-800 m-0 flex items-center gap-2.5 md:gap-3">
           <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-2 md:p-2.5 rounded-xl md:rounded-2xl shadow-md"><BookOutlined /></div>
           E-Learning Center
         </h2>
-        <p className="text-slate-500 mt-1.5 md:mt-2 font-medium text-xs md:text-sm pl-[42px] md:pl-[52px]">ศูนย์อบรมและทดสอบ (SafetyOS)</p>
+        <p className="text-slate-500 mt-1.5 md:mt-2 font-medium text-[11px] md:text-sm pl-[42px] md:pl-[52px]">ศูนย์อบรมและทดสอบ (SafetyOS)</p>
       </div>
 
       {isLoadingCourses ? (
@@ -464,15 +542,15 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
         </div>
       ) : (
         <>
-          {/* 🔴 กล่องแดงแจ้งเตือน (ลดขนาดลงให้สมส่วน) */}
+          {/* 🔴 กล่องแดงแจ้งเตือน ปรับให้เล็กลง */}
           {courses.some(c => c.status === 'REQUIRED') && (
-            <div className="bg-gradient-to-r from-rose-50 to-red-50 border-l-4 border-rose-500 p-3 md:p-5 rounded-r-xl md:rounded-r-2xl rounded-l-sm mb-6 md:mb-8 flex flex-row items-center gap-3 md:gap-4 shadow-sm">
-              <div className="bg-white text-rose-500 p-2 md:p-3 rounded-full shadow-sm shrink-0">
-                <LockOutlined className="text-lg md:text-2xl" />
+            <div className="bg-gradient-to-r from-rose-50 to-red-50 border-l-[3px] border-rose-500 p-2.5 md:p-4 rounded-r-xl rounded-l-sm mb-4 md:mb-8 flex flex-row items-center gap-3 shadow-sm mx-1 md:mx-0">
+              <div className="bg-white text-rose-500 p-2 rounded-full shadow-sm shrink-0">
+                <LockOutlined className="text-base md:text-xl" />
               </div>
               <div>
-                <h4 className="text-rose-800 font-black text-sm md:text-lg m-0 leading-tight">คุณมีวิชาที่ต้องเรียน!</h4>
-                <p className="text-rose-600/90 text-[10px] md:text-sm font-medium m-0 mt-0.5 md:mt-1 leading-snug">
+                <h4 className="text-rose-800 font-black text-[13px] md:text-base m-0 leading-tight">วิชาบังคับเรียน!</h4>
+                <p className="text-rose-600/90 text-[10px] md:text-xs font-medium m-0 mt-0.5 leading-snug">
                   กรุณาสอบให้ผ่านเพื่อรับอนุญาตเข้าพื้นที่
                 </p>
               </div>
@@ -483,19 +561,19 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             activeKey={activeTab} 
             onChange={setActiveTab}
             size="small"
-            className="custom-elearning-tabs mb-4 md:mb-8"
+            className="custom-elearning-tabs mb-4 md:mb-6"
             items={[
-              { key: 'ALL', label: <span className="font-bold text-xs md:text-base">📚 ทั้งหมด</span> },
-              { key: 'REQUIRED', label: <span className="font-bold text-rose-500 text-xs md:text-base flex items-center gap-1.5"><Badge dot color="red" offset={[5, 0]}>รอสอบ</Badge></span> },
-              { key: 'COMPLETED', label: <span className="font-bold text-emerald-600 text-xs md:text-base"> ผ่านแล้ว</span> },
+              { key: 'ALL', label: <span className="font-bold text-xs md:text-sm">📚 ทั้งหมด</span> },
+              { key: 'REQUIRED', label: <span className="font-bold text-rose-500 text-xs md:text-sm flex items-center gap-1.5"><Badge dot color="red" offset={[5, 0]}>รอสอบ</Badge></span> },
+              { key: 'COMPLETED', label: <span className="font-bold text-emerald-600 text-xs md:text-sm">✅ ผ่านแล้ว</span> },
             ]}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredCourses.map(course => (
-              <div key={course.id} className="bg-white rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group flex flex-col h-full">
+              <div key={course.id} className="bg-white rounded-2xl md:rounded-[1.5rem] overflow-hidden shadow-[0_2px_15px_-5px_rgba(0,0,0,0.08)] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group flex flex-col h-full mx-1 md:mx-0">
                 
-                <div className="h-40 md:h-52 w-full relative overflow-hidden bg-slate-200 shrink-0">
+                <div className="h-40 md:h-48 w-full relative overflow-hidden bg-slate-200 shrink-0">
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent z-10 transition-opacity duration-300 group-hover:opacity-70"></div>
                   <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   {getStatusBadge(course.status)}
@@ -504,21 +582,21 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                   </div>
                 </div>
 
-                <div className="p-4 md:p-6 flex flex-col flex-1 bg-white relative z-20">
-                  <h3 className="text-sm md:text-lg font-black text-slate-800 leading-tight mb-1.5 md:mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">{course.title}</h3>
-                  <p className="text-[11px] md:text-xs text-slate-500 mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">{course.description}</p>
+                <div className="p-4 md:p-5 flex flex-col flex-1 bg-white relative z-20">
+                  <h3 className="text-sm md:text-base font-black text-slate-800 leading-snug mb-1.5 line-clamp-2 group-hover:text-indigo-600 transition-colors">{course.title}</h3>
+                  <p className="text-[10px] md:text-xs text-slate-500 mb-4 line-clamp-2 flex-1 leading-relaxed">{course.description}</p>
                   
                   <div className="mt-auto">
                     {course.status === 'COMPLETED' ? (
-                      <Button block size="large" className="rounded-xl md:rounded-2xl h-10 md:h-12 text-xs md:text-sm font-black text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-500 hover:text-white transition-colors" onClick={() => window.location.href = '?page=E_PASSPORT'}>
-                        ดูใบ Certificate ของฉัน
+                      <Button block size="middle" className="rounded-xl h-10 md:h-11 text-xs md:text-sm font-bold text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-500 hover:text-white transition-colors" onClick={() => window.location.href = '?page=E_PASSPORT'}>
+                        ดูใบ Certificate
                       </Button>
                     ) : course.status === 'IN_PROGRESS' ? (
-                      <Button block size="large" type="primary" onClick={() => handleStartCourse(course)} className="rounded-xl md:rounded-2xl h-10 md:h-12 text-xs md:text-sm font-black bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-md hover:shadow-lg transition-all">
+                      <Button block size="middle" type="primary" onClick={() => handleStartCourse(course)} className="rounded-xl h-10 md:h-11 text-xs md:text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-sm hover:shadow-md transition-all">
                         เรียนต่อให้จบ
                       </Button>
                     ) : (
-                      <Button block size="large" type="primary" danger onClick={() => handleStartCourse(course)} className="rounded-xl md:rounded-2xl h-10 md:h-12 text-xs md:text-sm font-black bg-gradient-to-r from-rose-500 to-red-600 border-none shadow-md hover:shadow-lg transition-all">
+                      <Button block size="middle" type="primary" danger onClick={() => handleStartCourse(course)} className="rounded-xl h-10 md:h-11 text-xs md:text-sm font-bold bg-gradient-to-r from-rose-500 to-red-600 border-none shadow-sm hover:shadow-md transition-all">
                         เริ่มเรียนทันที
                       </Button>
                     )}
@@ -533,10 +611,10 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
 
       <style>{`
         .custom-elearning-tabs .ant-tabs-nav::before { border-bottom: 1px solid #e2e8f0; }
-        .custom-elearning-tabs .ant-tabs-tab { padding: 12px 0; margin-right: 24px; transition: all 0.3s; }
+        .custom-elearning-tabs .ant-tabs-tab { padding: 10px 0; margin-right: 20px; transition: all 0.3s; }
         .custom-elearning-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #1e293b !important; transform: scale(1.02); }
         .custom-elearning-tabs .ant-tabs-ink-bar { height: 3px !important; border-radius: 3px 3px 0 0; background: #4f46e5; }
-        @media (max-width: 768px) { .custom-elearning-tabs .ant-tabs-tab { margin-right: 16px; padding: 8px 0;} }
+        @media (max-width: 768px) { .custom-elearning-tabs .ant-tabs-tab { margin-right: 12px; padding: 6px 0;} }
         .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
