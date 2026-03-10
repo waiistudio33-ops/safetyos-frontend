@@ -4,7 +4,7 @@ import {
   PlayCircleOutlined, CheckCircleOutlined, LockOutlined, 
   ClockCircleOutlined, BookOutlined, WarningOutlined, LeftOutlined, 
   PauseCircleOutlined, SafetyCertificateOutlined, CloseCircleOutlined, ReloadOutlined,
-  DownOutlined, UpOutlined
+  DownOutlined, UpOutlined, FullscreenOutlined, FullscreenExitOutlined
 } from '@ant-design/icons';
 import axios from 'axios'; 
 
@@ -19,8 +19,10 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   const [playedPercent, setPlayedPercent] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false); 
+  const [isFullscreen, setIsFullscreen] = useState(false); // 🟢 State สำหรับเช็คสถานะเต็มจอ
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null); // 🟢 Ref สำหรับกล่องครอบวิดีโอ (ใช้สำหรับ Fullscreen)
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -67,6 +69,15 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     return () => window.removeEventListener('blur', handleWindowBlur);
   }, [isPlaying, isCompleted, currentView]);
 
+  // 🟢 ฟังจับ Event เมื่อมีการกดปุ่ม ESC ออกจาก Fullscreen (ให้อัปเดต Icon)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   const handlePlayPause = (forceState?: boolean) => {
     if (!videoRef.current || isCompleted) return;
     const nextState = forceState !== undefined ? forceState : !isPlaying;
@@ -95,9 +106,27 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     setIsCompleted(true);
     setIsPlaying(false);
     
+    // ออกจาก Fullscreen อัตโนมัติเมื่อดูจบ
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(err => console.error(err));
+    }
+    
     // ลบความคืบหน้าที่บันทึกไว้เมื่อดูจบ
     if (currentUser?.id && selectedCourse?.id) {
        localStorage.removeItem(`course_progress_${currentUser.id}_${selectedCourse.id}`);
+    }
+  };
+
+  // 🟢 ฟังก์ชันสลับโหมดเต็มจอ
+  const toggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().catch(err => {
+        message.warning('อุปกรณ์ของคุณไม่รองรับการขยายเต็มจอ');
+      });
+    } else {
+      document.exitFullscreen();
     }
   };
 
@@ -365,7 +394,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   }
 
   // ==========================================
-  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER) - 🌟 อัปเกรด RWD แนวนอน
+  // 🎬 RENDER: หน้าจอห้องเรียน (PLAYER)
   // ==========================================
   if (currentView === 'PLAYER' && selectedCourse) {
     return (
@@ -387,14 +416,15 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
           </h2>
         </div>
 
-        {/* 🌟 Layout แบบ RWD: ซ้ายวิดีโอ (65%) ขวารายละเอียด (35%) สำหรับ iPad/แนวนอน */}
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6 w-full items-start">
           
           {/* ซ้าย: กล่องวิดีโอ */}
           <div className="w-full lg:w-[65%] shrink-0">
             <div className="bg-slate-900 md:bg-white md:p-2 md:rounded-[2rem] md:shadow-xl md:border border-slate-100 w-full relative">
               
-              <div className="bg-black md:rounded-[1.5rem] overflow-hidden relative aspect-video group w-full">
+              {/* 🟢 กำหนด ref ให้ container ตัวนี้เพื่อใช้สั่ง Fullscreen โคฟเวอร์ทั้งกล่อง */}
+              <div ref={playerContainerRef} className={`bg-black md:rounded-[1.5rem] overflow-hidden relative aspect-video group w-full ${isFullscreen ? '!rounded-none' : ''}`}>
+                
                 {/* วิดีโอหลัก */}
                 <video 
                   ref={videoRef}
@@ -442,14 +472,28 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                   </div>
                 )}
 
-                {/* Progress Bar ด้านล่าง */}
+                {/* Progress Bar & Controls ด้านล่าง */}
                 {!isCompleted && (
-                  <div className={`absolute bottom-0 left-0 right-0 px-3 md:px-5 pb-2 md:pb-4 pt-12 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20 pointer-events-none transition-opacity duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
-                    <div className="flex justify-between items-center text-white/90 text-[10px] md:text-xs font-bold mb-1.5 md:mb-2 uppercase tracking-wider drop-shadow-md">
+                  <div className={`absolute bottom-0 left-0 right-0 px-3 md:px-5 pb-2 md:pb-4 pt-16 bg-gradient-to-t from-black/95 via-black/50 to-transparent z-20 pointer-events-none transition-opacity duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                    <div className="flex justify-between items-center text-white/90 text-[10px] md:text-xs font-bold mb-2 md:mb-3 uppercase tracking-wider drop-shadow-md">
+                      
                       <span className="flex items-center gap-1 md:gap-2">
                         {isPlaying ? <span className="text-emerald-400 flex items-center gap-1"><PlayCircleOutlined /> <span className="hidden sm:inline">กำลังเล่น</span></span> : <span className="text-amber-400 flex items-center gap-1"><PauseCircleOutlined /> <span className="hidden sm:inline">หยุดชั่วคราว</span></span>}
                       </span>
-                      <span>ความคืบหน้า <span className="text-blue-400 text-xs md:text-sm ml-1 font-black">{playedPercent}%</span></span>
+                      
+                      {/* 🟢 ปุ่มขยายเต็มจอ (เปิด Pointer Events เฉพาะจุดนี้เพื่อให้กดได้) */}
+                      <div className="flex items-center gap-3">
+                        <span>ความคืบหน้า <span className="text-blue-400 text-xs md:text-sm ml-1 font-black">{playedPercent}%</span></span>
+                        <div className="w-px h-3 bg-white/20"></div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
+                          className="pointer-events-auto bg-white/10 hover:bg-white/25 border border-white/20 p-1.5 md:p-2 rounded-lg text-white transition-all cursor-pointer flex items-center justify-center backdrop-blur-sm"
+                          title="ขยายเต็มจอ"
+                        >
+                          {isFullscreen ? <FullscreenExitOutlined className="text-sm md:text-base" /> : <FullscreenOutlined className="text-sm md:text-base" />}
+                        </button>
+                      </div>
+
                     </div>
                     <Progress percent={playedPercent} showInfo={false} strokeColor="#3b82f6" trailColor="rgba(255,255,255,0.2)" size={["100%", 4]} className="m-0 md:!h-1.5" />
                   </div>
@@ -458,16 +502,14 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             </div>
           </div>
 
-          {/* ขวา: ข้อมูลคอร์สและปุ่มสอบ (เรียงเป็น Column) */}
+          {/* ขวา: ข้อมูลคอร์สและปุ่มสอบ */}
           <div className="w-full lg:w-[35%] flex flex-col gap-4 md:gap-6 px-4 md:px-0">
             
-            {/* ข้อมูลหลักสูตร */}
             <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-200">
               <div className="flex items-center gap-2 text-slate-800 font-black text-sm md:text-base mb-3">
                 <BookOutlined className="text-blue-500" /> ข้อมูลหลักสูตร
               </div>
 
-              {/* 📖 ระบบย่อ-ขยาย คำอธิบาย */}
               <div className="relative">
                 <p className={`text-slate-600 text-xs md:text-sm leading-relaxed m-0 transition-all duration-300 ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
                   {selectedCourse.description || 'ไม่มีคำอธิบายเพิ่มเติม'}
@@ -495,7 +537,6 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
               </div>
             </div>
 
-            {/* กล่องปุ่มสอบ */}
             <div className="bg-slate-50/80 p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-inner border border-slate-200/60 flex flex-col justify-center items-center text-center">
               <div className="w-10 h-10 md:w-14 md:h-14 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 md:mb-3 border border-slate-100">
                 <SafetyCertificateOutlined className="text-xl md:text-2xl text-slate-400" />
@@ -559,7 +600,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
         </div>
       ) : (
         <>
-          {/* 🔴 กล่องแดงแจ้งเตือน กระชับขึ้น ไม่กว้างเต็มจอถ้ายืดแนวนอน */}
+          {/* 🔴 กล่องแดงแจ้งเตือน */}
           {courses.some(c => c.status === 'REQUIRED') && (
             <div className="bg-gradient-to-r from-rose-50 to-red-50 border-l-[3px] border-rose-500 p-2.5 md:p-4 rounded-r-xl rounded-l-sm mb-4 md:mb-6 flex flex-row items-center gap-3 shadow-sm md:max-w-md">
               <div className="bg-white text-rose-500 p-1.5 md:p-2 rounded-full shadow-sm shrink-0">
@@ -634,6 +675,8 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
         @media (min-width: 768px) { .custom-elearning-tabs .ant-tabs-tab { margin-right: 24px; padding: 12px 0;} }
         .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* 🟢 เพิ่ม CSS ให้ซ่อนแถบ Controls เริ่มต้นของเบราว์เซอร์เวลา Fullscreen เผื่อไว้ */
+        video::-webkit-media-controls { display: none !important; }
       `}</style>
     </div>
   );
