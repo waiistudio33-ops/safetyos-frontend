@@ -479,7 +479,7 @@ export default function App() {
           <div className={`${isMobile ? 'h-[40vh]' : 'w-1/2 h-screen'} bg-gradient-to-br from-blue-600 to-indigo-700 relative flex items-center justify-center text-white px-10 text-center`}>
             <div className="z-20">
               <div className="bg-white p-3 rounded-2xl shadow-lg mb-6 mx-auto w-24 h-24 flex items-center justify-center">
-                <img src="Safetylogo.svg" alt="SafetyOS Logo" className="w-full h-full object-contain" />
+                <img src="/Safetylogo.svg" alt="SafetyOS Logo" className="w-full h-full object-contain" />
               </div>
               <h1 className="text-3xl md:text-5xl font-bold mb-2">SafetyOS</h1><p className="text-blue-100 text-sm md:text-lg opacity-90">Enterprise Safety Management</p>
             </div>
@@ -525,7 +525,7 @@ export default function App() {
             <Sider width={260} style={{ ...glassPanel, margin: '16px 0 16px 16px', position: 'fixed', left: 0, zIndex: 100, height: 'calc(100vh - 32px)' }} theme="light">
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                 <div style={{ background: '#ffffff', padding: '6px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(37,99,235,0.1)' }}>
-                  <img src="Safetylogo.svg" alt="SafetyOS" className="w-8 h-8 object-contain" />
+                  <img src="/Safetylogo.svg" alt="SafetyOS" className="w-8 h-8 object-contain" />
                 </div>
                 <Text strong style={{ fontSize: '20px', color: '#1e293b', letterSpacing: '-0.5px' }}>Safety<span style={{color: '#2563eb'}}>OS</span></Text>
               </div>
@@ -536,7 +536,7 @@ export default function App() {
           <Drawer 
             title={
               <div className="flex items-center gap-2">
-                <img src="Safetylogo.svg" alt="Logo" className="w-7 h-7 object-contain" /> 
+                <img src="/Safetylogo.svg" alt="Logo" className="w-7 h-7 object-contain" /> 
                 <span className="font-bold text-slate-800">SafetyOS</span>
               </div>
             } 
