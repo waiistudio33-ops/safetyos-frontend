@@ -473,114 +473,28 @@ export default function App() {
 
   if (!isAuthenticated) {
     const minimalInputStyle = { border: 'none', borderBottom: '2px solid #e2e8f0', borderRadius: '0', boxShadow: 'none', background: 'transparent', paddingLeft: '0', paddingBottom: '8px', fontSize: '16px' };
-    
-    // 🟢 ฟังก์ชันส่งข้อมูล LINE ไปลงทะเบียน/ล็อกอิน
-    const handleLineLoginSubmit = async () => {
-      setIsLoggingIn(true);
-      try {
-        if (!lineProfile) {
-          message.warning('ไม่พบข้อมูล LINE กรุณาเปิดผ่านแอป LINE');
-          setIsLoggingIn(false);
-          return;
-        }
-        
-        // ส่งชื่อ display_name ไปด้วยเพื่อให้ Backend บันทึกชื่อ
-        const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { 
-          line_id: lineProfile.userId, 
-          picture_url: lineProfile.pictureUrl,
-          display_name: lineProfile.displayName
-        });
-        
-        localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-        setCurrentUser(res.data.user);
-        setIsAuthenticated(true);
-        
-        if (res.data.isNew) {
-          message.success(`🎉 ลงทะเบียนผู้รับเหมาใหม่สำเร็จ ยินดีต้อนรับคุณ ${res.data.user.full_name}`);
-        } else {
-          message.success(`เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับคุณ ${res.data.user.full_name}`);
-        }
-      } catch (error: any) {
-        message.error(error.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ');
-      } finally {
-        setIsLoggingIn(false);
-      }
-    };
-
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-slate-50 overflow-hidden">
-          
-          <div className={`${isMobile ? 'h-[30vh]' : 'w-1/2 h-screen'} bg-gradient-to-br from-blue-700 to-indigo-900 relative flex items-center justify-center text-white px-10 text-center`}>
+          <div className={`${isMobile ? 'h-[40vh]' : 'w-1/2 h-screen'} bg-gradient-to-br from-blue-600 to-indigo-700 relative flex items-center justify-center text-white px-10 text-center`}>
             <div className="z-20">
-              <div className="bg-white p-3 rounded-2xl shadow-lg mb-6 mx-auto w-20 h-20 md:w-28 md:h-28 flex items-center justify-center">
+              <div className="bg-white p-3 rounded-2xl shadow-lg mb-6 mx-auto w-24 h-24 flex items-center justify-center">
                 <img src="Safetylogo.svg" alt="SafetyOS Logo" className="w-full h-full object-contain" />
               </div>
-              <h1 className="text-3xl md:text-5xl font-black mb-2 tracking-tight">SafetyOS</h1>
-              <p className="text-blue-200 text-xs md:text-base font-medium uppercase tracking-widest">Enterprise Safety Gateway</p>
+              <h1 className="text-3xl md:text-5xl font-bold mb-2">SafetyOS</h1><p className="text-blue-100 text-sm md:text-lg opacity-90">Enterprise Safety Management</p>
             </div>
             <WaveSeparator isMobile={isMobile} />
           </div>
-
-          <div className={`${isMobile ? 'flex-1 pt-6' : 'w-1/2 flex items-center'} bg-white px-6 md:px-20 pb-10`}>
+          <div className={`${isMobile ? 'flex-1 pt-8' : 'w-1/2 flex items-center'} bg-white px-8 md:px-20 pb-10`}>
             <div className="w-full max-w-md mx-auto">
-              
-              <div className="mb-8 text-center md:text-left">
-                <h2 className="text-2xl md:text-3xl font-black text-slate-800 mb-2">เข้าสู่ระบบ (Sign In)</h2>
-                <p className="text-slate-500 text-sm">กรุณาเลือกช่องทางการเข้าสู่ระบบตามสถานะของคุณ</p>
-              </div>
-
-              {/* 🟢 ปุ่ม 1: สำหรับผู้รับเหมา (LINE Login / Auto-Register) */}
-              <div className="mb-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 text-center md:text-left">สำหรับผู้รับเหมาและบุคคลภายนอก</p>
-                <Button 
-                  type="primary" 
-                  size="large"
-                  onClick={handleLineLoginSubmit}
-                  loading={isLoggingIn}
-                  className="w-full h-14 md:h-16 rounded-2xl font-black text-base md:text-lg bg-[#06C755] hover:bg-[#05b34c] border-none shadow-[0_8px_20px_-6px_rgba(6,199,85,0.5)] transition-all flex items-center justify-center gap-3"
-                >
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 3.938 8.91 9.388 9.62.367.082.868.256.996.584.115.294.074.755.035 1.053-.053.407-.246 1.488-.299 1.748-.087.419.412.632.748.441 3.585-2.036 9.539-5.617 11.83-9.351C23.633 12.923 24 11.666 24 10.304z"/></svg>
-                  ล็อกอิน / ลงทะเบียนด้วย LINE
-                </Button>
-                {lineProfile && (
-                  <div className="mt-3 flex items-center justify-center md:justify-start gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 py-1.5 px-3 rounded-lg border border-emerald-100 w-max mx-auto md:mx-0">
-                    <Avatar src={lineProfile.pictureUrl} size={20} /> เชื่อมต่อกับ {lineProfile.displayName} แล้ว
-                  </div>
-                )}
-              </div>
-
-              <Divider className="my-6"><span className="text-slate-300 font-medium text-xs">หรือ (OR)</span></Divider>
-
-              {/* 🟢 ปุ่ม 2: สำหรับพนักงานบริษัท (Mockup SSO & รหัสผ่านเดิม) */}
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 text-center md:text-left">สำหรับพนักงาน SCG / MTT</p>
-                
-                {/* ปุ่มหลอกสำหรับพรีเซนต์ SSO */}
-                <Button 
-                  size="large"
-                  onClick={() => message.info('ในระบบจริงจะเชื่อมต่อไปยัง Microsoft Entra ID (SSO)')}
-                  className="w-full h-12 md:h-14 rounded-xl font-bold text-sm md:text-base bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 mb-4 flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="#00a4ef" d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z"/></svg>
-                  Login with SCG Account (SSO)
-                </Button>
-
-                {/* ฟอร์มกรอกรหัสแบบเดิม (เอาไว้ใช้ทดสอบ) */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <p className="text-[10px] text-slate-400 mb-3 text-center font-medium">เข้าสู่ระบบด้วยรหัสพนักงาน (Admin / Demo)</p>
-                  <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false} className="mb-0">
-                    <Form.Item name="username" rules={[{ required: true, message: 'กรุณากรอก Username' }]} className="mb-3">
-                      <Input size="large" placeholder="Username (ทดสอบ: view / somchai)" className="rounded-lg text-sm" />
-                    </Form.Item>
-                    <Form.Item name="password" rules={[{ required: true, message: 'กรุณากรอก Password' }]} className="mb-3">
-                      <Input.Password size="large" placeholder="Password (ทดสอบ: 1234)" className="rounded-lg text-sm" />
-                    </Form.Item>
-                    <Button type="primary" htmlType="submit" loading={isLoggingIn} block className="h-10 rounded-lg font-bold bg-blue-600 border-none">เข้าสู่ระบบ</Button>
-                  </Form>
-                </div>
-              </div>
-
+              {lineProfile ? (
+                <div className="mb-8 text-center animate-fade-in"><Avatar src={lineProfile.pictureUrl} size={64} className="mb-3 border-2 border-green-500 shadow-md" /><h2 className="text-2xl font-extrabold text-slate-800 mb-1">สวัสดีคุณ {lineProfile.displayName}</h2><p className="text-green-600 font-bold text-sm bg-green-50 inline-block px-3 py-1 rounded-full">เปิดผ่านแอป LINE สำเร็จ ✅</p><p className="text-slate-400 text-xs mt-3">กรุณาล็อกอินด้วยรหัสพนักงานในครั้งแรก</p></div>
+              ) : (<div className="mb-8"><h2 className="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back</h2><p className="text-slate-400">Please enter your details to sign in.</p></div>)}
+              <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false}>
+                <Form.Item name="username" label={<span className="font-bold text-slate-700 text-xs uppercase tracking-wider">Username (ทดสอบใช้: view / somchai)</span>} rules={[{ required: true, message: 'กรุณากรอก Username' }]}><Input size="large" placeholder="Enter username" style={minimalInputStyle} autoComplete="username" /></Form.Item>
+                <Form.Item name="password" label={<span className="font-bold text-slate-700 text-xs uppercase tracking-wider">Password (รหัส: 1234)</span>} rules={[{ required: true, message: 'กรุณากรอก Password' }]}><Input.Password size="large" placeholder="Enter password" style={minimalInputStyle} autoComplete="current-password" /></Form.Item>
+                <Button type="primary" htmlType="submit" loading={isLoggingIn} block style={{ height: '56px', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', background: '#2563eb', border: 'none', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)' }}>Sign In</Button>
+              </Form>
             </div>
           </div>
         </div>
