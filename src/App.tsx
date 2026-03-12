@@ -390,26 +390,27 @@ export default function App() {
   if (isAuthChecking) return ( <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' }}}> <div className="h-screen w-full flex items-center justify-center bg-slate-50"> <Spin size="large" /> </div> </ConfigProvider> );
   if (verifyUserId) return <VerificationPage userId={verifyUserId} />;
 
-  // 🎬 LOGIN VIEW (✨ PURE CSS MESH GRADIENT + BEAUTIFUL FORM LABELS)
+  // 🎬 LOGIN VIEW (✨ PURE CSS MESH GRADIENT - รับประกันไม่จอขาว 100%)
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
         {/* พื้นหลังนอกสุดสีเทาอ่อนสะอาดตา */}
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f4f8] p-4 sm:p-8">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[#eef2f6] p-4 sm:p-8">
           
           {/* กล่องหลักขอบมนใหญ่ๆ */}
           <div className="w-full max-w-[1000px] bg-white rounded-[2rem] md:rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex flex-col md:flex-row overflow-hidden relative">
             
-            {/* 🎨 ฝั่งซ้าย: Pure CSS Radial Gradient (การันตีขึ้นแน่นอน 100% ไม่มีทางจอขาว) */}
+            {/* 🎨 ฝั่งซ้าย: Pure CSS Mesh Gradient (กันปัญหาจอขาว) */}
             <div 
               className="w-full md:w-1/2 min-h-[350px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100"
               style={{
+                /* 🟢 ใช้ radial-gradient แบบนี้ รับประกันว่าแสดงผลชัวร์ทุกเครื่อง 100% ไม่ต้องพึ่งเบลอ */
                 backgroundColor: '#ffffff',
                 backgroundImage: `
-                  radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.45) 0%, transparent 60%),
-                  radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.35) 0%, transparent 60%),
-                  radial-gradient(circle at 10% 90%, rgba(244, 63, 94, 0.35) 0%, transparent 60%),
-                  radial-gradient(circle at 90% 90%, rgba(234, 179, 8, 0.35) 0%, transparent 60%)
+                  radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.5) 0%, transparent 60%),
+                  radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.4) 0%, transparent 60%),
+                  radial-gradient(circle at 10% 90%, rgba(244, 63, 94, 0.4) 0%, transparent 60%),
+                  radial-gradient(circle at 90% 90%, rgba(234, 179, 8, 0.4) 0%, transparent 60%)
                 `
               }}
             >
@@ -424,7 +425,8 @@ export default function App() {
                {/* 🪟 กล่องกระจกใสตรงกลาง (Glassmorphism Card) */}
                <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" 
                     style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
-                  <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4">
+                  <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4 flex items-center justify-center">
+                    {/* 🟢 อัปเดต src โลโก้เป็น /test.svg ตามที่คุณวิวใช้งานจริง */}
                     <img src="/test.svg" alt="SafetyOS" className="w-14 h-14 object-contain" />
                   </div>
                   <h1 className="text-3xl font-black text-slate-800 tracking-tight m-0 drop-shadow-sm">Safety<span className="text-[#2563eb]">OS</span></h1>
@@ -432,14 +434,14 @@ export default function App() {
                </div>
             </div>
 
-            {/* 🔐 ฝั่งขวา: ฟอร์มล็อกอิน (ปรับปรุง Label ให้สวยเหมือนรูปเป๊ะ) */}
+            {/* 🔐 ฝั่งขวา: ฟอร์มล็อกอิน (Login Form) */}
             <div className="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-white z-20 relative">
                <div className="w-full max-w-[340px] mx-auto text-left">
                   
-                  <h2 className="text-[32px] sm:text-[36px] font-black text-slate-800 mb-1 tracking-tight">Welcome Back</h2>
+                  <h2 className="text-[32px] sm:text-[36px] font-black text-[#1e293b] mb-1 tracking-tight">Welcome Back</h2>
                   <p className="text-slate-500 font-medium text-sm mb-8">Log in to proceed.</p>
 
-                  {/* ฟอร์มกรอกรหัส (แก้ Label หนาและเอาคำใบ้ออกตามแบบ) */}
+                  {/* ฟอร์มกรอกรหัส (ตามภาพของ User) */}
                   <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false} className="mb-0 custom-login-form">
                     <Form.Item 
                       name="username" 
@@ -479,7 +481,7 @@ export default function App() {
                   {/* เส้นกั้น or log in with */}
                   <Divider plain className="my-8 text-slate-400 text-xs font-medium border-slate-100">or log in with</Divider>
 
-                  {/* ปุ่ม 2 อันล่าง (LINE & SSO) ปรับให้เหมือนในรูปเป๊ะ */}
+                  {/* ปุ่ม 2 อันล่าง (LINE & SSO) */}
                   <div className="grid grid-cols-2 gap-4">
                      <Button 
                        size="large"
