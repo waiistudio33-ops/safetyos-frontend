@@ -425,7 +425,7 @@ export default function App() {
                <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" 
                     style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
                   <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4">
-                    <img src="/safetylogo.svg" alt="SafetyOS" className="w-14 h-14 object-contain" />
+                    <img src="/test.svg" alt="SafetyOS" className="w-14 h-14 object-contain" />
                   </div>
                   <h1 className="text-3xl font-black text-slate-800 tracking-tight m-0 drop-shadow-sm">Safety<span className="text-[#2563eb]">OS</span></h1>
                   <p className="text-slate-600 font-bold mt-1 tracking-widest uppercase text-[10px]">Enterprise Gateway</p>
