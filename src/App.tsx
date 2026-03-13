@@ -21,11 +21,10 @@ import dayjs from 'dayjs';
 import liff from '@line/liff'; 
 import { useReactToPrint } from 'react-to-print';
 
-// 🟢 ท่าไม้ตาย! Import รูปเข้ามาตรงๆ จากโฟลเดอร์ src 
-// (ถ้าไฟล์ชื่ออื่น หรือนามสกุลอื่น เช่น .png ให้แก้ตรงนี้ได้เลยนะครับ)
-import logoImg from './test.svg';
+// 🟢 Import ไฟล์โลโก้ และ คอมโพเนนต์ต่างๆ เข้ามา
+import logoImg from './test.svg'; 
+import UserProfile from './components/UserProfile'; 
 
-// --- Components ---
 import WorkPermitQueue from "./components/WorkPermitQueue";
 import BBSHistory from "./components/BBSHistory";
 import ConfinedSpaceBoard from "./components/ConfinedSpaceBoard";
@@ -62,11 +61,11 @@ const ModernDateRange = ({ value, onChange }: any) => {
   const toNativeFormat = (date: any) => date ? date.format('YYYY-MM-DDTHH:mm') : '';
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-white p-3 rounded-2xl border border-blue-100 shadow-sm flex flex-col justify-center">
+      <div className="bg-white p-3 rounded-2xl border border-blue-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col justify-center">
         <label className="text-[10px] md:text-xs font-bold text-blue-600 uppercase tracking-wide mb-1"><CalendarOutlined className="mr-1"/> เวลาเริ่มงาน</label>
         <input type="datetime-local" className="w-full bg-transparent outline-none text-slate-800 font-bold text-sm md:text-base py-1" value={toNativeFormat(value?.[0])} onChange={onStartChange} />
       </div>
-      <div className="bg-white p-3 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-center">
+      <div className="bg-white p-3 rounded-2xl border border-red-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col justify-center">
         <label className="text-[10px] md:text-xs font-bold text-red-500 uppercase tracking-wide mb-1"><ClockCircleOutlined className="mr-1"/> เวลาสิ้นสุด</label>
         <input type="datetime-local" className="w-full bg-transparent outline-none text-slate-800 font-bold text-sm md:text-base py-1" value={toNativeFormat(value?.[1])} onChange={onEndChange} />
       </div>
@@ -81,7 +80,7 @@ const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-bl
       {options.map((opt: any) => {
         const isSelected = value.includes(opt.value);
         return (
-          <div key={opt.value} onClick={() => toggle(opt.value)} className={`cursor-pointer px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 select-none border shadow-sm ${isSelected ? `${activeColor} border-transparent scale-105` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+          <div key={opt.value} onClick={() => toggle(opt.value)} className={`cursor-pointer px-4 py-2 rounded-2xl text-xs md:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 select-none border shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${isSelected ? `${activeColor} border-transparent scale-105` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
             {isSelected ? <CheckCircleOutlined /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300"></div>} {opt.label}
           </div>
         );
@@ -163,7 +162,7 @@ export default function App() {
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const targetPage = queryParams.get('page');
-    if (targetPage && ['DASHBOARD', 'E_PASSPORT', 'E_PERMIT', 'BBS', 'CONFINED_SPACE', 'CERTIFICATE', 'INCIDENT', 'E_LEARNING', 'EQUIPMENT'].includes(targetPage)) {
+    if (targetPage && ['DASHBOARD', 'PROFILE', 'E_PASSPORT', 'E_PERMIT', 'BBS', 'CONFINED_SPACE', 'CERTIFICATE', 'INCIDENT', 'E_LEARNING', 'EQUIPMENT'].includes(targetPage)) {
       setActiveMenu(targetPage);
     }
     const path = window.location.pathname;
@@ -394,19 +393,18 @@ export default function App() {
   if (isAuthChecking) return ( <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' }}}> <div className="h-screen w-full flex items-center justify-center bg-slate-50"> <Spin size="large" /> </div> </ConfigProvider> );
   if (verifyUserId) return <VerificationPage userId={verifyUserId} />;
 
-  // 🎬 LOGIN VIEW (✨ PURE CSS MESH GRADIENT WITH ORGANIC SHAPE)
+  // 🎬 LOGIN VIEW (✨ UI Design Tips Applied: Anatomy, Soft Shadow, Radius)
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
-        {/* พื้นหลังนอกสุดสีเทาอ่อนสะอาดตา */}
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f4f8] p-4 sm:p-8">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f7f9] p-4 sm:p-8">
           
-          {/* กล่องหลักขอบมนใหญ่ๆ */}
-          <div className="w-full max-w-[1000px] bg-white rounded-[2rem] md:rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex flex-col md:flex-row overflow-hidden relative">
+          {/* ✨ Tip: Outer Radius = Inner Radius + Padding (16px + 32px = 48px / 3rem) */}
+          {/* ✨ Tip: Soft Shadow (Diffuse and light instead of harsh) */}
+          <div className="w-full max-w-[1000px] bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] flex flex-col md:flex-row overflow-hidden relative">
             
-            {/* 🎨 ฝั่งซ้าย: Pure CSS Radial Gradient (การันตีขึ้นแน่นอน 100% ไม่มีทางจอขาว) */}
             <div 
-              className="w-full md:w-1/2 min-h-[350px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100"
+              className="w-full md:w-1/2 min-h-[350px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100/50"
               style={{
                 backgroundColor: '#ffffff',
                 backgroundImage: `
@@ -417,7 +415,6 @@ export default function App() {
                 `
               }}
             >
-               {/* 🌿 รอยบากกั้นขอบ Organic Shape Divider (SVG แท้) โค้งรับฝั่งขวา */}
                <svg className="hidden md:block absolute right-0 top-0 h-full w-[80px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
                  <path d="M100,0 L100,100 L0,100 C 60,70 40,30 0,0 Z" />
                </svg>
@@ -425,89 +422,87 @@ export default function App() {
                  <path d="M0,100 L100,100 L100,0 C 70,60 30,40 0,0 Z" />
                </svg>
 
-               {/* 🪟 กล่องกระจกใสตรงกลาง (Glassmorphism Card) */}
-               <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" 
-                    style={{ background: 'rgba(255, 255, 255, 0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+               <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" 
+                    style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
                   <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4 flex items-center justify-center">
-                    {/* 🟢 เรียกไฟล์ด้วยตัวแปร logoImg ที่ import ไว้ด้านบน */}
                     <img src={logoImg} alt="SafetyOS" className="w-14 h-14 object-contain" />
                   </div>
                   <h1 className="text-3xl font-black text-slate-800 tracking-tight m-0 drop-shadow-sm">Safety<span className="text-[#2563eb]">OS</span></h1>
-                  <p className="text-slate-600 font-bold mt-1 tracking-widest uppercase text-[10px]">Enterprise Gateway</p>
+                  <p className="text-slate-500 font-extrabold mt-1 tracking-widest uppercase text-[10px]">Enterprise Gateway</p>
                </div>
             </div>
 
-            {/* 🔐 ฝั่งขวา: ฟอร์มล็อกอิน (ปรับปรุง Label ให้สวยเหมือนรูปเป๊ะ) */}
-            <div className="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-white z-20 relative">
+            {/* Container Padding: p-8 (32px) matches the math for Radius */}
+            <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white z-20 relative">
                <div className="w-full max-w-[340px] mx-auto text-left">
                   
-                  <h2 className="text-[32px] sm:text-[36px] font-black text-slate-800 mb-1 tracking-tight">Welcome Back</h2>
-                  <p className="text-slate-500 font-medium text-sm mb-8">Log in to proceed.</p>
+                  <h2 className="text-[32px] sm:text-[36px] font-black text-[#1e293b] mb-1 tracking-tight">Welcome Back</h2>
+                  <p className="text-slate-500 font-medium text-[13px] mb-8">Log in to proceed.</p>
 
-                  {/* ฟอร์มกรอกรหัส (แก้ Label หนาและเอาคำใบ้ออกตามแบบ) */}
+                  {/* ✨ Tip: Anatomy of Input Field - proper label gap, clear icon, adequate padding */}
                   <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false} className="mb-0 custom-login-form">
                     <Form.Item 
                       name="username" 
-                      label={<span className="text-[13px] text-slate-800 font-extrabold tracking-wide">Login, email or phone number</span>} 
+                      label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Login, email or phone number</span>} 
                       rules={[{ required: true, message: 'Please input your username!' }]} 
                       className="mb-5"
                     >
                       <Input 
                         size="large" 
                         prefix={<UserOutlined className="text-slate-400 text-lg mr-2" />}
-                        className="rounded-[1rem] h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-sm bg-[#f8fafc] focus:bg-white transition-colors" 
+                        placeholder="Enter your ID or email"
+                        className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" 
                       />
                     </Form.Item>
                     
                     <Form.Item 
                       name="password" 
-                      label={<span className="text-[13px] text-slate-800 font-extrabold tracking-wide">Password</span>} 
+                      label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Password</span>} 
                       rules={[{ required: true, message: 'Please input your password!' }]} 
                       className="mb-2"
                     >
                       <Input.Password 
                         size="large" 
                         prefix={<LockOutlined className="text-slate-400 text-lg mr-2" />}
-                        className="rounded-[1rem] h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-sm bg-[#f8fafc] focus:bg-white transition-colors" 
+                        placeholder="Enter your password"
+                        className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" 
                       />
                     </Form.Item>
 
                     <div className="text-right mb-6">
-                       <a href="#" onClick={(e) => { e.preventDefault(); message.info('กรุณาติดต่อ IT Support เพื่อรีเซ็ตรหัสผ่าน'); }} className="text-slate-400 hover:text-blue-600 text-[11px] font-bold transition-colors">Forgot login or password?</a>
+                       <a href="#" onClick={(e) => { e.preventDefault(); message.info('กรุณาติดต่อ IT Support เพื่อรีเซ็ตรหัสผ่าน'); }} className="text-slate-400 hover:text-blue-600 text-[12px] font-bold transition-colors">Forgot login or password?</a>
                     </div>
                     
-                    <Button htmlType="submit" loading={isLoggingIn} className="w-full h-[54px] rounded-[1rem] font-bold text-white bg-[#2563eb] hover:bg-[#1d4ed8] border-none text-[16px] shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] transition-all active:scale-[0.98]">
+                    <Button htmlType="submit" loading={isLoggingIn} className="w-full h-[54px] rounded-2xl font-bold text-white bg-[#2563eb] hover:bg-[#1d4ed8] border-none text-[16px] shadow-[0_8px_24px_-8px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98]">
                       Log in
                     </Button>
                   </Form>
 
-                  {/* เส้นกั้น or log in with */}
-                  <Divider plain className="my-8 text-slate-400 text-xs font-medium border-slate-100">or log in with</Divider>
+                  {/* ✨ Tip: Plan Selection (Make alternatives distinct but secondary to main action) */}
+                  <Divider plain className="my-8 text-slate-400 text-[11px] font-medium border-slate-100">or log in with</Divider>
 
-                  {/* ปุ่ม 2 อันล่าง (LINE & SSO) ปรับให้เหมือนในรูปเป๊ะ */}
                   <div className="grid grid-cols-2 gap-4">
                      <Button 
                        size="large"
                        onClick={handleLineLoginSubmit}
-                       className="h-[52px] rounded-[1rem] font-bold text-slate-700 border border-slate-200 hover:border-[#00C300] hover:text-[#00C300] bg-white flex items-center justify-center gap-2 transition-all shadow-sm group"
+                       className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00C300] hover:bg-emerald-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group"
                      >
-                       <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="group-hover:scale-110 transition-transform"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 3.938 8.91 9.388 9.62.367.082.868.256.996.584.115.294.074.755.035 1.053-.053.407-.246 1.488-.299 1.748-.087.419.412.632.748.441 3.585-2.036 9.539-5.617 11.83-9.351C23.633 12.923 24 11.666 24 10.304z"/></svg>
+                       <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="group-hover:scale-110 transition-transform text-[#00C300]"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 3.938 8.91 9.388 9.62.367.082.868.256.996.584.115.294.074.755.035 1.053-.053.407-.246 1.488-.299 1.748-.087.419.412.632.748.441 3.585-2.036 9.539-5.617 11.83-9.351C23.633 12.923 24 11.666 24 10.304z"/></svg>
                        LINE
                      </Button>
 
                      <Button 
                        size="large"
                        onClick={handleSSOLogin}
-                       className="h-[52px] rounded-[1rem] font-bold text-slate-700 border border-slate-200 hover:border-[#00a4ef] hover:bg-slate-50 bg-white flex items-center justify-center gap-2 transition-all shadow-sm group"
+                       className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00a4ef] hover:bg-blue-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group"
                      >
                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" className="group-hover:scale-110 transition-transform"><path fill="#f25022" d="M11.4 11.4H0V0h11.4v11.4z"/><path fill="#7fba00" d="M24 11.4H12.6V0H24v11.4z"/><path fill="#00a4ef" d="M11.4 24H0V12.6h11.4V24z"/><path fill="#ffb900" d="M24 24H12.6V12.6H24V24z"/></svg>
                        SCG SSO
                      </Button>
                   </div>
                   
-                  {/* แสดงสถานะถ้าเปิดแอปผ่าน LINE อยู่ */}
                   {lineProfile && (
-                    <div className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 py-2 px-4 rounded-xl border border-emerald-100 w-max mx-auto">
+                    <div className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 py-2 px-4 rounded-2xl border border-emerald-100 w-max mx-auto shadow-sm">
                       <Avatar src={lineProfile.pictureUrl} size={20} /> Ready to login as {lineProfile.displayName}
                     </div>
                   )}
@@ -521,44 +516,65 @@ export default function App() {
   }
 
   // 🎬 RENDER: MAIN DASHBOARD (FLOATING UI)
-  const menuItems = (
-    <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent' }}>
-      <div className="px-4 mb-2 mt-4"><Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Menu</Text></div>
-      <Menu.Item key="DASHBOARD" icon={<DashboardOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'DASHBOARD' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>Dashboard</Menu.Item>
-      <Menu.Item key="E_PASSPORT" icon={<IdcardOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'E_PASSPORT' ? 'bg-green-50 text-green-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>My E-Passport</Menu.Item>
-      <Menu.Item key="E_PERMIT" icon={<FileTextOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'E_PERMIT' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>E-Permit (PTW)</Menu.Item>
-      
-      <div className="px-4 mb-2 mt-6"><Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Safety Tools</Text></div>
-      <Menu.Item key="BBS" icon={<EyeOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'BBS' ? 'bg-emerald-50 text-emerald-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>BBS Observation</Menu.Item>
-      <Menu.Item key="CONFINED_SPACE" icon={<BuildOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'CONFINED_SPACE' ? 'bg-purple-50 text-purple-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>Confined Space</Menu.Item>
-      <Menu.Item key="INCIDENT" icon={<AlertOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'INCIDENT' ? 'bg-rose-50 text-rose-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>แจ้งจุดเสี่ยง (Incident)</Menu.Item>
-      
-      <div className="px-4 mb-2 mt-6"><Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Management</Text></div>
-      <Menu.Item key="CERTIFICATE" icon={<SafetyCertificateOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'CERTIFICATE' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>Certificates</Menu.Item>
-      <Menu.Item key="E_LEARNING" icon={<ReadOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'E_LEARNING' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>E-Learning</Menu.Item>
-      <Menu.Item key="EQUIPMENT" icon={<QrcodeOutlined />} className={`rounded-xl my-1 !h-12 leading-[48px] font-medium transition-all ${activeMenu === 'EQUIPMENT' ? 'bg-teal-50 text-teal-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>ตรวจอุปกรณ์ (QR)</Menu.Item>
-    </Menu>
-  );
+  // ✨ Tip: Menu Sections - Group menus clearly
+  const sideMenuItems = [
+    { 
+      type: 'group', 
+      label: <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Main Menu</span>, 
+      children: [
+        { key: 'DASHBOARD', icon: <DashboardOutlined className="text-lg" />, label: <span className="font-bold">Dashboard</span>, className: "rounded-2xl mb-1" },
+        { key: 'PROFILE', icon: <UserOutlined className="text-lg" />, label: <span className="font-bold">My Profile</span>, className: "rounded-2xl mb-1" },
+        { key: 'E_PASSPORT', icon: <IdcardOutlined className="text-lg" />, label: <span className="font-bold">My E-Passport</span>, className: "rounded-2xl mb-1" },
+        { key: 'E_PERMIT', icon: <FileTextOutlined className="text-lg" />, label: <span className="font-bold">E-Permit (PTW)</span>, className: "rounded-2xl mb-1" },
+      ]
+    },
+    { type: 'divider' },
+    { 
+      type: 'group', 
+      label: <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Safety Tools</span>, 
+      children: [
+        { key: 'BBS', icon: <EyeOutlined className="text-lg" />, label: <span className="font-bold">BBS Observation</span>, className: "rounded-2xl mb-1" },
+        { key: 'CONFINED_SPACE', icon: <BuildOutlined className="text-lg" />, label: <span className="font-bold">Confined Space</span>, className: "rounded-2xl mb-1" },
+        { key: 'INCIDENT', icon: <AlertOutlined className="text-lg text-rose-500" />, label: <span className="font-bold text-rose-600">แจ้งจุดเสี่ยง (Incident)</span>, className: "rounded-2xl mb-1 bg-rose-50/50 hover:bg-rose-100" },
+      ]
+    },
+    { type: 'divider' },
+    { 
+      type: 'group', 
+      label: <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Management</span>, 
+      children: [
+        { key: 'CERTIFICATE', icon: <SafetyCertificateOutlined className="text-lg" />, label: <span className="font-bold">Certificates</span>, className: "rounded-2xl mb-1" },
+        { key: 'E_LEARNING', icon: <ReadOutlined className="text-lg" />, label: <span className="font-bold">E-Learning</span>, className: "rounded-2xl mb-1" },
+        { key: 'EQUIPMENT', icon: <QrcodeOutlined className="text-lg" />, label: <span className="font-bold">ตรวจอุปกรณ์ (QR)</span>, className: "rounded-2xl mb-1" },
+      ]
+    }
+  ];
 
   return (
     <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', borderRadius: 16, fontFamily: "'Prompt', sans-serif" }}}>
-      <div className="min-h-screen bg-[#f3f6f9] relative overflow-x-hidden">
-        <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-[#e0eaf5] to-transparent pointer-events-none z-0"></div>
+      <div className="min-h-screen bg-[#f4f7f9] relative overflow-x-hidden">
+        <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-[#e2e8f0] to-transparent pointer-events-none z-0"></div>
 
         <Layout style={{ background: 'transparent' }}>
           
           {/* DESKTOP FLOATING SIDER */}
           {!isMobile && (
             <Sider width={280} style={{ background: 'transparent', position: 'fixed', left: 0, height: '100vh', zIndex: 100, padding: '20px 0 20px 20px' }} theme="light">
-              <div className="bg-white/80 backdrop-blur-xl h-full rounded-[2rem] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col overflow-hidden">
-                <div className="p-6 flex items-center gap-3 border-b border-slate-100">
-                  <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2.5 rounded-[14px] shadow-md shadow-blue-600/20">
+              <div className="bg-white/90 backdrop-blur-xl h-full rounded-[2rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
+                <div className="p-6 flex items-center gap-3 border-b border-slate-100/50">
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2.5 rounded-2xl shadow-[0_4px_12px_rgba(37,99,235,0.3)]">
                     <SafetyOutlined className="text-xl text-white" />
                   </div>
                   <Title level={4} className="m-0 !font-black !tracking-tight text-slate-800">Safety<span className="text-blue-600">OS</span></Title>
                 </div>
-                <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-                  {menuItems}
+                <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
+                  <Menu 
+                    mode="inline" 
+                    selectedKeys={[activeMenu]} 
+                    onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} 
+                    style={{ border: 'none', background: 'transparent' }}
+                    items={sideMenuItems}
+                  />
                 </div>
               </div>
             </Sider>
@@ -566,16 +582,22 @@ export default function App() {
 
           {/* MOBILE SIDER (DRAWER) */}
           <Drawer 
-            title={<div className="flex items-center gap-3"><div className="bg-blue-600 p-2 rounded-xl"><SafetyOutlined className="text-white" /></div><Title level={4} className="m-0 !font-black">SafetyOS</Title></div>} 
+            title={<div className="flex items-center gap-3"><div className="bg-blue-600 p-2 rounded-2xl"><SafetyOutlined className="text-white" /></div><Title level={4} className="m-0 !font-black">SafetyOS</Title></div>} 
             placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} styles={{ body: { padding: '10px' } }}
           >
-            {menuItems}
+            <Menu 
+              mode="inline" 
+              selectedKeys={[activeMenu]} 
+              onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} 
+              style={{ border: 'none' }}
+              items={sideMenuItems}
+            />
           </Drawer>
 
           <Layout style={{ marginLeft: isMobile ? 0 : 300, background: 'transparent', transition: 'all 0.3s', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             
             {/* FLOATING HEADER */}
-            <Header className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] z-50 flex items-center justify-between"
+            <Header className="bg-white/90 backdrop-blur-xl border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] z-50 flex items-center justify-between"
               style={{ margin: isMobile ? '0' : '20px 24px 0 0', padding: isMobile ? '0 16px' : '0 24px', height: '76px', borderRadius: isMobile ? '0 0 24px 24px' : '24px', position: 'sticky', top: isMobile ? 0 : 20 }}
             >
               <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -593,23 +615,27 @@ export default function App() {
               </div>
               
               <Space size={isMobile ? 10 : 16} align="center" className="flex-shrink-0">
-                <Button type="primary" shape="circle" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={handleOpenScannerClick} className="bg-emerald-500 hover:bg-emerald-600 border-none shadow-md shadow-emerald-500/30" />
+                <Button type="primary" shape="circle" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={handleOpenScannerClick} className="bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_4px_12px_rgba(16,185,129,0.3)]" />
                 
                 {!isMobile && <div className="w-px h-8 bg-slate-200 mx-2"></div>}
 
-                <div className="bg-slate-50/50 hover:bg-slate-100 transition-colors rounded-[100px] border border-slate-200/60 p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]">
-                  <Avatar src={getDisplayAvatar()} size={isMobile ? "small" : "large"} className="border-2 border-white shadow-sm bg-blue-600 shrink-0" icon={<UserOutlined />} />
+                <div 
+                  onClick={() => setActiveMenu('PROFILE')} 
+                  className="bg-white hover:bg-slate-50 transition-colors rounded-[100px] border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]"
+                >
+                  <Avatar src={getDisplayAvatar()} size={isMobile ? "small" : "large"} className="border-2 border-white shadow-sm bg-blue-100 text-blue-600 shrink-0" icon={<UserOutlined />} />
                   {screens.lg && (
                     <div className="flex flex-col min-w-[80px] pr-2 leading-tight overflow-hidden">
                       <Text strong className="text-[13px] text-slate-800 truncate block">{currentUser?.full_name}</Text>
                       <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-widest truncate block">{currentUser?.role}</Text>
                     </div>
                   )}
-                  <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={handleLogout} className="text-rose-400 hover:text-rose-600 hover:bg-rose-50 shrink-0" />
+                  {/* ✨ Tip: Negative Action - Logout uses clear Red color */}
+                  <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0" />
                 </div>
 
                 {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (
-                  <Button type="primary" shape={isMobile || isTablet ? "circle" : "round"} icon={<FileAddOutlined />} size="large" onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-lg shadow-blue-600/30 font-bold px-6 ml-2">
+                  <Button type="primary" shape={isMobile || isTablet ? "circle" : "round"} icon={<FileAddOutlined />} size="large" onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-[0_4px_12px_rgba(37,99,235,0.3)] font-bold px-6 ml-2">
                     {!isMobile && !isTablet && 'ขอ Permit ใหม่'}
                   </Button>
                 )}
@@ -621,8 +647,10 @@ export default function App() {
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
                 
+                {activeMenu === 'PROFILE' && <UserProfile currentUser={currentUser} lineProfile={lineProfile} />}
+
                 {activeMenu === 'E_PERMIT' && (
-                  <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.03)] overflow-hidden p-2 md:p-6">
+                  <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden p-2 md:p-6">
                     <WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} />
                   </div>
                 )}
@@ -630,7 +658,7 @@ export default function App() {
                 {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
                 
                 {activeMenu === 'BBS' && (
-                  <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.03)] overflow-hidden">
+                  <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden">
                     <Tabs
                       activeKey={activeBbsTab}
                       onChange={setActiveBbsTab}
@@ -645,7 +673,7 @@ export default function App() {
                   </div>
                 )}
                 
-                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid #ffffff' }} />}
+                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid #ffffff' }} />}
                 
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
@@ -660,9 +688,9 @@ export default function App() {
              ========================================== */}
           
           {/* Detail & Print Modal */}
-          <Modal title={null} open={isDetailModalOpen} onCancel={() => setIsDetailModalOpen(false)} width={750} footer={null} styles={{ body: { padding: 0 } }} centered>
+          <Modal title={null} open={isDetailModalOpen} destroyOnClose={true} onCancel={() => setIsDetailModalOpen(false)} width={750} footer={null} styles={{ body: { padding: 0 } }} centered>
             {selectedPermitDetail && (
-              <div className="bg-slate-50 rounded-3xl overflow-hidden">
+              <div className="bg-slate-50 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
                 <div ref={documentRef} className="bg-slate-50 pb-8">
                   <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-8 text-white relative">
                     <div className="absolute top-8 right-8">{getStatusDisplayModern(selectedPermitDetail.status)}</div>
@@ -671,29 +699,29 @@ export default function App() {
                     <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mt-2">Document No. {selectedPermitDetail.permit_number}</p>
                   </div>
                   <div className="p-8 space-y-6">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
                       <Row gutter={[24, 24]}>
                         <Col span={24}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">หัวข้องาน (Task Title)</Text><Text className="text-lg font-bold text-slate-800">{selectedPermitDetail.title}</Text></Col>
                         <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">พื้นที่ (Location)</Text><Text className="font-bold text-slate-700">{selectedPermitDetail.location_detail}</Text></Col>
                         <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">ประเภทงาน (Type)</Text><div className="mt-1">{getStatusDisplayModern(selectedPermitDetail.permit_type)}</div></Col>
                       </Row>
                     </div>
-                    <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
+                    <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
                       <Row gutter={24}>
                         <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">วันเริ่มงาน</Text><Text strong>{dayjs(selectedPermitDetail.start_time).format('DD/MM/YYYY HH:mm น.')}</Text></Col>
                         <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">วันสิ้นสุด</Text><Text strong className="text-rose-600">{dayjs(selectedPermitDetail.end_time).format('DD/MM/YYYY HH:mm น.')}</Text></Col>
                       </Row>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
                       <Text type="secondary" className="block text-[10px] font-black uppercase mb-3">มาตรการควบคุมความเสี่ยง (Safety Measures)</Text>
-                      <div className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl font-medium whitespace-pre-wrap">{selectedPermitDetail.description}</div>
+                      <div className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl font-medium whitespace-pre-wrap">{selectedPermitDetail.description}</div>
                     </div>
                     {gasLogsDetail.length > 0 && (
-                      <div className="bg-cyan-50 p-6 rounded-3xl border border-cyan-100">
+                      <div className="bg-cyan-50 p-6 rounded-[2rem] border border-cyan-100">
                         <Text type="secondary" className="block text-[10px] font-black uppercase mb-3">ประวัติการตรวจวัดก๊าซ (Gas Testing)</Text>
                         <div className="space-y-3">
                           {gasLogsDetail.map((log, idx) => (
-                            <div key={idx} className="bg-white p-4 rounded-2xl border border-cyan-100 flex justify-between items-center">
+                            <div key={idx} className="bg-white p-4 rounded-2xl border border-cyan-100 flex justify-between items-center shadow-sm">
                               <Text className="text-xs font-bold text-slate-500">{dayjs(log.recorded_at).format('HH:mm')}</Text>
                               <div className="flex gap-4">
                                 <div className="text-center"><div className="text-[10px] font-black text-slate-400">O2</div><div className="font-bold text-blue-600">{log.o2_level}%</div></div>
@@ -707,37 +735,38 @@ export default function App() {
                   </div>
                 </div>
                 <div className="bg-white p-6 border-t border-slate-100 flex gap-3 px-8">
-                  <Button size="large" block className="rounded-2xl h-12 font-bold" onClick={() => setIsDetailModalOpen(false)}>ปิด</Button>
-                  <Button type="primary" icon={<FilePdfOutlined />} size="large" block className="rounded-2xl h-12 font-black bg-indigo-600" onClick={handlePrint}>Export PDF</Button>
+                  {/* ✨ Tip: Negative Action - Subtle grey button for cancel/close */}
+                  <Button size="large" block className="rounded-2xl h-14 font-bold bg-slate-100 text-slate-600 border-none hover:bg-slate-200" onClick={() => setIsDetailModalOpen(false)}>ปิด</Button>
+                  <Button type="primary" icon={<FilePdfOutlined />} size="large" block className="rounded-2xl h-14 font-black bg-indigo-600 shadow-[0_4px_12px_rgba(79,70,229,0.3)]" onClick={handlePrint}>Export PDF</Button>
                 </div>
               </div>
             )}
           </Modal>
 
           {/* File Preview Modal */}
-          <Modal title="เอกสารแนบ" open={isPreviewOpen} onCancel={() => setIsPreviewOpen(false)} width={850} footer={null} centered>
-            <div className="h-[75vh] bg-slate-50 rounded-2xl overflow-hidden mt-4">
+          <Modal title="เอกสารแนบ" open={isPreviewOpen} destroyOnClose={true} onCancel={() => setIsPreviewOpen(false)} width={850} footer={null} centered>
+            <div className="h-[75vh] bg-slate-50 rounded-3xl overflow-hidden mt-4 shadow-inner border border-slate-100">
               {previewType === 'image' ? <img src={previewUrl} className="w-full h-full object-contain" /> : <iframe src={previewUrl} className="w-full h-full border-none" />}
             </div>
           </Modal>
 
           {/* PERMIT CREATE MODAL */}
-          <Modal title={null} footer={null} open={isModalOpen} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); }} width={750} centered styles={{ body: { padding: 0 } }}>
-             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white rounded-t-3xl">
+          <Modal title={null} footer={null} open={isModalOpen} destroyOnClose={true} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); }} width={750} centered styles={{ body: { padding: 0 } }}>
+             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white rounded-t-[2.5rem]">
                 <h2 className="text-2xl md:text-3xl font-black m-0 text-white flex items-center gap-3"><FileAddOutlined /> ขออนุญาตทำงาน (E-Permit)</h2>
                 <p className="text-blue-200 text-xs md:text-sm mt-2 opacity-90 font-medium">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการปฏิบัติงาน</p>
              </div>
-             <div className="p-4 md:p-8 max-h-[75vh] overflow-y-auto custom-scrollbar bg-slate-50">
+             <div className="p-4 md:p-8 max-h-[75vh] overflow-y-auto custom-scrollbar bg-slate-50 rounded-b-[2.5rem]">
                 <Form form={form} layout="vertical" onFinish={handleCreatePermit} requiredMark={false}>
                   
-                  <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-slate-100 mb-6">
+                  <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
                     <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้องาน</span>} rules={[{ required: true }]}>
-                      <Input placeholder="เช่น งานซ่อมบำรุง Tank 01" className="h-12 md:h-14 rounded-xl" />
+                      <Input placeholder="เช่น งานซ่อมบำรุง Tank 01" className="h-14 rounded-2xl bg-slate-50 border-slate-200" />
                     </Form.Item>
                     <Row gutter={16}>
                       <Col xs={24} md={12}>
                         <Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน</span>} rules={[{ required: true }]}>
-                          <Select size="large" className="h-12 md:h-14" onChange={setSelectedPermitTypeForm}>
+                          <Select size="large" className="h-14 custom-select-radius" onChange={setSelectedPermitTypeForm}>
                             <Select.Option value="HOT_WORK">🔥 Hot Work</Select.Option>
                             <Select.Option value="CONFINED_SPACE">🕳️ Confined Space</Select.Option>
                             <Select.Option value="ELECTRICAL">⚡ Electrical</Select.Option>
@@ -747,13 +776,13 @@ export default function App() {
                       </Col>
                       <Col xs={24} md={12}>
                         <Form.Item name="location_detail" label={<span className="font-bold text-slate-700">สถานที่</span>} rules={[{ required: true }]}>
-                          <Input placeholder="โซน / แผนก" className="h-12 md:h-14 rounded-xl" />
+                          <Input placeholder="โซน / แผนก" className="h-14 rounded-2xl bg-slate-50 border-slate-200" />
                         </Form.Item>
                       </Col>
                     </Row>
                   </div>
 
-                  <div className="bg-blue-50 p-5 md:p-6 rounded-[2rem] border border-blue-100 mb-6">
+                  <div className="bg-blue-50/50 p-5 md:p-6 rounded-[2rem] border border-blue-100 mb-6">
                     <Form.Item name="timeRange" label={<span className="font-bold text-slate-700">ระยะเวลาปฏิบัติงาน</span>} rules={[{ required: true }]} className="mb-0">
                       <ModernDateRange />
                     </Form.Item>
@@ -768,56 +797,56 @@ export default function App() {
                       <Row gutter={16}>
                         <Col xs={24} md={12}>
                           <Form.Item name="gas_tester_name" label={<span className="font-bold text-slate-700">ผู้ตรวจสอบสภาพอากาศ</span>} rules={[{ required: true }]}>
-                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-xl h-12" />
+                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-rose-100" />
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
                           <Form.Item name="standby_person_name" label={<span className="font-bold text-slate-700">ผู้เฝ้าระวัง (Standby)</span>} rules={[{ required: true }]}>
-                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-xl h-12" />
+                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-rose-100" />
                           </Form.Item>
                         </Col>
                       </Row>
                     </div>
                   )}
 
-                  <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-slate-100 mb-6">
+                  <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
                     <Form.Item name="description" label={<span className="font-bold text-slate-700">รายละเอียดและมาตรการความปลอดภัย</span>}>
-                      <Input.TextArea rows={4} className="rounded-xl p-3" placeholder="ระบุมาตรการควบคุมความเสี่ยง..." />
+                      <Input.TextArea rows={4} className="rounded-2xl p-4 bg-slate-50 border-slate-200" placeholder="ระบุมาตรการควบคุมความเสี่ยง..." />
                     </Form.Item>
                     <Form.Item label={<span className="font-bold text-slate-700">เอกสาร JSA (บังคับแนบ)</span>} className="mb-0">
                       <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={({ fileList }) => setFileList(fileList)}>
-                         <Button icon={<UploadOutlined />} className="h-14 rounded-xl w-full text-slate-500 border-dashed border-2 hover:border-blue-500 hover:text-blue-500">แตะเพื่อเลือกไฟล์ JSA (PDF/Image)</Button>
+                         <Button icon={<UploadOutlined />} className="h-14 rounded-2xl w-full text-slate-500 border-dashed border-2 hover:border-blue-500 hover:text-blue-500 bg-slate-50">แตะเพื่อเลือกไฟล์ JSA (PDF/Image)</Button>
                       </Upload>
                     </Form.Item>
                   </div>
 
-                  <div className="flex gap-3 mt-8">
+                  <div className="flex gap-4 mt-8">
                     <Button size="large" onClick={() => setIsModalOpen(false)} className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">ยกเลิก</Button>
-                    <Button type="primary" htmlType="submit" loading={isSubmitting} size="large" className="flex-[2] h-14 rounded-2xl font-black bg-blue-600 shadow-xl shadow-blue-500/30">ส่งคำขอ Permit</Button>
+                    <Button type="primary" htmlType="submit" loading={isSubmitting} size="large" className="flex-[2] h-14 rounded-2xl font-black bg-blue-600 shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)]">ส่งคำขอ Permit</Button>
                   </div>
                 </Form>
              </div>
           </Modal>
 
-          {/* EMERGENCY MODAL */}
+          {/* ✨ Tip: Negative Actions - Emergency clearly red */}
           <Modal open={isEmergency} closable={false} footer={null} width="100%" centered wrapClassName="emergency-modal">
             <div className="bg-red-600 w-full h-full flex flex-col items-center justify-center p-10 text-center animate-pulse relative overflow-hidden">
-              <WarningOutlined className="text-white text-[120px] mb-8" />
-              <h1 className="text-6xl md:text-8xl font-black text-white m-0 tracking-tighter uppercase">Emergency</h1>
-              <p className="text-2xl text-white/90 mt-4 font-bold">{emergencyMessage}</p>
-              <Button size="large" className="mt-12 h-20 px-16 rounded-full text-2xl font-black bg-white text-red-600 border-none hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.4)]" onClick={() => setIsEmergency(false)}>รับทราบและอพยพทันที!</Button>
+              <WarningOutlined className="text-white text-[120px] mb-8 drop-shadow-lg" />
+              <h1 className="text-6xl md:text-8xl font-black text-white m-0 tracking-tighter uppercase drop-shadow-md">Emergency</h1>
+              <p className="text-2xl text-white/90 mt-4 font-bold tracking-wide">{emergencyMessage}</p>
+              <Button size="large" className="mt-12 h-20 px-16 rounded-full text-2xl font-black bg-white text-red-600 border-none hover:scale-105 transition-transform shadow-[0_0_60px_rgba(255,255,255,0.3)]" onClick={() => setIsEmergency(false)}>รับทราบและอพยพทันที!</Button>
             </div>
           </Modal>
 
           {/* QR SCANNER MODAL */}
-          <Modal title={null} open={isScannerOpen} onCancel={() => setIsScannerOpen(false)} footer={null} centered destroyOnClose width={400} styles={{ body: { padding: 0 } }}>
-            <div className="bg-slate-900 p-8 text-center rounded-[2rem] overflow-hidden relative">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-               <div className="mb-6"><ScanOutlined className="text-5xl text-blue-500 mb-3" /><h3 className="text-white m-0 font-black text-xl">สแกน QR Code</h3><p className="text-slate-400 text-xs mt-1">E-Passport หรือ ตรวจอุปกรณ์</p></div>
-               <div className="rounded-xl overflow-hidden border-2 border-slate-700">
+          <Modal title={null} open={isScannerOpen} destroyOnClose={true} onCancel={() => setIsScannerOpen(false)} footer={null} centered width={400} styles={{ body: { padding: 0 } }}>
+            <div className="bg-slate-900 p-8 text-center rounded-[2.5rem] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
+               <div className="mb-6"><ScanOutlined className="text-5xl text-blue-500 mb-3" /><h3 className="text-white m-0 font-black text-2xl">สแกน QR Code</h3><p className="text-slate-400 text-sm mt-1">E-Passport หรือ ตรวจอุปกรณ์</p></div>
+               <div className="rounded-3xl overflow-hidden border-[3px] border-slate-700 shadow-inner">
                  <QRScanner onScan={(text) => { setIsScannerOpen(false); if (text.includes('/verify/')) setVerifyUserId(text.split('/verify/')[1]); }} />
                </div>
-               <Button block size="large" type="text" className="mt-6 text-slate-400 hover:text-white" onClick={() => setIsScannerOpen(false)}>ยกเลิก</Button>
+               <Button block size="large" type="text" className="mt-8 text-slate-400 font-bold hover:text-white bg-slate-800 rounded-2xl h-12" onClick={() => setIsScannerOpen(false)}>ปิดกล้อง</Button>
             </div>
           </Modal>
 
@@ -829,7 +858,7 @@ export default function App() {
             @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
             
             /* Custom Scrollbar */
-            .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
             .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
             .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -838,14 +867,18 @@ export default function App() {
             .emergency-modal .ant-modal-content { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
             .emergency-modal .ant-modal { max-width: 100vw !important; margin: 0 !important; top: 0 !important; padding: 0 !important; }
             
-            /* Tabs Customization (BBS) */
+            /* Tabs Customization */
             .custom-bbs-tabs .ant-tabs-nav::before { border-bottom: 1px solid #f1f5f9; }
-            .custom-bbs-tabs .ant-tabs-tab { padding: 16px 0; margin-right: 0 !important; flex: 1; justify-content: center; }
+            .custom-bbs-tabs .ant-tabs-tab { padding: 16px 0; margin-right: 0 !important; flex: 1; justify-content: center; border-radius: 16px 16px 0 0; }
+            .custom-bbs-tabs .ant-tabs-tab:hover { background: #f8fafc; }
             .custom-bbs-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #2563eb !important; }
             .custom-bbs-tabs .ant-tabs-ink-bar { background: #2563eb !important; height: 3px !important; border-radius: 3px 3px 0 0; }
 
-            /* ลดระยะห่างของ Label เพื่อให้กระชับแบบในรูป */
-            .custom-login-form .ant-form-item-label > label { height: auto !important; padding-bottom: 4px !important; }
+            /* ✨ UI Tip: Custom Form Label spacing */
+            .custom-login-form .ant-form-item-label > label { height: auto !important; padding-bottom: 6px !important; }
+            
+            /* AntD Select Radius Override */
+            .custom-select-radius .ant-select-selector { border-radius: 16px !important; background-color: #f8fafc !important; }
           `}</style>
 
         </Layout>
