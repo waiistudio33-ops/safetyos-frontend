@@ -147,24 +147,14 @@ export default function App() {
   const documentRef = useRef<HTMLDivElement>(null);
 
   // --- 2. EFFECTS ---
-  
-  // 🟢 แก้ไข: อัปเกรดระบบ Print ให้รองรับ iOS และ LINE LIFF ได้เสถียรขึ้น
   const handlePrint = useReactToPrint({
     contentRef: documentRef, 
-    content: () => documentRef.current, // ใส่เผื่อรองรับไลบรารีเวอร์ชันเก่า
     documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
     onBeforeGetContent: () => {
-      return new Promise((resolve) => {
-        if (liff.isInClient()) {
-          // แจ้งเตือนแบบชัดเจนให้คนรู้ว่าต้องหนีจากแอป LINE
-          message.warning('⚠️ LINE ไม่รองรับการเซฟ PDF ให้กด "จุด 3 จุดมุมขวาบน" แล้วเลือก "เปิดในเบราว์เซอร์"', 10);
-        }
-        // 🟢 หัวใจสำคัญของการแก้บัค iOS หน้าขาว: 
-        // ดีเลย์ 800ms เพื่อให้ iOS Safari วาดโครงสร้าง HTML ลง iframe ให้เสร็จก่อนสั่งปริ้น
-        setTimeout(() => {
-          resolve();
-        }, 800); 
-      });
+      if (liff.isInClient()) {
+        message.warning('⚠️ แอป LINE ไม่รองรับการเซฟไฟล์ ให้เปิดใน Browser เพื่อเซฟ PDF', 8);
+      }
+      return Promise.resolve();
     },
     onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
   });
@@ -403,12 +393,14 @@ export default function App() {
   if (isAuthChecking) return ( <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' }}}> <div className="h-screen w-full flex items-center justify-center bg-slate-50"> <Spin size="large" /> </div> </ConfigProvider> );
   if (verifyUserId) return <VerificationPage userId={verifyUserId} />;
 
-  // 🎬 LOGIN VIEW
+  // 🎬 LOGIN VIEW (✨ UI Design Tips Applied: Anatomy, Soft Shadow, Radius)
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
         <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f7f9] p-4 sm:p-8">
           
+          {/* ✨ Tip: Outer Radius = Inner Radius + Padding (16px + 32px = 48px / 3rem) */}
+          {/* ✨ Tip: Soft Shadow (Diffuse and light instead of harsh) */}
           <div className="w-full max-w-[1000px] bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] flex flex-col md:flex-row overflow-hidden relative">
             
             <div 
@@ -440,12 +432,14 @@ export default function App() {
                </div>
             </div>
 
+            {/* Container Padding: p-8 (32px) matches the math for Radius */}
             <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white z-20 relative">
                <div className="w-full max-w-[340px] mx-auto text-left">
                   
                   <h2 className="text-[32px] sm:text-[36px] font-black text-[#1e293b] mb-1 tracking-tight">Welcome Back</h2>
                   <p className="text-slate-500 font-medium text-[13px] mb-8">Log in to proceed.</p>
 
+                  {/* ✨ Tip: Anatomy of Input Field - proper label gap, clear icon, adequate padding */}
                   <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false} className="mb-0 custom-login-form">
                     <Form.Item 
                       name="username" 
@@ -484,6 +478,7 @@ export default function App() {
                     </Button>
                   </Form>
 
+                  {/* ✨ Tip: Plan Selection (Make alternatives distinct but secondary to main action) */}
                   <Divider plain className="my-8 text-slate-400 text-[11px] font-medium border-slate-100">or log in with</Divider>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -521,6 +516,7 @@ export default function App() {
   }
 
   // 🎬 RENDER: MAIN DASHBOARD (FLOATING UI)
+  // ✨ Tip: Menu Sections - Group menus clearly
   const sideMenuItems = [
     { 
       type: 'group', 
@@ -634,6 +630,7 @@ export default function App() {
                       <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-widest truncate block">{currentUser?.role}</Text>
                     </div>
                   )}
+                  {/* ✨ Tip: Negative Action - Logout uses clear Red color */}
                   <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0" />
                 </div>
 
@@ -738,6 +735,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="bg-white p-6 border-t border-slate-100 flex gap-3 px-8">
+                  {/* ✨ Tip: Negative Action - Subtle grey button for cancel/close */}
                   <Button size="large" block className="rounded-2xl h-14 font-bold bg-slate-100 text-slate-600 border-none hover:bg-slate-200" onClick={() => setIsDetailModalOpen(false)}>ปิด</Button>
                   <Button type="primary" icon={<FilePdfOutlined />} size="large" block className="rounded-2xl h-14 font-black bg-indigo-600 shadow-[0_4px_12px_rgba(79,70,229,0.3)]" onClick={handlePrint}>Export PDF</Button>
                 </div>
@@ -881,21 +879,6 @@ export default function App() {
             
             /* AntD Select Radius Override */
             .custom-select-radius .ant-select-selector { border-radius: 16px !important; background-color: #f8fafc !important; }
-
-            /* 🟢 Fix iOS Print Blank Page - Ensure styles render properly in print iframe */
-            @media print {
-              html, body {
-                height: auto !important;
-                overflow: visible !important;
-                background-color: white !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              .ant-modal-wrap, .ant-modal, .ant-modal-content {
-                 box-shadow: none !important;
-                 background: transparent !important;
-              }
-            }
           `}</style>
 
         </Layout>
