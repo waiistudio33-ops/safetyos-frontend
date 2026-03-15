@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input } from 'antd';
+import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag } from 'antd';
 import { 
   FileTextOutlined, EnvironmentOutlined, UserOutlined, 
   EyeOutlined, CheckOutlined, CloseOutlined, CheckCircleOutlined, 
   FireOutlined, BuildOutlined, ThunderboltOutlined, ToolOutlined,
   StopOutlined, LockOutlined, ClockCircleOutlined, DashboardOutlined,
-  NotificationOutlined, SaveOutlined, WarningOutlined
+  NotificationOutlined, SaveOutlined, WarningOutlined, InfoCircleOutlined,
+  FilePdfOutlined, KeyOutlined, MedicineBoxOutlined, ProfileOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import axios from 'axios';
@@ -13,7 +14,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
-// 🟢 บังคับให้ Dayjs ใช้โซนเวลาของไทยเสมอ ไม่ว่าเซิร์ฟเวอร์จะอยู่ที่ไหน
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('th');
@@ -21,39 +22,36 @@ dayjs.tz.setDefault('Asia/Bangkok');
 
 export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus }: any) {
   
-  // 🟢 State สำหรับก๊าซ
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [selectedGasPermit, setSelectedGasPermit] = useState<any>(null);
   const [isSubmittingGas, setIsSubmittingGas] = useState(false);
   const [gasForm] = Form.useForm();
   const [completedGasTests, setCompletedGasTests] = useState<string[]>([]);
 
-  // 🟡 State สำหรับขอขยายเวลา (Extend Time)
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
   const [selectedExtendPermit, setSelectedExtendPermit] = useState<any>(null);
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [extendForm] = Form.useForm();
 
-  // ✨ Badge สถานะ
   const getStatusDisplayModern = (status: string) => { 
     switch(status) { 
-      case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
-      case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap"><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>; 
-      case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
-      case 'CLOSED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20 whitespace-nowrap"><LockOutlined /> ปิดงาน/คืนพื้นที่แล้ว</span>; 
-      case 'REVOKED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-600 text-white shadow-sm whitespace-nowrap"><StopOutlined /> ถูกระงับงานฉุกเฉิน</span>; 
-      case 'EXPIRED': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20 whitespace-nowrap"><ClockCircleOutlined /> ใบอนุญาตหมดอายุ</span>; 
-      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20 whitespace-nowrap">{status}</span>; 
+      case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
+      case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
+      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>; 
+      case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
+      case 'CLOSED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-slate-100 text-slate-700 border border-slate-200 shadow-sm whitespace-nowrap"><LockOutlined /> ปิดงานแล้ว</span>; 
+      case 'REVOKED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-red-600 text-white shadow-md whitespace-nowrap"><StopOutlined /> ถูกระงับงานฉุกเฉิน</span>; 
+      case 'EXPIRED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200 shadow-sm whitespace-nowrap"><ClockCircleOutlined /> ใบอนุญาตหมดอายุ</span>; 
+      default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-slate-50 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status || 'PENDING'}</span>; 
     } 
   };
 
   const getPermitTypeDisplayModern = (type: string) => { 
     switch(type) { 
-      case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20 whitespace-nowrap"><FireOutlined /> Hot Work</span>; 
-      case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20 whitespace-nowrap"><BuildOutlined /> Confined Space</span>; 
-      case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20 whitespace-nowrap"><ThunderboltOutlined /> Electrical</span>; 
-      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20 whitespace-nowrap"><ToolOutlined /> Cold Work</span>; 
+      case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap shadow-sm"><FireOutlined /> Hot Work</span>; 
+      case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap shadow-sm"><BuildOutlined /> Confined Space</span>; 
+      case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap shadow-sm"><ThunderboltOutlined /> Electrical</span>; 
+      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap shadow-sm"><ToolOutlined /> Cold Work</span>; 
     } 
   };
 
@@ -69,7 +67,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
     setIsExtendModalOpen(true); 
   };
 
-  // 🟢 ฟังก์ชันส่งข้อมูลบันทึกก๊าซ (ชี้ไปที่ Cloud)
   const handleSubmitGasLog = async (values: any) => {
     setIsSubmittingGas(true);
     try {
@@ -84,11 +81,9 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       };
       
       await axios.post('https://safetyos-backend.onrender.com/gas-logs', payload);
-      
       message.success('บันทึกผลตรวจวัดก๊าซ และ Safety Talk สำเร็จ!');
       setIsGasModalOpen(false);
       setCompletedGasTests(prev => [...prev, selectedGasPermit.id]);
-
     } catch (error) {
       console.error(error);
       message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
@@ -97,7 +92,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
     }
   };
 
-  // ⏳ ยิง API ขอขยายเวลาไปยัง Cloud
   const handleSubmitExtend = async (values: any) => {
     setIsSubmittingExtend(true);
     try {
@@ -109,8 +103,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       await axios.put(`https://safetyos-backend.onrender.com/permits/${selectedExtendPermit.id}/extend`, payload);
       message.success('ขอขยายเวลาสำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่ จป. แล้ว');
       setIsExtendModalOpen(false);
-      
-      // สั่งรีโหลดหน้าใหม่เพื่อแสดงเวลาที่ถูกขยาย
       setTimeout(() => window.location.reload(), 1000); 
     } catch (error) { 
       message.error('ระบบขัดข้อง ไม่สามารถขยายเวลาได้'); 
@@ -124,10 +116,10 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       title: 'Permit No.', 
       dataIndex: 'permit_number', 
       key: 'permit_number', 
-      width: 130, 
+      width: 140, 
       render: (text) => (
-        <span className="inline-block bg-slate-100 text-slate-700 font-mono font-bold px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm text-sm whitespace-nowrap">
-          {text || 'PTW-XX'}
+        <span className="inline-block bg-slate-50 text-slate-700 font-mono font-black px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm text-[13px] whitespace-nowrap">
+          {text || 'PTW-NEW'}
         </span>
       )
     },
@@ -135,133 +127,128 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       title: 'รายละเอียดงาน (Work Details)', 
       key: 'details', 
       render: (_, record) => ( 
-        <div className="flex flex-col gap-2 min-w-[280px] py-2">
-          <div className="font-bold text-slate-800 text-base leading-tight tracking-tight">
-            {record.title}
+        <div className="flex flex-col gap-3 min-w-[320px] py-3 pr-4">
+          <div className="font-black text-slate-800 text-[15px] leading-tight">
+            {record?.title || 'ไม่มีชื่อหัวข้องาน'}
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <div className="flex items-center gap-1.5 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <Avatar size="small" icon={<UserOutlined />} className="bg-blue-100 text-blue-600 w-5 h-5 flex items-center justify-center text-[10px]" />
-              <span className="text-slate-700">{record.applicant?.full_name || 'ไม่ทราบชื่อ'}</span>
-              <span className="text-slate-400 hidden sm:inline">({record.applicant?.department || '-'})</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100">
+              <EnvironmentOutlined className="text-emerald-500 mt-0.5 text-sm" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">สถานที่ปฏิบัติงาน</span>
+                <span className="text-slate-700 font-bold mt-0.5 truncate max-w-[150px]">{record?.location_detail || '-'}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <EnvironmentOutlined className="text-emerald-500" /> 
-              <span className="text-slate-600 truncate max-w-[150px] sm:max-w-xs">{record.location_detail}</span>
+            
+            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100">
+              <ClockCircleOutlined className="text-blue-500 mt-0.5 text-sm" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">เวลาปฏิบัติงาน</span>
+                <span className="text-slate-700 font-bold mt-0.5">
+                  {record?.start_time ? dayjs(record.start_time).format('DD/MM HH:mm') : '-'} - {record?.end_time ? dayjs(record.end_time).format('HH:mm') : '-'}
+                </span>
+              </div>
             </div>
           </div>
 
-          {record.attachment_url && (
-            <button 
-              onClick={() => onPreviewFile(record.attachment_url)} 
-              className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-all duration-200 w-fit group"
-            >
-              <FileTextOutlined className="group-hover:scale-110 transition-transform" /> ดูเอกสาร JSA
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <div className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100">
+              <Avatar size="small" icon={<UserOutlined />} className="bg-blue-200 text-blue-700 w-5 h-5 text-[10px]" />
+              <span className="text-[11px] font-extrabold text-slate-700">{record?.applicant?.full_name || 'ผู้รับเหมา'}</span>
+            </div>
+            
+            {record?.attachment_url && (
+              <button onClick={() => onPreviewFile(record.attachment_url)} className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors">
+                <FileTextOutlined /> ดูเอกสาร JSA
+              </button>
+            )}
+
+            {record?.is_loto_required && (
+              <Tag color="red" icon={<KeyOutlined />} className="m-0 rounded-lg font-bold border-red-200 text-[10px] shadow-sm">LOTO Req.</Tag>
+            )}
+          </div>
         </div> 
       ) 
     },
-    { title: 'ประเภท', dataIndex: 'permit_type', key: 'type', width: 140, render: (type) => getPermitTypeDisplayModern(type) }, 
-    { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 160, render: (status) => getStatusDisplayModern(status) },
+    { title: 'ประเภท', dataIndex: 'permit_type', key: 'type', width: 140, render: (type) => getPermitTypeDisplayModern(type || 'COLD_WORK') }, 
+    { title: 'สถานะ', dataIndex: 'status', key: 'status', width: 180, render: (status) => getStatusDisplayModern(status || 'PENDING') },
     { 
       title: 'การจัดการ (Action)', 
       key: 'action', 
-      width: 190, 
+      width: 200, 
       render: (_, record) => {
-        const isAreaOwnerTurn = record.status === 'PENDING_AREA_OWNER' && currentUser?.role === 'AREA_OWNER'; 
-        const isSafetyTurn = record.status === 'PENDING_SAFETY' && currentUser?.role === 'SAFETY_ENGINEER';
-        const isApproved = record.status === 'APPROVED';
+        const isAreaOwnerTurn = record?.status === 'PENDING_AREA_OWNER' && currentUser?.role === 'AREA_OWNER'; 
+        const isSafetyTurn = record?.status === 'PENDING_SAFETY' && currentUser?.role === 'SAFETY_ENGINEER';
+        const isApproved = record?.status === 'APPROVED';
         const isOwnerOrSafety = currentUser?.role === 'SAFETY_ENGINEER' || currentUser?.role === 'AREA_OWNER';
         const isApplicant = currentUser?.role === 'CONTRACTOR'; 
-        
-        // 🟢 เช็คว่าเป็นงานที่ต้องตรวจก๊าซหรือไม่
-        const requiresGasTest = record.permit_type === 'HOT_WORK' || record.permit_type === 'CONFINED_SPACE';
+        const requiresGasTest = record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE';
 
         return (
-          <div className="flex flex-col gap-2 w-full pr-2">
-            <button 
-              onClick={() => onViewDetails(record)} 
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all whitespace-nowrap shadow-sm"
-            >
-              <EyeOutlined /> ดูรายละเอียด
+          <div className="flex flex-col gap-2 w-full pr-2 pb-2">
+            {/* 🔴 ปุ่มนี้ถูกกดแล้วจะวิ่งไปเรียกฟังก์ชัน onViewDetails ที่อยู่ใน App.tsx ครับ */}
+            <button onClick={() => onViewDetails(record)} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-xs font-extrabold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm">
+              <FilePdfOutlined /> Print / เอกสารเต็ม
             </button>
 
-            {/* ปุ่มอนุมัติ / ไม่อนุมัติ (เมื่อสถานะ Pending) */}
             {(isAreaOwnerTurn || isSafetyTurn) && ( 
               <div className="flex gap-2 w-full">
-                <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold shadow-md hover:shadow-lg hover:from-emerald-400 hover:to-teal-400 active:scale-95 transition-all whitespace-nowrap">
+                <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:bg-emerald-600 active:scale-95 transition-all">
                   <CheckOutlined /> อนุมัติ
                 </button>
-                <button onClick={() => onUpdateStatus(record.id, record.status, 'REJECT')} className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-white text-rose-500 rounded-lg border border-rose-200 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm active:scale-95 transition-all" title="ไม่อนุมัติ">
-                  <CloseOutlined />
+                <button onClick={() => onUpdateStatus(record.id, record.status, 'REJECT')} className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-white text-rose-500 rounded-xl border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-300 shadow-sm active:scale-95 transition-all" title="ไม่อนุมัติ">
+                  <CloseOutlined className="text-sm" />
                 </button>
               </div> 
             )}
             
-            {/* 🟢 ปุ่มเพิ่มเติมเมื่อสถานะเป็น APPROVED แล้ว */}
             {isApproved && (
-              <div className="flex flex-col gap-2 w-full mt-1 border-t border-slate-100 pt-2">
-                
-                {/* 🚀 เฟส 3: ปุ่มบันทึกค่าก๊าซและ Safety Talk */}
+              <div className="flex flex-col gap-2 w-full mt-1 border-t border-slate-100 pt-3">
                 {(() => {
                   if (!isOwnerOrSafety || !requiresGasTest) return null;
-                  
-                  // เช็คว่ามีประวัติการตรวจก๊าซจาก Database หรือ "เพิ่งกดตรวจผ่านไปเมื่อกี้"
                   const hasGasLog = (record.gas_logs && record.gas_logs.length > 0) || completedGasTests.includes(record.id);
-
                   if (hasGasLog) {
                     return (
-                      <div className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[11px] font-bold border border-emerald-200 select-none shadow-sm cursor-default">
+                      <div className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-extrabold border border-emerald-200 shadow-sm cursor-default">
                         <CheckCircleOutlined /> ตรวจก๊าซเรียบร้อยแล้ว
                       </div>
                     );
                   } else {
                     return (
-                      <button 
-                        onClick={() => handleOpenGasModal(record)} 
-                        className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-lg text-[11px] font-bold transition-all border border-cyan-200 hover:border-cyan-500 shadow-sm"
-                      >
-                        <DashboardOutlined /> ตรวจก๊าซ & Safety Talk
+                      <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all border border-cyan-200 shadow-sm">
+                        <DashboardOutlined /> ตรวจก๊าซหน้างาน
                       </button>
                     );
                   }
                 })()}
 
-                {/* ⏳ ผู้รับเหมา: ขอต่อเวลา */}
                 {isApplicant && (
-                  <button 
-                    onClick={() => handleOpenExtendModal(record)} 
-                    className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-purple-50 hover:bg-purple-500 text-purple-700 hover:text-white rounded-lg text-[11px] font-bold transition-all border border-purple-200 hover:border-purple-500 shadow-sm"
-                  >
+                  <button onClick={() => handleOpenExtendModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-purple-50 hover:bg-purple-500 text-purple-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all border border-purple-200 shadow-sm">
                     <ClockCircleOutlined /> ขอต่อเวลา (Extend)
                   </button>
                 )}
 
-                {/* ผู้รับเหมา: กดขอปิดงานเมื่อทำความสะอาดเสร็จ */}
                 {isApplicant && (
                   <Popconfirm title="ยืนยันการปิดงาน?" description="คุณได้ทำความสะอาดพื้นที่เรียบร้อยแล้วใช่หรือไม่?" onConfirm={() => onUpdateStatus(record.id, record.status, 'CLOSE')} okText="ยืนยันปิดงาน" cancelText="ยกเลิก">
-                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all border border-slate-200">
-                      <CheckCircleOutlined /> ปิดงาน/คืนพื้นที่
+                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-[11px] font-extrabold transition-all shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                      <CheckCircleOutlined /> คืนพื้นที่ / ปิดงาน
                     </button>
                   </Popconfirm>
                 )}
 
-                {/* จป. / Area Owner: มีอำนาจกดระงับงานฉุกเฉินได้ตลอดเวลา */}
                 {isOwnerOrSafety && (
                   <Popconfirm title="สั่งระงับงานฉุกเฉิน!" description="ต้องการยกเลิกใบอนุญาตนี้ทันทีใช่หรือไม่?" onConfirm={() => onUpdateStatus(record.id, record.status, 'REVOKE')} okText="ระงับงาน" okButtonProps={{danger: true}} cancelText="ยกเลิก">
-                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-lg text-[11px] font-bold transition-all border border-red-200 hover:border-red-500">
-                      <StopOutlined /> สั่งระงับงาน (Revoke)
+                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[11px] font-extrabold transition-all shadow-[0_4px_12px_rgba(244,63,94,0.3)]">
+                      <StopOutlined /> ระงับงาน (Revoke)
                     </button>
                   </Popconfirm>
                 )}
               </div>
             )}
 
-            {/* แสดงป้ายบอกว่าจบกระบวนการแล้ว สำหรับสถานะที่ปิดไปแล้ว */}
-            {(record.status === 'REJECTED' || record.status === 'CLOSED' || record.status === 'REVOKED' || record.status === 'EXPIRED') && (
-              <div className="w-full flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-lg whitespace-nowrap">
+            {(record?.status === 'REJECTED' || record?.status === 'CLOSED' || record?.status === 'REVOKED' || record?.status === 'EXPIRED') && (
+              <div className="w-full flex items-center justify-center gap-1.5 text-[11px] font-extrabold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl whitespace-nowrap mt-1">
                 จบกระบวนการ
               </div>
             )}
@@ -273,144 +260,198 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden p-2 md:p-4">
         <Table 
           columns={columns} 
           dataSource={permits} 
           loading={loading} 
           pagination={{ pageSize: 8, className: "px-4 pb-4" }} 
           size="middle" 
-          scroll={{ x: 1000 }} 
-          className="modern-table"
+          scroll={{ x: 1100 }} 
+          rowKey="id"
+          className="modern-expanded-table"
+          expandable={{
+            expandedRowRender: (record) => {
+              if (!record) return null; 
+              return (
+              <div className="p-6 md:p-8 bg-[#f8fafc] rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner">
+                 <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-3">
+                   <InfoCircleOutlined className="text-blue-500" /> ข้อมูลใบอนุญาตเชิงลึก (Deep Details)
+                 </h4>
+                 
+                 <Row gutter={[32, 24]}>
+                    <Col xs={24} md={12}>
+                       <div className="flex flex-col gap-5">
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">มาตรการควบคุมความเสี่ยง (Safety Measures)</span>
+                            <div className="mt-1 bg-white p-4 rounded-2xl border border-slate-200 text-sm font-medium text-slate-700 whitespace-pre-wrap shadow-sm">
+                              {record?.description || 'ไม่มีการระบุมาตรการเพิ่มเติม'}
+                            </div>
+                          </div>
+
+                          {/* ✨ ส่วนแสดง LOTO (Protected by optional chaining) */}
+                          {record?.is_loto_required && (
+                            <div className="bg-red-50 p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
+                               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 text-lg shrink-0 shadow-sm"><KeyOutlined /></div>
+                               <div>
+                                 <span className="text-[10px] text-red-500/80 font-black uppercase tracking-widest block mb-0.5">การตัดแยกพลังงาน (LOTO)</span>
+                                 <span className="text-sm font-extrabold text-red-700 block mb-2">งานนี้จำเป็นต้องทำ LOTO ก่อนเริ่มงาน!</span>
+                                 {record?.loto_records && record?.loto_records?.length > 0 ? (
+                                   <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-red-100 inline-block font-bold text-slate-600">
+                                     ✅ มีบันทึกการตัดแยกพลังงานแล้ว ({record?.loto_records?.length} จุด)
+                                   </div>
+                                 ) : (
+                                   <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-red-100 inline-block font-bold text-red-500">
+                                     ❌ ยังไม่มีการบันทึกการตัดแยก
+                                   </div>
+                                 )}
+                               </div>
+                            </div>
+                          )}
+                       </div>
+                    </Col>
+                    
+                    <Col xs={24} md={12}>
+                       <div className="flex flex-col gap-4">
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-lg"><FireOutlined /></div>
+                             <div>
+                               <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้ตรวจสอบสภาพอากาศ (Gas Tester)</span>
+                               <span className="text-sm font-extrabold text-slate-800">{record?.gas_tester_name || '-'}</span>
+                             </div>
+                          </div>
+                          
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 text-lg"><EyeOutlined /></div>
+                             <div>
+                               <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้เฝ้าระวัง (Standby Person)</span>
+                               <span className="text-sm font-extrabold text-slate-800">{record?.standby_person_name || '-'}</span>
+                             </div>
+                          </div>
+
+                          {/* ✨ ข้อมูลเพิ่มเติมสำหรับที่อับอากาศ (Confined Space) */}
+                          {record?.permit_type === 'CONFINED_SPACE' && (
+                            <>
+                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                 <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 text-lg"><ProfileOutlined /></div>
+                                 <div>
+                                   <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้ควบคุมงาน (Supervisor)</span>
+                                   <span className="text-sm font-extrabold text-slate-800">{record?.supervisor_name || 'ระบุในขั้นตอนการเตรียมงาน'}</span>
+                                 </div>
+                              </div>
+                              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 shadow-sm flex justify-between items-center">
+                                 <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-emerald-500 text-lg"><MedicineBoxOutlined /></div>
+                                   <div>
+                                     <span className="text-[10px] text-emerald-600/80 font-black uppercase tracking-widest block mb-0.5">ใบรับรองแพทย์ (Fit to Work)</span>
+                                     <span className={`text-sm font-extrabold ${record?.is_med_cert_verified ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                       {record?.is_med_cert_verified ? 'ผ่านการตรวจสอบแล้ว' : 'รอการตรวจสอบ'}
+                                     </span>
+                                   </div>
+                                 </div>
+                                 {record?.is_med_cert_verified && <CheckCircleOutlined className="text-2xl text-emerald-500" />}
+                              </div>
+                            </>
+                          )}
+                       </div>
+                    </Col>
+                 </Row>
+              </div>
+            )}
+          }}
         />
       </div>
 
-      {/* =========================================================
-          🚀 PHASE 3: Modal บันทึกผลตรวจวัดก๊าซ & Safety Talk (หน้างาน)
-         ========================================================= */}
-      <Modal 
-        title={null} 
-        open={isGasModalOpen} 
-        onCancel={() => setIsGasModalOpen(false)} 
-        footer={null} 
-        width={600} 
-        centered 
-        styles={{ body: { padding: 0 } }}
-        destroyOnClose
-      >
-        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-xl text-white shadow-sm relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 opacity-20"><DashboardOutlined style={{ fontSize: '100px' }} /></div>
-          <h2 className="text-xl md:text-2xl font-bold m-0 flex items-center gap-3 text-white relative z-10">
-            <div className="bg-white/20 p-2 rounded-lg"><DashboardOutlined /></div>
-            บันทึกผลตรวจวัดก๊าซหน้างาน
+      {/* 🟢 หน้าต่างตรวจวัดก๊าซ */}
+      <Modal title={null} open={isGasModalOpen} onCancel={() => setIsGasModalOpen(false)} footer={null} width={600} centered styles={{ body: { padding: 0 } }} destroyOnClose className="custom-modern-modal">
+        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-8 rounded-t-[2.5rem] text-white shadow-sm relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-20"><DashboardOutlined style={{ fontSize: '120px' }} /></div>
+          <h2 className="text-2xl md:text-3xl font-black m-0 flex items-center gap-3 text-white relative z-10 tracking-tight">
+            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shadow-inner"><DashboardOutlined /></div>
+            ตรวจก๊าซหน้างาน
           </h2>
-          <p className="text-cyan-100 text-xs md:text-sm mt-2 opacity-90 mb-0 relative z-10">
-            Permit No: <span className="font-mono font-bold bg-black/20 px-2 py-0.5 rounded">{selectedGasPermit?.permit_number}</span>
+          <p className="text-cyan-100 text-sm mt-3 opacity-90 mb-0 relative z-10 font-medium">
+            Permit No: <span className="font-mono font-bold bg-black/20 px-3 py-1 rounded-lg tracking-wider ml-1">{selectedGasPermit?.permit_number}</span>
           </p>
         </div>
         
-        <div className="p-4 md:p-6 bg-slate-50">
-          <Form form={gasForm} layout="vertical" onFinish={handleSubmitGasLog} requiredMark={false}>
-            
-            {/* 1. Safety Talk Confirmation */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-5 flex items-start gap-3">
-              <div className="bg-orange-100 text-orange-500 p-2 rounded-xl mt-1"><NotificationOutlined className="text-xl" /></div>
+        <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
+          <Form form={gasForm} layout="vertical" onFinish={handleSubmitGasLog} requiredMark={false} className="anatomy-form">
+            <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 flex items-start gap-4">
+              <div className="bg-orange-50 text-orange-500 p-3 rounded-2xl mt-1 shadow-inner"><NotificationOutlined className="text-xl" /></div>
               <div className="flex-1">
-                <Form.Item name="safety_talk" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('ต้องทำการ Safety Talk ก่อนเริ่มงาน')) }]} className="m-0">
-                  <Checkbox className="font-bold text-slate-800 text-sm md:text-base">
-                    ยืนยันการทำ Safety Talk (Toolbox Talk)
-                  </Checkbox>
+                <Form.Item name="safety_talk" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('ต้องทำการ Safety Talk ก่อนเริ่มงาน')) }]} className="m-0 mb-1">
+                  <Checkbox className="font-black text-slate-800 text-sm md:text-base">ยืนยันการทำ Safety Talk</Checkbox>
                 </Form.Item>
-                <p className="text-xs text-slate-500 mt-1 mb-0 pl-6">ได้ทำการชี้แจงอันตราย ขั้นตอนการทำงาน และแผนฉุกเฉินให้ผู้ปฏิบัติงานทุกคนรับทราบและเข้าใจตรงกันแล้ว</p>
+                <p className="text-xs text-slate-500 mt-1 mb-0 pl-7 font-medium leading-relaxed">ได้ทำการชี้แจงอันตราย ขั้นตอนการทำงานให้เข้าใจตรงกันแล้ว</p>
               </div>
             </div>
 
-            {/* 2. Gas Measurement Log (Digital Gauge Style) */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
-              <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
-                <DashboardOutlined className="text-blue-500" /> ค่ามาตรฐานก๊าซ (Atmospheric Testing)
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-8">
+              <h4 className="font-black text-slate-800 text-base mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                <DashboardOutlined className="text-blue-500 text-xl" /> ค่ามาตรฐานก๊าซ
               </h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                {/* O2 */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <Form.Item name="o2" label={<span className="font-bold text-slate-600 text-xs">Oxygen (O₂) <span className="text-emerald-500 font-normal ml-1">19.5 - 23.5%</span></span>} rules={[{ required: true, message: 'ระบุค่า O2' }]} className="m-0">
-                    <InputNumber size="large" className="w-full text-lg font-mono font-bold text-blue-600" placeholder="0.0" suffix="%" step={0.1} />
-                  </Form.Item>
-                </div>
-                
-                {/* LEL */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <Form.Item name="lel" label={<span className="font-bold text-slate-600 text-xs">ก๊าซไวไฟ (LEL) <span className="text-emerald-500 font-normal ml-1">&lt; 10%</span></span>} rules={[{ required: true, message: 'ระบุค่า LEL' }]} className="m-0">
-                    <InputNumber size="large" className="w-full text-lg font-mono font-bold text-orange-500" placeholder="0.0" suffix="%" step={0.1} />
-                  </Form.Item>
-                </div>
-
-                {/* H2S */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <Form.Item name="h2s" label={<span className="font-bold text-slate-600 text-xs">ก๊าซไข่เน่า (H₂S) <span className="text-emerald-500 font-normal ml-1">&lt; 10 ppm</span></span>} rules={[{ required: true, message: 'ระบุค่า H2S' }]} className="m-0">
-                    <InputNumber size="large" className="w-full text-lg font-mono font-bold text-purple-600" placeholder="0.0" suffix="ppm" step={0.1} />
-                  </Form.Item>
-                </div>
-
-                {/* CO */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <Form.Item name="co" label={<span className="font-bold text-slate-600 text-xs">ก๊าซพิษ (CO) <span className="text-emerald-500 font-normal ml-1">&lt; 25 ppm</span></span>} rules={[{ required: true, message: 'ระบุค่า CO' }]} className="m-0">
-                    <InputNumber size="large" className="w-full text-lg font-mono font-bold text-rose-500" placeholder="0.0" suffix="ppm" step={0.1} />
-                  </Form.Item>
-                </div>
+              <div className="grid grid-cols-2 gap-5 md:gap-6">
+                <Form.Item name="o2" label={<span className="font-extrabold text-slate-700 text-[13px] mb-1 block">O₂ <span className="text-emerald-500 font-bold text-[10px] ml-1">19.5 - 23.5%</span></span>} rules={[{ required: true, message: 'ระบุค่า O2' }]} className="m-0">
+                  <InputNumber size="large" className="w-full text-lg font-mono font-bold text-blue-600 bg-[#f8fafc] border-slate-200 hover:bg-white focus:bg-white rounded-2xl h-14" placeholder="0.0" suffix="%" step={0.1} />
+                </Form.Item>
+                <Form.Item name="lel" label={<span className="font-extrabold text-slate-700 text-[13px] mb-1 block">LEL <span className="text-emerald-500 font-bold text-[10px] ml-1">&lt; 10%</span></span>} rules={[{ required: true, message: 'ระบุค่า LEL' }]} className="m-0">
+                  <InputNumber size="large" className="w-full text-lg font-mono font-bold text-orange-500 bg-[#f8fafc] border-slate-200 hover:bg-white focus:bg-white rounded-2xl h-14" placeholder="0.0" suffix="%" step={0.1} />
+                </Form.Item>
+                <Form.Item name="h2s" label={<span className="font-extrabold text-slate-700 text-[13px] mb-1 block">H₂S <span className="text-emerald-500 font-bold text-[10px] ml-1">&lt; 10 ppm</span></span>} rules={[{ required: true, message: 'ระบุค่า H2S' }]} className="m-0">
+                  <InputNumber size="large" className="w-full text-lg font-mono font-bold text-purple-600 bg-[#f8fafc] border-slate-200 hover:bg-white focus:bg-white rounded-2xl h-14" placeholder="0.0" suffix="ppm" step={0.1} />
+                </Form.Item>
+                <Form.Item name="co" label={<span className="font-extrabold text-slate-700 text-[13px] mb-1 block">CO <span className="text-emerald-500 font-bold text-[10px] ml-1">&lt; 25 ppm</span></span>} rules={[{ required: true, message: 'ระบุค่า CO' }]} className="m-0">
+                  <InputNumber size="large" className="w-full text-lg font-mono font-bold text-rose-500 bg-[#f8fafc] border-slate-200 hover:bg-white focus:bg-white rounded-2xl h-14" placeholder="0.0" suffix="ppm" step={0.1} />
+                </Form.Item>
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button size="large" onClick={() => setIsGasModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-white text-slate-600 border border-slate-300">ยกเลิก</Button>
-              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingGas} icon={<SaveOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-cyan-600 hover:bg-cyan-700 border-none shadow-md shadow-cyan-500/30">บันทึกผลหน้างาน</Button>
+            <div className="flex gap-4">
+              <Button size="large" onClick={() => setIsGasModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingGas} icon={<SaveOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-cyan-600 hover:bg-cyan-700 border-none shadow-[0_8px_24px_rgba(8,145,178,0.3)]">บันทึกผล</Button>
             </div>
           </Form>
         </div>
       </Modal>
 
-      {/* =========================================================
-          ⏳ Modal ขอขยายเวลา (Extend Permit)
-         ========================================================= */}
-      <Modal 
-        title={null} 
-        open={isExtendModalOpen} 
-        onCancel={() => setIsExtendModalOpen(false)} 
-        footer={null} 
-        width={500} 
-        centered 
-        styles={{ body: { padding: 0 } }} 
-        destroyOnClose
-      >
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-xl text-white shadow-sm relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 opacity-20"><ClockCircleOutlined style={{ fontSize: '100px' }} /></div>
-          <h2 className="text-xl font-bold m-0 flex items-center gap-3 text-white relative z-10"><div className="bg-white/20 p-2 rounded-lg"><ClockCircleOutlined /></div>ขอขยายเวลาทำงาน</h2>
-          <p className="text-purple-100 text-xs mt-2 opacity-90 mb-0 relative z-10">Permit No: <span className="font-mono font-bold bg-black/20 px-2 py-0.5 rounded">{selectedExtendPermit?.permit_number}</span></p>
+      {/* ⏳ หน้าต่างขอขยายเวลา */}
+      <Modal title={null} open={isExtendModalOpen} onCancel={() => setIsExtendModalOpen(false)} footer={null} width={550} centered styles={{ body: { padding: 0 } }} destroyOnClose className="custom-modern-modal">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-8 rounded-t-[2.5rem] text-white shadow-sm relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-20"><ClockCircleOutlined style={{ fontSize: '120px' }} /></div>
+          <h2 className="text-2xl md:text-3xl font-black m-0 flex items-center gap-3 text-white relative z-10 tracking-tight">
+            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shadow-inner"><ClockCircleOutlined /></div>ขอขยายเวลา
+          </h2>
         </div>
-        
-        <div className="p-6 bg-slate-50">
-          <div className="bg-orange-50 border border-orange-200 text-orange-700 p-3 rounded-xl text-xs font-semibold mb-5 flex items-start gap-2">
-            <WarningOutlined className="text-base mt-0.5" />
-            <span>การขอขยายเวลา จะต้องรอให้ จป. หรือเจ้าของพื้นที่ตรวจสอบและรับทราบ หากพบว่าสภาพแวดล้อมเปลี่ยนไปอาจต้องตรวจวัดก๊าซใหม่</span>
-          </div>
-          
-          <Form form={extendForm} layout="vertical" onFinish={handleSubmitExtend} requiredMark={false}>
-            <Form.Item name="new_end_time" label={<span className="font-bold text-slate-700">เวลาสิ้นสุดใหม่ที่ต้องการ <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเวลาสิ้นสุดใหม่' }]}>
-              <input type="datetime-local" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-slate-800 font-semibold text-base focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500" />
+        <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
+          <Form form={extendForm} layout="vertical" onFinish={handleSubmitExtend} requiredMark={false} className="anatomy-form">
+            <Form.Item name="new_end_time" label={<span className="font-extrabold text-slate-800 text-[13px] mb-1.5 block">เวลาสิ้นสุดใหม่ <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเวลา' }]}>
+              <input type="datetime-local" className="w-full bg-white border border-slate-200 rounded-2xl px-5 h-14 text-slate-700 font-bold focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm" />
             </Form.Item>
-            
-            <Form.Item name="reason" label={<span className="font-bold text-slate-700">เหตุผลที่งานไม่เสร็จตามกำหนด <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเหตุผล' }]}>
-              <Input.TextArea rows={3} placeholder="เช่น อะไหล่มาล่าช้า, หน้างานมีอุปสรรค..." className="rounded-xl border-slate-300" />
+            <Form.Item name="reason" label={<span className="font-extrabold text-slate-800 text-[13px] mb-1.5 block mt-2">เหตุผล <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเหตุผล' }]}>
+              <Input.TextArea rows={4} className="rounded-2xl border-slate-200 bg-white px-5 py-4 text-base focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm font-medium" />
             </Form.Item>
-            
-            <div className="flex gap-3 pt-4">
-              <Button size="large" onClick={() => setIsExtendModalOpen(false)} className="flex-1 rounded-xl h-12 font-bold bg-white text-slate-600 border border-slate-300">ยกเลิก</Button>
-              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingExtend} icon={<ClockCircleOutlined />} className="flex-1 rounded-xl h-12 font-bold bg-purple-600 hover:bg-purple-700 border-none shadow-md shadow-purple-500/30">ส่งคำขอต่อเวลา</Button>
+            <div className="flex gap-4 pt-6 border-t border-slate-200/60 mt-4">
+              <Button size="large" onClick={() => setIsExtendModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingExtend} icon={<ClockCircleOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-purple-600 hover:bg-purple-700 border-none shadow-[0_8px_24px_rgba(147,51,234,0.3)]">ส่งคำขอต่อเวลา</Button>
             </div>
           </Form>
         </div>
       </Modal>
+
+      <style>{`
+        .modern-expanded-table .ant-table { background: transparent !important; }
+        .modern-expanded-table .ant-table-thead > tr > th { background: #f8fafc !important; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding: 16px 24px; }
+        .modern-expanded-table .ant-table-tbody > tr > td { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; }
+        .modern-expanded-table .ant-table-tbody > tr:hover > td { background: #fdfdfd !important; }
+        .modern-expanded-table .ant-table-expanded-row > td { background: #ffffff !important; padding: 0 !important; }
+        .modern-expanded-table .ant-table-row-expand-icon { width: 24px; height: 24px; border-radius: 8px; color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; display: flex; align-items: center; justify-content: center; }
+        .modern-expanded-table .ant-table-row-expand-icon:hover { background: #3b82f6; color: white; }
+        .custom-modern-modal .ant-modal-content { border-radius: 2.5rem !important; padding: 0 !important; overflow: hidden; background: transparent; box-shadow: 0 32px 64px -12px rgba(0,0,0,0.15) !important; }
+        .anatomy-form .ant-form-item-label > label { height: auto !important; padding-bottom: 0 !important; }
+        .anatomy-form .ant-input-number-input { font-weight: 800; }
+        .anatomy-form .ant-input-number-handler-wrap { display: none !important; }
+      `}</style>
     </>
   );
 }

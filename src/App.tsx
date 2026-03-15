@@ -4,7 +4,7 @@ import {
   Layout, Menu, Typography, Card, Row, Col, 
   Avatar, ConfigProvider, Space, Button, Modal, 
   Form, Input, Select, message, Badge, Upload, 
-  InputNumber, Drawer, Grid, Spin, Tabs, Divider
+  InputNumber, Drawer, Grid, Spin, Tabs, Divider, Checkbox
 } from 'antd';
 import { 
   DashboardOutlined, SafetyCertificateOutlined, WarningOutlined,
@@ -14,14 +14,14 @@ import {
   EyeOutlined, FilePdfOutlined, LogoutOutlined, CheckCircleOutlined, 
   MenuOutlined, RocketOutlined, CalendarOutlined, ClockCircleOutlined, 
   ToolOutlined, HourglassOutlined, InfoCircleOutlined, AppstoreAddOutlined, ScanOutlined, FormOutlined, 
-  FileAddOutlined, PhoneOutlined, SafetyOutlined, LockOutlined
+  FileAddOutlined, PhoneOutlined, SafetyOutlined, LockOutlined, KeyOutlined, MedicineBoxOutlined, ProfileOutlined,
+  StopOutlined, FireOutlined, ThunderboltOutlined // 🟢 <--- เติมแก๊งนี้เข้ามาให้ครบแล้วครับ!
 } from '@ant-design/icons';
 import QRScanner from './components/QRScanner';
 import dayjs from 'dayjs';
 import liff from '@line/liff'; 
 import { useReactToPrint } from 'react-to-print';
 
-// 🟢 Import ไฟล์โลโก้ และ คอมโพเนนต์ต่างๆ เข้ามา
 import logoImg from './test.svg'; 
 import UserProfile from './components/UserProfile'; 
 
@@ -38,7 +38,6 @@ import EquipmentInspection from './components/EquipmentInspection';
 import Dashboard from './components/Dashboard'; 
 import { supabase } from './supabase'; 
 
-// --- Configs ---
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
@@ -52,9 +51,6 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid; 
 
-// ==========================================
-// 🎨 UTILITY COMPONENTS
-// ==========================================
 const ModernDateRange = ({ value, onChange }: any) => {
   const onStartChange = (e: React.ChangeEvent<HTMLInputElement>) => { onChange([e.target.value ? dayjs(e.target.value) : null, value?.[1]]); };
   const onEndChange = (e: React.ChangeEvent<HTMLInputElement>) => { onChange([value?.[0], e.target.value ? dayjs(e.target.value) : null]); };
@@ -73,41 +69,33 @@ const ModernDateRange = ({ value, onChange }: any) => {
   );
 };
 
-const ModernToggleChips = ({ value = [], onChange, options, activeColor = "bg-blue-600 text-white" }: any) => {
-  const toggle = (val: string) => { onChange(value.includes(val) ? value.filter((v: string) => v !== val) : [...value, val]); };
-  return (
-    <div className="flex flex-wrap gap-2 mt-1">
-      {options.map((opt: any) => {
-        const isSelected = value.includes(opt.value);
-        return (
-          <div key={opt.value} onClick={() => toggle(opt.value)} className={`cursor-pointer px-4 py-2 rounded-2xl text-xs md:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 select-none border shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${isSelected ? `${activeColor} border-transparent scale-105` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
-            {isSelected ? <CheckCircleOutlined /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300"></div>} {opt.label}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 const getStatusDisplayModern = (status: string) => { 
   switch(status) { 
-    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
-    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined /> อนุมัติแล้ว</span>; 
-    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
-    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status}</span>; 
+    case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
+    case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
+    case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>; 
+    case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
+    case 'CLOSED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-slate-100 text-slate-700 border border-slate-200 shadow-sm whitespace-nowrap"><LockOutlined /> ปิดงานแล้ว</span>; 
+    case 'REVOKED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-black bg-red-600 text-white shadow-md whitespace-nowrap"><StopOutlined /> ถูกระงับงานฉุกเฉิน</span>; 
+    case 'EXPIRED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200 shadow-sm whitespace-nowrap"><ClockCircleOutlined /> ใบอนุญาตหมดอายุ</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold bg-slate-50 text-slate-600 border border-slate-200 shadow-sm whitespace-nowrap">{status || 'PENDING'}</span>; 
   } 
 };
 
-// ==========================================
-// 🚀 MAIN COMPONENT
-// ==========================================
+const getPermitTypeDisplayModern = (type: string) => { 
+  switch(type) { 
+    case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap shadow-sm"><FireOutlined /> Hot Work</span>; 
+    case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap shadow-sm"><BuildOutlined /> Confined Space</span>; 
+    case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap shadow-sm"><ThunderboltOutlined /> Electrical</span>; 
+    default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap shadow-sm"><ToolOutlined /> Cold Work</span>; 
+  } 
+};
+
 export default function App() {
   const screens = useBreakpoint(); 
   const isMobile = !screens.md; 
   const isTablet = screens.md && !screens.lg;
 
-  // --- 1. STATES ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true); 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -133,6 +121,8 @@ export default function App() {
   const [activeBbsTab, setActiveBbsTab] = useState('form'); 
   const [fileList, setFileList] = useState<any[]>([]); 
   const [selectedPermitTypeForm, setSelectedPermitTypeForm] = useState<string>('');
+  const [isLotoRequired, setIsLotoRequired] = useState(false); // 🟢 [STEP 2] State สำหรับ LOTO
+
   const [isScannerOpen, setIsScannerOpen] = useState(false); 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -146,15 +136,17 @@ export default function App() {
   const [loginForm] = Form.useForm(); 
   const documentRef = useRef<HTMLDivElement>(null);
 
-  // --- 2. EFFECTS ---
   const handlePrint = useReactToPrint({
     contentRef: documentRef, 
+    content: () => documentRef.current,
     documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
     onBeforeGetContent: () => {
-      if (liff.isInClient()) {
-        message.warning('⚠️ แอป LINE ไม่รองรับการเซฟไฟล์ ให้เปิดใน Browser เพื่อเซฟ PDF', 8);
-      }
-      return Promise.resolve();
+      return new Promise((resolve) => {
+        if (liff.isInClient()) {
+          message.warning('⚠️ LINE ไม่รองรับการเซฟ PDF ให้กด "จุด 3 จุดมุมขวาบน" แล้วเลือก "เปิดในเบราว์เซอร์"', 10);
+        }
+        setTimeout(() => { resolve(); }, 800); 
+      });
     },
     onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
   });
@@ -241,7 +233,6 @@ export default function App() {
     }
   }, [activeMenu, selectedConfinedPermit]);
 
-  // --- 3. HANDLERS ---
   const handleLogin = async (values: any) => {
     setIsLoggingIn(true);
     try {
@@ -261,7 +252,7 @@ export default function App() {
       setIsLoggingIn(true);
       try {
         const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { 
-          line_id: lineProfile.userId, picture_url: lineProfile.pictureUrl, display_name: lineProfile.displayName
+          line_id: lineProfile.userId, picture_url: lineProfile.pictureUrl, display_name: lineProfile.displayName 
         });
         localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
         setCurrentUser(res.data.user);
@@ -340,17 +331,30 @@ export default function App() {
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); setPreviewType(url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'pdf'); setIsPreviewOpen(true); };
   
   const handleViewDetails = async (record: any) => { 
-    setSelectedPermitDetail(record); setIsDetailModalOpen(true); 
-    if (record.permit_type === 'HOT_WORK' || record.permit_type === 'CONFINED_SPACE') {
-      try { const res = await axios.get(`https://safetyos-backend.onrender.com/permits/${record.id}/gas-logs`); setGasLogsDetail(res.data); } catch (error) {}
+    if (!record) return;
+    setSelectedPermitDetail(record || {}); 
+    setIsDetailModalOpen(true); 
+    setGasLogsDetail([]); 
+    
+    if (record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE') {
+      try { 
+        if (record?.id) {
+          const res = await axios.get(`https://safetyos-backend.onrender.com/permits/${record.id}/gas-logs`); 
+          setGasLogsDetail(Array.isArray(res.data) ? res.data : []); 
+        }
+      } catch (error) {
+        setGasLogsDetail([]);
+      }
     }
   };
 
+  // 🟢 [STEP 2] อัปเดตการจัดส่งข้อมูล LOTO และ Confined Space ไปให้ Backend
   const handleCreatePermit = async (values: any) => {
     try {
       if (!currentUser) return;
       if (fileList.length === 0) return message.error('⚠️ กรุณาแนบเอกสาร JSA');
       setIsSubmitting(true); 
+      
       let fileUrl = null, fileNameToSave = null;
       if (fileList.length > 0) { 
         const file = fileList[0].originFileObj; 
@@ -360,13 +364,39 @@ export default function App() {
         const { data } = supabase.storage.from('permits').getPublicUrl(uniqueName); 
         fileUrl = data.publicUrl; fileNameToSave = file.name; 
       }
+
+      // ห่อ Payload ส่งไปที่ Backend
       const payload = { 
-        ...values, start_time: dayjs(values.timeRange[0]).toISOString(), end_time: dayjs(values.timeRange[1]).toISOString(),
-        applicant_id: currentUser.id, attachment_url: fileUrl, attachment_name: fileNameToSave
+        ...values, 
+        start_time: dayjs(values.timeRange[0]).toISOString(), 
+        end_time: dayjs(values.timeRange[1]).toISOString(),
+        applicant_id: currentUser.id, 
+        attachment_url: fileUrl, 
+        attachment_name: fileNameToSave,
+        
+        // 🚀 ข้อมูลใหม่สำหรับ Confined Space & LOTO
+        supervisor_name: values.supervisor_name || null,
+        rescue_plan_url: values.rescue_plan_url || null,
+        is_med_cert_verified: values.is_med_cert_verified || false,
+        is_loto_required: values.is_loto_required || false,
+        loto_isolation_point: values.loto_isolation_point || null,
+        loto_energy_type: values.loto_energy_type || null,
+        loto_lock_number: values.loto_lock_number || null,
       };
+
       await axios.post('https://safetyos-backend.onrender.com/permits', payload);
-      message.success('ส่งคำขอสำเร็จ!'); setIsModalOpen(false); form.resetFields(); setFileList([]); fetchPermits();
-    } catch (error: any) { message.error(`ผิดพลาด`); } finally { setIsSubmitting(false); }
+      message.success('ส่งคำขอสำเร็จ!'); 
+      setIsModalOpen(false); 
+      form.resetFields(); 
+      setFileList([]); 
+      setSelectedPermitTypeForm('');
+      setIsLotoRequired(false);
+      fetchPermits();
+    } catch (error: any) { 
+      message.error(`ผิดพลาดในการสร้างแบบฟอร์ม`); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT' | 'CLOSE' | 'REVOKE') => {
@@ -388,21 +418,14 @@ export default function App() {
 
   const getDisplayAvatar = () => lineProfile?.pictureUrl || currentUser?.profile_url || null;
 
-  // --- 4. RENDER VIEWS ---
-
   if (isAuthChecking) return ( <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' }}}> <div className="h-screen w-full flex items-center justify-center bg-slate-50"> <Spin size="large" /> </div> </ConfigProvider> );
   if (verifyUserId) return <VerificationPage userId={verifyUserId} />;
 
-  // 🎬 LOGIN VIEW (✨ UI Design Tips Applied: Anatomy, Soft Shadow, Radius)
   if (!isAuthenticated) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" }}}>
         <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f7f9] p-4 sm:p-8">
-          
-          {/* ✨ Tip: Outer Radius = Inner Radius + Padding (16px + 32px = 48px / 3rem) */}
-          {/* ✨ Tip: Soft Shadow (Diffuse and light instead of harsh) */}
           <div className="w-full max-w-[1000px] bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] flex flex-col md:flex-row overflow-hidden relative">
-            
             <div 
               className="w-full md:w-1/2 min-h-[350px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100/50"
               style={{
@@ -415,87 +438,44 @@ export default function App() {
                 `
               }}
             >
-               <svg className="hidden md:block absolute right-0 top-0 h-full w-[80px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
-                 <path d="M100,0 L100,100 L0,100 C 60,70 40,30 0,0 Z" />
-               </svg>
-               <svg className="md:hidden absolute bottom-[-1px] left-0 w-full h-[40px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
-                 <path d="M0,100 L100,100 L100,0 C 70,60 30,40 0,0 Z" />
-               </svg>
+               <svg className="hidden md:block absolute right-0 top-0 h-full w-[80px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor"><path d="M100,0 L100,100 L0,100 C 60,70 40,30 0,0 Z" /></svg>
+               <svg className="md:hidden absolute bottom-[-1px] left-0 w-full h-[40px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor"><path d="M0,100 L100,100 L100,0 C 70,60 30,40 0,0 Z" /></svg>
 
-               <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" 
-                    style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
-                  <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4 flex items-center justify-center">
-                    <img src={logoImg} alt="SafetyOS" className="w-14 h-14 object-contain" />
-                  </div>
+               <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+                  <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4 flex items-center justify-center"><img src="/test.svg" alt="SafetyOS" className="w-14 h-14 object-contain" /></div>
                   <h1 className="text-3xl font-black text-slate-800 tracking-tight m-0 drop-shadow-sm">Safety<span className="text-[#2563eb]">OS</span></h1>
                   <p className="text-slate-500 font-extrabold mt-1 tracking-widest uppercase text-[10px]">Enterprise Gateway</p>
                </div>
             </div>
 
-            {/* Container Padding: p-8 (32px) matches the math for Radius */}
             <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white z-20 relative">
                <div className="w-full max-w-[340px] mx-auto text-left">
-                  
                   <h2 className="text-[32px] sm:text-[36px] font-black text-[#1e293b] mb-1 tracking-tight">Welcome Back</h2>
                   <p className="text-slate-500 font-medium text-[13px] mb-8">Log in to proceed.</p>
 
-                  {/* ✨ Tip: Anatomy of Input Field - proper label gap, clear icon, adequate padding */}
                   <Form form={loginForm} layout="vertical" onFinish={handleLogin} requiredMark={false} className="mb-0 custom-login-form">
-                    <Form.Item 
-                      name="username" 
-                      label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Login, email or phone number</span>} 
-                      rules={[{ required: true, message: 'Please input your username!' }]} 
-                      className="mb-5"
-                    >
-                      <Input 
-                        size="large" 
-                        prefix={<UserOutlined className="text-slate-400 text-lg mr-2" />}
-                        placeholder="Enter your ID or email"
-                        className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" 
-                      />
+                    <Form.Item name="username" label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Login, email or phone number</span>} rules={[{ required: true, message: 'Please input your username!' }]} className="mb-5">
+                      <Input size="large" prefix={<UserOutlined className="text-slate-400 text-lg mr-2" />} placeholder="Enter your ID or email" className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" />
                     </Form.Item>
                     
-                    <Form.Item 
-                      name="password" 
-                      label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Password</span>} 
-                      rules={[{ required: true, message: 'Please input your password!' }]} 
-                      className="mb-2"
-                    >
-                      <Input.Password 
-                        size="large" 
-                        prefix={<LockOutlined className="text-slate-400 text-lg mr-2" />}
-                        placeholder="Enter your password"
-                        className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" 
-                      />
+                    <Form.Item name="password" label={<span className="text-[13px] text-[#1e293b] font-extrabold tracking-wide mb-1 block">Password</span>} rules={[{ required: true, message: 'Please input your password!' }]} className="mb-2">
+                      <Input.Password size="large" prefix={<LockOutlined className="text-slate-400 text-lg mr-2" />} placeholder="Enter your password" className="rounded-2xl h-[54px] px-5 border-slate-200 hover:border-blue-400 focus:border-blue-500 text-base shadow-[0_2px_8px_rgba(0,0,0,0.02)] bg-[#f8fafc] focus:bg-white transition-all" />
                     </Form.Item>
 
-                    <div className="text-right mb-6">
-                       <a href="#" onClick={(e) => { e.preventDefault(); message.info('กรุณาติดต่อ IT Support เพื่อรีเซ็ตรหัสผ่าน'); }} className="text-slate-400 hover:text-blue-600 text-[12px] font-bold transition-colors">Forgot login or password?</a>
-                    </div>
+                    <div className="text-right mb-6"><a href="#" onClick={(e) => { e.preventDefault(); message.info('กรุณาติดต่อ IT Support เพื่อรีเซ็ตรหัสผ่าน'); }} className="text-slate-400 hover:text-blue-600 text-[12px] font-bold transition-colors">Forgot login or password?</a></div>
                     
-                    <Button htmlType="submit" loading={isLoggingIn} className="w-full h-[54px] rounded-2xl font-bold text-white bg-[#2563eb] hover:bg-[#1d4ed8] border-none text-[16px] shadow-[0_8px_24px_-8px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98]">
-                      Log in
-                    </Button>
+                    <Button htmlType="submit" loading={isLoggingIn} className="w-full h-[54px] rounded-2xl font-bold text-white bg-[#2563eb] hover:bg-[#1d4ed8] border-none text-[16px] shadow-[0_8px_24px_-8px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98]">Log in</Button>
                   </Form>
 
-                  {/* ✨ Tip: Plan Selection (Make alternatives distinct but secondary to main action) */}
                   <Divider plain className="my-8 text-slate-400 text-[11px] font-medium border-slate-100">or log in with</Divider>
 
                   <div className="grid grid-cols-2 gap-4">
-                     <Button 
-                       size="large"
-                       onClick={handleLineLoginSubmit}
-                       className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00C300] hover:bg-emerald-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group"
-                     >
+                     <Button size="large" onClick={handleLineLoginSubmit} className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00C300] hover:bg-emerald-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group">
                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="group-hover:scale-110 transition-transform text-[#00C300]"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 3.938 8.91 9.388 9.62.367.082.868.256.996.584.115.294.074.755.035 1.053-.053.407-.246 1.488-.299 1.748-.087.419.412.632.748.441 3.585-2.036 9.539-5.617 11.83-9.351C23.633 12.923 24 11.666 24 10.304z"/></svg>
                        LINE
                      </Button>
 
-                     <Button 
-                       size="large"
-                       onClick={handleSSOLogin}
-                       className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00a4ef] hover:bg-blue-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group"
-                     >
+                     <Button size="large" onClick={handleSSOLogin} className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00a4ef] hover:bg-blue-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group">
                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" className="group-hover:scale-110 transition-transform"><path fill="#f25022" d="M11.4 11.4H0V0h11.4v11.4z"/><path fill="#7fba00" d="M24 11.4H12.6V0H24v11.4z"/><path fill="#00a4ef" d="M11.4 24H0V12.6h11.4V24z"/><path fill="#ffb900" d="M24 24H12.6V12.6H24V24z"/></svg>
                        SCG SSO
                      </Button>
@@ -506,7 +486,6 @@ export default function App() {
                       <Avatar src={lineProfile.pictureUrl} size={20} /> Ready to login as {lineProfile.displayName}
                     </div>
                   )}
-
                </div>
             </div>
           </div>
@@ -515,8 +494,6 @@ export default function App() {
     );
   }
 
-  // 🎬 RENDER: MAIN DASHBOARD (FLOATING UI)
-  // ✨ Tip: Menu Sections - Group menus clearly
   const sideMenuItems = [
     { 
       type: 'group', 
@@ -557,7 +534,6 @@ export default function App() {
 
         <Layout style={{ background: 'transparent' }}>
           
-          {/* DESKTOP FLOATING SIDER */}
           {!isMobile && (
             <Sider width={280} style={{ background: 'transparent', position: 'fixed', left: 0, height: '100vh', zIndex: 100, padding: '20px 0 20px 20px' }} theme="light">
               <div className="bg-white/90 backdrop-blur-xl h-full rounded-[2rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
@@ -568,61 +544,31 @@ export default function App() {
                   <Title level={4} className="m-0 !font-black !tracking-tight text-slate-800">Safety<span className="text-blue-600">OS</span></Title>
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-                  <Menu 
-                    mode="inline" 
-                    selectedKeys={[activeMenu]} 
-                    onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} 
-                    style={{ border: 'none', background: 'transparent' }}
-                    items={sideMenuItems}
-                  />
+                  <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none', background: 'transparent' }} items={sideMenuItems} />
                 </div>
               </div>
             </Sider>
           )}
 
-          {/* MOBILE SIDER (DRAWER) */}
-          <Drawer 
-            title={<div className="flex items-center gap-3"><div className="bg-blue-600 p-2 rounded-2xl"><SafetyOutlined className="text-white" /></div><Title level={4} className="m-0 !font-black">SafetyOS</Title></div>} 
-            placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} styles={{ body: { padding: '10px' } }}
-          >
-            <Menu 
-              mode="inline" 
-              selectedKeys={[activeMenu]} 
-              onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} 
-              style={{ border: 'none' }}
-              items={sideMenuItems}
-            />
+          <Drawer title={<div className="flex items-center gap-3"><div className="bg-blue-600 p-2 rounded-2xl"><SafetyOutlined className="text-white" /></div><Title level={4} className="m-0 !font-black">SafetyOS</Title></div>} placement="left" onClose={() => setMobileMenuOpen(false)} open={mobileMenuOpen} styles={{ body: { padding: '10px' } }}>
+            <Menu mode="inline" selectedKeys={[activeMenu]} onClick={(e) => { setActiveMenu(e.key); setMobileMenuOpen(false); }} style={{ border: 'none' }} items={sideMenuItems} />
           </Drawer>
 
           <Layout style={{ marginLeft: isMobile ? 0 : 300, background: 'transparent', transition: 'all 0.3s', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             
-            {/* FLOATING HEADER */}
-            <Header className="bg-white/90 backdrop-blur-xl border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] z-50 flex items-center justify-between"
-              style={{ margin: isMobile ? '0' : '20px 24px 0 0', padding: isMobile ? '0 16px' : '0 24px', height: '76px', borderRadius: isMobile ? '0 0 24px 24px' : '24px', position: 'sticky', top: isMobile ? 0 : 20 }}
-            >
+            <Header className="bg-white/90 backdrop-blur-xl border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] z-50 flex items-center justify-between" style={{ margin: isMobile ? '0' : '20px 24px 0 0', padding: isMobile ? '0 16px' : '0 24px', height: '76px', borderRadius: isMobile ? '0 0 24px 24px' : '24px', position: 'sticky', top: isMobile ? 0 : 20 }}>
               <div className="flex items-center gap-4 min-w-0 flex-1">
-                {isMobile && (
-                  <Button type="text" icon={<MenuOutlined className="text-xl" />} onClick={() => setMobileMenuOpen(true)} className="flex-shrink-0" />
-                )}
+                {isMobile && <Button type="text" icon={<MenuOutlined className="text-xl" />} onClick={() => setMobileMenuOpen(true)} className="flex-shrink-0" />}
                 <div className="min-w-0 flex flex-col justify-center h-full">
-                  <h1 className="text-lg md:text-2xl font-black text-slate-800 m-0 truncate leading-tight capitalize">
-                    {activeMenu.replace('_', ' ')}
-                  </h1>
-                  {!isMobile && !isTablet && (
-                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5 flex items-center gap-1.5"><EnvironmentOutlined className="text-blue-500" /> Map Ta Phut Terminal</Text>
-                  )}
+                  <h1 className="text-lg md:text-2xl font-black text-slate-800 m-0 truncate leading-tight capitalize">{activeMenu.replace('_', ' ')}</h1>
+                  {!isMobile && !isTablet && <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5 flex items-center gap-1.5"><EnvironmentOutlined className="text-blue-500" /> Map Ta Phut Terminal</Text>}
                 </div>
               </div>
               
               <Space size={isMobile ? 10 : 16} align="center" className="flex-shrink-0">
                 <Button type="primary" shape="circle" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={handleOpenScannerClick} className="bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_4px_12px_rgba(16,185,129,0.3)]" />
-                
                 {!isMobile && <div className="w-px h-8 bg-slate-200 mx-2"></div>}
-
-                <div 
-                  onClick={() => setActiveMenu('PROFILE')} 
-                  className="bg-white hover:bg-slate-50 transition-colors rounded-[100px] border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]"
-                >
+                <div onClick={() => setActiveMenu('PROFILE')} className="bg-white hover:bg-slate-50 transition-colors rounded-[100px] border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]">
                   <Avatar src={getDisplayAvatar()} size={isMobile ? "small" : "large"} className="border-2 border-white shadow-sm bg-blue-100 text-blue-600 shrink-0" icon={<UserOutlined />} />
                   {screens.lg && (
                     <div className="flex flex-col min-w-[80px] pr-2 leading-tight overflow-hidden">
@@ -630,10 +576,8 @@ export default function App() {
                       <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-widest truncate block">{currentUser?.role}</Text>
                     </div>
                   )}
-                  {/* ✨ Tip: Negative Action - Logout uses clear Red color */}
                   <Button type="text" shape="circle" icon={<LogoutOutlined />} onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0" />
                 </div>
-
                 {activeMenu === 'E_PERMIT' && currentUser?.role === 'CONTRACTOR' && (
                   <Button type="primary" shape={isMobile || isTablet ? "circle" : "round"} icon={<FileAddOutlined />} size="large" onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-[0_4px_12px_rgba(37,99,235,0.3)] font-bold px-6 ml-2">
                     {!isMobile && !isTablet && 'ขอ Permit ใหม่'}
@@ -642,39 +586,22 @@ export default function App() {
               </Space>
             </Header>
 
-            {/* MAIN CONTENT AREA */}
             <Content className="flex-1 relative z-10" style={{ padding: isMobile ? '16px' : '24px 24px 32px 0' }}>
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
-                
                 {activeMenu === 'PROFILE' && <UserProfile currentUser={currentUser} lineProfile={lineProfile} />}
-
                 {activeMenu === 'E_PERMIT' && (
                   <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden p-2 md:p-6">
                     <WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} />
                   </div>
                 )}
-                
                 {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
-                
                 {activeMenu === 'BBS' && (
                   <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <Tabs
-                      activeKey={activeBbsTab}
-                      onChange={setActiveBbsTab}
-                      centered
-                      size="large"
-                      className="custom-bbs-tabs"
-                      items={[
-                        { key: 'form', label: <span className="font-bold px-4 md:px-8"><FormOutlined /> รายงาน BBS ใหม่</span>, children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={handleCreateBbs} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> },
-                        { key: 'history', label: <span className="font-bold px-4 md:px-8"><EyeOutlined /> ประวัติรายงาน</span>, children: <div className="p-4 md:p-8 pt-0"><BBSHistory records={bbsRecords} /></div> },
-                      ]}
-                    />
+                    <Tabs activeKey={activeBbsTab} onChange={setActiveBbsTab} centered size="large" className="custom-bbs-tabs" items={[{ key: 'form', label: <span className="font-bold px-4 md:px-8"><FormOutlined /> รายงาน BBS ใหม่</span>, children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={handleCreateBbs} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> }, { key: 'history', label: <span className="font-bold px-4 md:px-8"><EyeOutlined /> ประวัติรายงาน</span>, children: <div className="p-4 md:p-8 pt-0"><BBSHistory records={bbsRecords} /></div> }]} />
                   </div>
                 )}
-                
                 {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid #ffffff' }} />}
-                
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
@@ -684,48 +611,71 @@ export default function App() {
           </Layout>
 
           {/* ==========================================
-              🌟 MODALS & DRAWERS
+              🌟 MODALS & DRAWERS (Protected)
              ========================================== */}
           
-          {/* Detail & Print Modal */}
-          <Modal title={null} open={isDetailModalOpen} destroyOnClose={true} onCancel={() => setIsDetailModalOpen(false)} width={750} footer={null} styles={{ body: { padding: 0 } }} centered>
+          <Modal title={null} open={isDetailModalOpen} destroyOnClose={true} onCancel={() => setIsDetailModalOpen(false)} width={850} footer={null} styles={{ body: { padding: 0 } }} centered>
             {selectedPermitDetail && (
-              <div className="bg-slate-50 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
-                <div ref={documentRef} className="bg-slate-50 pb-8">
-                  <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-8 text-white relative">
-                    <div className="absolute top-8 right-8">{getStatusDisplayModern(selectedPermitDetail.status)}</div>
-                    <SafetyCertificateOutlined className="text-5xl mb-4 opacity-50" />
-                    <h2 className="text-3xl font-black m-0 tracking-tight text-white uppercase">Work Permit</h2>
-                    <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mt-2">Document No. {selectedPermitDetail.permit_number}</p>
+              <div className="bg-white rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] border border-slate-50">
+                <div ref={documentRef} className="bg-slate-50 pb-10">
+                  <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-800 p-8 md:p-10 text-white relative overflow-hidden">
+                    <div className="absolute top-8 right-8 z-20 shadow-md rounded-full">{getStatusDisplayModern(selectedPermitDetail?.status || 'PENDING')}</div>
+                    <SafetyCertificateOutlined className="text-6xl mb-6 opacity-20 absolute -bottom-4 -left-4 transform -rotate-12" style={{ fontSize: '150px' }} />
+                    <div className="relative z-10">
+                      <SafetyCertificateOutlined className="text-4xl mb-4 opacity-80" />
+                      <h2 className="text-3xl md:text-4xl font-black m-0 tracking-tight text-white uppercase">Work Permit</h2>
+                      <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mt-2 bg-black/20 inline-block px-3 py-1 rounded-lg">Document No. {selectedPermitDetail?.permit_number || 'PTW-NEW'}</p>
+                    </div>
                   </div>
-                  <div className="p-8 space-y-6">
-                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+                  
+                  <div className="p-6 md:p-10 space-y-6">
+                    <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.02)]">
+                      <Row gutter={[24, 32]}>
+                        <Col span={24}>
+                          <Text type="secondary" className="block text-[10px] font-black uppercase mb-1.5 tracking-widest">หัวข้องาน (Task Title)</Text>
+                          <Text className="text-lg md:text-xl font-black text-slate-800">{selectedPermitDetail?.title || '-'}</Text>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Text type="secondary" className="block text-[10px] font-black uppercase mb-1.5 tracking-widest">พื้นที่ (Location)</Text>
+                          <Text className="font-bold text-slate-700 text-base">{selectedPermitDetail?.location_detail || '-'}</Text>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Text type="secondary" className="block text-[10px] font-black uppercase mb-1.5 tracking-widest">ประเภทงาน (Type)</Text>
+                          <div className="mt-1">{getPermitTypeDisplayModern(selectedPermitDetail?.permit_type || 'COLD_WORK')}</div>
+                        </Col>
+                      </Row>
+                    </div>
+                    
+                    <div className="bg-blue-50/50 p-6 md:p-8 rounded-[2rem] border border-blue-100/60 shadow-inner">
                       <Row gutter={[24, 24]}>
-                        <Col span={24}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">หัวข้องาน (Task Title)</Text><Text className="text-lg font-bold text-slate-800">{selectedPermitDetail.title}</Text></Col>
-                        <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">พื้นที่ (Location)</Text><Text className="font-bold text-slate-700">{selectedPermitDetail.location_detail}</Text></Col>
-                        <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">ประเภทงาน (Type)</Text><div className="mt-1">{getStatusDisplayModern(selectedPermitDetail.permit_type)}</div></Col>
+                        <Col xs={24} sm={12}>
+                          <Text type="secondary" className="block text-[10px] font-black uppercase mb-1.5 tracking-widest text-blue-600/70">วันเริ่มงาน</Text>
+                          <Text className="font-black text-blue-900 text-base flex items-center gap-2"><ClockCircleOutlined className="text-blue-500" /> {selectedPermitDetail?.start_time ? dayjs(selectedPermitDetail.start_time).format('DD/MM/YYYY HH:mm น.') : '-'}</Text>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Text type="secondary" className="block text-[10px] font-black uppercase mb-1.5 tracking-widest text-rose-600/70">วันสิ้นสุด</Text>
+                          <Text className="font-black text-rose-600 text-base flex items-center gap-2"><ClockCircleOutlined className="text-rose-400" /> {selectedPermitDetail?.end_time ? dayjs(selectedPermitDetail.end_time).format('DD/MM/YYYY HH:mm น.') : '-'}</Text>
+                        </Col>
                       </Row>
                     </div>
-                    <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
-                      <Row gutter={24}>
-                        <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">วันเริ่มงาน</Text><Text strong>{dayjs(selectedPermitDetail.start_time).format('DD/MM/YYYY HH:mm น.')}</Text></Col>
-                        <Col span={12}><Text type="secondary" className="block text-[10px] font-black uppercase mb-1">วันสิ้นสุด</Text><Text strong className="text-rose-600">{dayjs(selectedPermitDetail.end_time).format('DD/MM/YYYY HH:mm น.')}</Text></Col>
-                      </Row>
+
+                    <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.02)]">
+                      <Text type="secondary" className="block text-[10px] font-black uppercase mb-3 tracking-widest">มาตรการควบคุมความเสี่ยง (Safety Measures)</Text>
+                      <div className={`leading-relaxed bg-slate-50/80 p-5 rounded-2xl font-medium whitespace-pre-wrap min-h-[80px] border border-slate-100 ${!selectedPermitDetail?.description ? 'flex items-center justify-center text-slate-400 italic text-sm' : 'text-slate-700 text-sm md:text-base'}`}>
+                        {selectedPermitDetail?.description || 'ไม่มีการระบุมาตรการเพิ่มเติมในเอกสารนี้'}
+                      </div>
                     </div>
-                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
-                      <Text type="secondary" className="block text-[10px] font-black uppercase mb-3">มาตรการควบคุมความเสี่ยง (Safety Measures)</Text>
-                      <div className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl font-medium whitespace-pre-wrap">{selectedPermitDetail.description}</div>
-                    </div>
-                    {gasLogsDetail.length > 0 && (
-                      <div className="bg-cyan-50 p-6 rounded-[2rem] border border-cyan-100">
-                        <Text type="secondary" className="block text-[10px] font-black uppercase mb-3">ประวัติการตรวจวัดก๊าซ (Gas Testing)</Text>
+
+                    {Array.isArray(gasLogsDetail) && gasLogsDetail.length > 0 && (
+                      <div className="bg-cyan-50/80 p-6 md:p-8 rounded-[2rem] border border-cyan-100 shadow-inner">
+                        <Text type="secondary" className="block text-[10px] font-black uppercase mb-4 tracking-widest text-cyan-700">ประวัติการตรวจวัดก๊าซ (Gas Testing)</Text>
                         <div className="space-y-3">
                           {gasLogsDetail.map((log, idx) => (
-                            <div key={idx} className="bg-white p-4 rounded-2xl border border-cyan-100 flex justify-between items-center shadow-sm">
-                              <Text className="text-xs font-bold text-slate-500">{dayjs(log.recorded_at).format('HH:mm')}</Text>
-                              <div className="flex gap-4">
-                                <div className="text-center"><div className="text-[10px] font-black text-slate-400">O2</div><div className="font-bold text-blue-600">{log.o2_level}%</div></div>
-                                <div className="text-center"><div className="text-[10px] font-black text-slate-400">LEL</div><div className="font-bold text-orange-500">{log.lel_level}%</div></div>
+                            <div key={idx} className="bg-white p-4 md:p-5 rounded-2xl border border-cyan-100 flex flex-wrap justify-between items-center shadow-[0_4px_12px_rgba(6,182,212,0.05)]">
+                              <Text className="text-xs md:text-sm font-black text-slate-500 bg-slate-50 px-3 py-1 rounded-lg">{log?.recorded_at ? dayjs(log.recorded_at).format('HH:mm') : '-'}</Text>
+                              <div className="flex gap-6 mt-2 sm:mt-0">
+                                <div className="text-center"><div className="text-[10px] font-black text-slate-400 tracking-widest">O2</div><div className="font-black text-blue-600 text-base">{log?.o2_level ?? '-'}%</div></div>
+                                <div className="text-center"><div className="text-[10px] font-black text-slate-400 tracking-widest">LEL</div><div className="font-black text-orange-500 text-base">{log?.lel_level ?? '-'}%</div></div>
                               </div>
                             </div>
                           ))}
@@ -734,152 +684,135 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                <div className="bg-white p-6 border-t border-slate-100 flex gap-3 px-8">
-                  {/* ✨ Tip: Negative Action - Subtle grey button for cancel/close */}
-                  <Button size="large" block className="rounded-2xl h-14 font-bold bg-slate-100 text-slate-600 border-none hover:bg-slate-200" onClick={() => setIsDetailModalOpen(false)}>ปิด</Button>
-                  <Button type="primary" icon={<FilePdfOutlined />} size="large" block className="rounded-2xl h-14 font-black bg-indigo-600 shadow-[0_4px_12px_rgba(79,70,229,0.3)]" onClick={handlePrint}>Export PDF</Button>
+                
+                <div className="bg-white p-6 md:p-8 border-t border-slate-100 flex flex-col sm:flex-row gap-4">
+                  <Button size="large" className="w-full sm:flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 text-slate-600 border-none hover:bg-slate-200 transition-colors" onClick={() => setIsDetailModalOpen(false)}>ปิดหน้าต่าง</Button>
+                  <Button type="primary" icon={<FilePdfOutlined />} size="large" className="w-full sm:flex-[2] rounded-2xl h-14 font-black bg-[#2563eb] shadow-[0_8px_24px_rgba(37,99,235,0.3)] hover:bg-[#1d4ed8] hover:shadow-lg transition-all" onClick={handlePrint}>Export PDF / สั่งพิมพ์</Button>
                 </div>
               </div>
             )}
           </Modal>
 
-          {/* File Preview Modal */}
           <Modal title="เอกสารแนบ" open={isPreviewOpen} destroyOnClose={true} onCancel={() => setIsPreviewOpen(false)} width={850} footer={null} centered>
-            <div className="h-[75vh] bg-slate-50 rounded-3xl overflow-hidden mt-4 shadow-inner border border-slate-100">
-              {previewType === 'image' ? <img src={previewUrl} className="w-full h-full object-contain" /> : <iframe src={previewUrl} className="w-full h-full border-none" />}
-            </div>
+            <div className="h-[75vh] bg-slate-50 rounded-3xl overflow-hidden mt-4 shadow-inner border border-slate-100"><img src={previewUrl} className="w-full h-full object-contain" /></div>
           </Modal>
 
-          {/* PERMIT CREATE MODAL */}
-          <Modal title={null} footer={null} open={isModalOpen} destroyOnClose={true} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); }} width={750} centered styles={{ body: { padding: 0 } }}>
+          {/* ✨ [STEP 2] NEW DYNAMIC PERMIT FORM ✨ */}
+          <Modal title={null} footer={null} open={isModalOpen} destroyOnClose={true} onCancel={() => { setIsModalOpen(false); setFileList([]); form.resetFields(); setSelectedPermitTypeForm(''); setIsLotoRequired(false); }} width={750} centered styles={{ body: { padding: 0 } }}>
              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white rounded-t-[2.5rem]">
                 <h2 className="text-2xl md:text-3xl font-black m-0 text-white flex items-center gap-3"><FileAddOutlined /> ขออนุญาตทำงาน (E-Permit)</h2>
                 <p className="text-blue-200 text-xs md:text-sm mt-2 opacity-90 font-medium">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการปฏิบัติงาน</p>
              </div>
+             
              <div className="p-4 md:p-8 max-h-[75vh] overflow-y-auto custom-scrollbar bg-slate-50 rounded-b-[2.5rem]">
-                <Form form={form} layout="vertical" onFinish={handleCreatePermit} requiredMark={false}>
+                <Form form={form} layout="vertical" onFinish={handleCreatePermit} requiredMark={false} className="anatomy-form">
                   
+                  {/* Basic Details */}
                   <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
-                    <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้องาน</span>} rules={[{ required: true }]}>
-                      <Input placeholder="เช่น งานซ่อมบำรุง Tank 01" className="h-14 rounded-2xl bg-slate-50 border-slate-200" />
-                    </Form.Item>
+                    <Form.Item name="title" label={<span className="font-bold text-slate-700">หัวข้องาน</span>} rules={[{ required: true }]}><Input placeholder="เช่น งานซ่อมบำรุง Tank 01" className="h-14 rounded-2xl bg-slate-50 border-slate-200" /></Form.Item>
                     <Row gutter={16}>
-                      <Col xs={24} md={12}>
-                        <Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน</span>} rules={[{ required: true }]}>
-                          <Select size="large" className="h-14 custom-select-radius" onChange={setSelectedPermitTypeForm}>
-                            <Select.Option value="HOT_WORK">🔥 Hot Work</Select.Option>
-                            <Select.Option value="CONFINED_SPACE">🕳️ Confined Space</Select.Option>
-                            <Select.Option value="ELECTRICAL">⚡ Electrical</Select.Option>
-                            <Select.Option value="COLD_WORK">❄️ Cold Work</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} md={12}>
-                        <Form.Item name="location_detail" label={<span className="font-bold text-slate-700">สถานที่</span>} rules={[{ required: true }]}>
-                          <Input placeholder="โซน / แผนก" className="h-14 rounded-2xl bg-slate-50 border-slate-200" />
-                        </Form.Item>
-                      </Col>
+                      <Col xs={24} md={12}><Form.Item name="permit_type" label={<span className="font-bold text-slate-700">ประเภทงาน</span>} rules={[{ required: true }]}><Select size="large" className="h-14 custom-select-radius" onChange={setSelectedPermitTypeForm}><Select.Option value="HOT_WORK">🔥 Hot Work</Select.Option><Select.Option value="CONFINED_SPACE">🕳️ Confined Space</Select.Option><Select.Option value="ELECTRICAL">⚡ Electrical</Select.Option><Select.Option value="COLD_WORK">❄️ Cold Work</Select.Option></Select></Form.Item></Col>
+                      <Col xs={24} md={12}><Form.Item name="location_detail" label={<span className="font-bold text-slate-700">สถานที่</span>} rules={[{ required: true }]}><Input placeholder="โซน / แผนก" className="h-14 rounded-2xl bg-slate-50 border-slate-200" /></Form.Item></Col>
                     </Row>
                   </div>
-
+                  
+                  {/* Time Range */}
                   <div className="bg-blue-50/50 p-5 md:p-6 rounded-[2rem] border border-blue-100 mb-6">
-                    <Form.Item name="timeRange" label={<span className="font-bold text-slate-700">ระยะเวลาปฏิบัติงาน</span>} rules={[{ required: true }]} className="mb-0">
-                      <ModernDateRange />
-                    </Form.Item>
+                    <Form.Item name="timeRange" label={<span className="font-bold text-slate-700">ระยะเวลาปฏิบัติงาน</span>} rules={[{ required: true }]} className="mb-0"><ModernDateRange /></Form.Item>
                   </div>
 
+                  {/* 🟢 Common Danger Fields */}
                   {(selectedPermitTypeForm === 'HOT_WORK' || selectedPermitTypeForm === 'CONFINED_SPACE') && (
-                    <div className="bg-rose-50 p-5 md:p-6 rounded-[2rem] border border-rose-200 mb-6 animate-fade-in relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
-                      <div className="flex items-center gap-2 mb-4 text-rose-700 font-extrabold border-b border-rose-200 pb-3">
-                        <WarningOutlined className="text-lg" /> ข้อมูลบังคับทางกฎหมาย (Mandatory Fields)
-                      </div>
+                    <div className="bg-orange-50 p-5 md:p-6 rounded-[2rem] border border-orange-200 mb-6 animate-fade-in relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500"></div>
+                      <div className="flex items-center gap-2 mb-4 text-orange-700 font-extrabold border-b border-orange-200 pb-3"><WarningOutlined className="text-lg" /> การตรวจสอบสภาพอากาศ</div>
                       <Row gutter={16}>
-                        <Col xs={24} md={12}>
-                          <Form.Item name="gas_tester_name" label={<span className="font-bold text-slate-700">ผู้ตรวจสอบสภาพอากาศ</span>} rules={[{ required: true }]}>
-                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-rose-100" />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item name="standby_person_name" label={<span className="font-bold text-slate-700">ผู้เฝ้าระวัง (Standby)</span>} rules={[{ required: true }]}>
-                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-rose-100" />
-                          </Form.Item>
-                        </Col>
+                        <Col xs={24} md={12}><Form.Item name="gas_tester_name" label={<span className="font-bold text-slate-700">ผู้ตรวจสอบสภาพอากาศ</span>} rules={[{ required: true }]}><Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-orange-100" /></Form.Item></Col>
+                        <Col xs={24} md={12}><Form.Item name="standby_person_name" label={<span className="font-bold text-slate-700">ผู้เฝ้าระวัง (Standby)</span>} rules={[{ required: true }]}><Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-orange-100" /></Form.Item></Col>
                       </Row>
                     </div>
                   )}
 
+                  {/* 🟣 [STEP 2] NEW: Confined Space specific fields */}
+                  {selectedPermitTypeForm === 'CONFINED_SPACE' && (
+                    <div className="bg-purple-50 p-5 md:p-6 rounded-[2rem] border border-purple-200 mb-6 animate-fade-in relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-purple-500"></div>
+                      <div className="flex items-center gap-2 mb-4 text-purple-700 font-extrabold border-b border-purple-200 pb-3">
+                        <BuildOutlined className="text-lg" /> กฎหมายที่อับอากาศ (Confined Space)
+                      </div>
+                      <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                          <Form.Item name="supervisor_name" label={<span className="font-bold text-slate-700">ผู้ควบคุมงาน (Supervisor)</span>} rules={[{ required: true, message: 'ระบุชื่อผู้ควบคุมงาน' }]}>
+                            <Input size="large" placeholder="ชื่อ-นามสกุล" className="rounded-2xl h-14 bg-white border-purple-100 focus:border-purple-500" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item name="rescue_plan_url" label={<span className="font-bold text-slate-700">แผนกู้ภัยฉุกเฉิน (Rescue Plan)</span>} rules={[{ required: true, message: 'ระบุรายละเอียดหรือแนบลิงก์' }]}>
+                            <Input size="large" placeholder="ระบุรายละเอียด หรือ แนบลิงก์" className="rounded-2xl h-14 bg-white border-purple-100 focus:border-purple-500" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <div className="bg-white p-4 rounded-xl border border-purple-100 mt-2 flex items-start gap-3 shadow-sm">
+                        <div className="bg-emerald-50 text-emerald-500 p-2 rounded-lg mt-0.5"><MedicineBoxOutlined className="text-xl" /></div>
+                        <div className="flex-1 pt-1">
+                          <Form.Item name="is_med_cert_verified" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('ต้องยืนยันใบรับรองแพทย์')) }]} className="m-0 mb-1">
+                            <Checkbox className="font-black text-slate-800 text-sm">ยืนยันว่าผู้ปฏิบัติงานทุกคนผ่านการตรวจสุขภาพ (Fit to Work)</Checkbox>
+                          </Form.Item>
+                          <p className="text-xs text-slate-500 mt-1 mb-0 font-medium leading-relaxed pl-6">ผู้เข้าทำงานในที่อับอากาศต้องมีใบรับรองแพทย์ที่ยังไม่หมดอายุตามกฎหมาย</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 🔴 [STEP 2] NEW: LOTO Requirement Switch */}
                   <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
-                    <Form.Item name="description" label={<span className="font-bold text-slate-700">รายละเอียดและมาตรการความปลอดภัย</span>}>
-                      <Input.TextArea rows={4} className="rounded-2xl p-4 bg-slate-50 border-slate-200" placeholder="ระบุมาตรการควบคุมความเสี่ยง..." />
-                    </Form.Item>
-                    <Form.Item label={<span className="font-bold text-slate-700">เอกสาร JSA (บังคับแนบ)</span>} className="mb-0">
-                      <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={({ fileList }) => setFileList(fileList)}>
-                         <Button icon={<UploadOutlined />} className="h-14 rounded-2xl w-full text-slate-500 border-dashed border-2 hover:border-blue-500 hover:text-blue-500 bg-slate-50">แตะเพื่อเลือกไฟล์ JSA (PDF/Image)</Button>
-                      </Upload>
-                    </Form.Item>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <span className="font-bold text-slate-800 flex items-center gap-2 text-sm md:text-base"><KeyOutlined className="text-red-500 text-xl"/> งานนี้ต้องตัดแยกพลังงาน (LOTO) หรือไม่?</span>
+                      <Form.Item name="is_loto_required" valuePropName="checked" className="m-0 bg-red-50 border border-red-200 px-4 py-2 rounded-xl">
+                        <Checkbox onChange={(e) => setIsLotoRequired(e.target.checked)} className="font-black text-red-600">บังคับทำ LOTO</Checkbox>
+                      </Form.Item>
+                    </div>
+                    
+                    {isLotoRequired && (
+                      <div className="bg-red-50/50 p-5 rounded-2xl border border-red-200 mt-5 animate-fade-in shadow-inner">
+                         <Row gutter={16}>
+                           <Col xs={24} md={8}>
+                             <Form.Item name="loto_isolation_point" label={<span className="font-bold text-red-700 text-xs uppercase tracking-wider">จุดตัดแยก (Isolation Point)</span>} rules={[{ required: true }]}>
+                               <Input placeholder="เช่น วาล์ว V-101" className="rounded-xl h-12 bg-white border-red-200 focus:border-red-500" />
+                             </Form.Item>
+                           </Col>
+                           <Col xs={24} md={8}>
+                             <Form.Item name="loto_energy_type" label={<span className="font-bold text-red-700 text-xs uppercase tracking-wider">ประเภทพลังงาน</span>} rules={[{ required: true }]}>
+                               <Select className="h-12" placeholder="เลือกประเภท">
+                                 <Select.Option value="ELECTRICAL">⚡ ไฟฟ้า</Select.Option>
+                                 <Select.Option value="MECHANICAL">⚙️ เครื่องกล</Select.Option>
+                                 <Select.Option value="CHEMICAL">🧪 สารเคมี</Select.Option>
+                                 <Select.Option value="PNEUMATIC">💨 ลม (Pneumatic)</Select.Option>
+                               </Select>
+                             </Form.Item>
+                           </Col>
+                           <Col xs={24} md={8}>
+                             <Form.Item name="loto_lock_number" label={<span className="font-bold text-red-700 text-xs uppercase tracking-wider">แม่กุญแจ (Lock No.)</span>} rules={[{ required: true }]}>
+                               <Input placeholder="เช่น L-001" className="rounded-xl h-12 bg-white border-red-200 focus:border-red-500" />
+                             </Form.Item>
+                           </Col>
+                         </Row>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-4 mt-8">
-                    <Button size="large" onClick={() => setIsModalOpen(false)} className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">ยกเลิก</Button>
-                    <Button type="primary" htmlType="submit" loading={isSubmitting} size="large" className="flex-[2] h-14 rounded-2xl font-black bg-blue-600 shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)]">ส่งคำขอ Permit</Button>
+                  <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
+                    <Form.Item name="description" label={<span className="font-bold text-slate-700">รายละเอียดและมาตรการความปลอดภัย</span>}><Input.TextArea rows={4} className="rounded-2xl p-4 bg-slate-50 border-slate-200" placeholder="ระบุมาตรการควบคุมความเสี่ยง..." /></Form.Item>
+                    <Form.Item label={<span className="font-bold text-slate-700">เอกสาร JSA (บังคับแนบ)</span>} className="mb-0"><Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={({ fileList }) => setFileList(fileList)}><Button icon={<UploadOutlined />} className="h-14 rounded-2xl w-full text-slate-500 border-dashed border-2 hover:border-blue-500 hover:text-blue-500 bg-slate-50">แตะเพื่อเลือกไฟล์ JSA</Button></Upload></Form.Item>
+                  </div>
+                  
+                  <div className="flex gap-4 mt-8 border-t border-slate-200 pt-6">
+                    <Button size="large" onClick={() => setIsModalOpen(false)} className="flex-1 h-14 rounded-2xl font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200 transition-colors">ยกเลิก</Button>
+                    <Button type="primary" htmlType="submit" loading={isSubmitting} size="large" className="flex-[2] h-14 rounded-2xl font-black bg-[#2563eb] hover:bg-[#1d4ed8] shadow-[0_8px_24px_rgba(37,99,235,0.3)] transition-all">ส่งคำขอ Permit</Button>
                   </div>
                 </Form>
              </div>
           </Modal>
-
-          {/* ✨ Tip: Negative Actions - Emergency clearly red */}
-          <Modal open={isEmergency} closable={false} footer={null} width="100%" centered wrapClassName="emergency-modal">
-            <div className="bg-red-600 w-full h-full flex flex-col items-center justify-center p-10 text-center animate-pulse relative overflow-hidden">
-              <WarningOutlined className="text-white text-[120px] mb-8 drop-shadow-lg" />
-              <h1 className="text-6xl md:text-8xl font-black text-white m-0 tracking-tighter uppercase drop-shadow-md">Emergency</h1>
-              <p className="text-2xl text-white/90 mt-4 font-bold tracking-wide">{emergencyMessage}</p>
-              <Button size="large" className="mt-12 h-20 px-16 rounded-full text-2xl font-black bg-white text-red-600 border-none hover:scale-105 transition-transform shadow-[0_0_60px_rgba(255,255,255,0.3)]" onClick={() => setIsEmergency(false)}>รับทราบและอพยพทันที!</Button>
-            </div>
-          </Modal>
-
-          {/* QR SCANNER MODAL */}
-          <Modal title={null} open={isScannerOpen} destroyOnClose={true} onCancel={() => setIsScannerOpen(false)} footer={null} centered width={400} styles={{ body: { padding: 0 } }}>
-            <div className="bg-slate-900 p-8 text-center rounded-[2.5rem] overflow-hidden relative shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-               <div className="mb-6"><ScanOutlined className="text-5xl text-blue-500 mb-3" /><h3 className="text-white m-0 font-black text-2xl">สแกน QR Code</h3><p className="text-slate-400 text-sm mt-1">E-Passport หรือ ตรวจอุปกรณ์</p></div>
-               <div className="rounded-3xl overflow-hidden border-[3px] border-slate-700 shadow-inner">
-                 <QRScanner onScan={(text) => { setIsScannerOpen(false); if (text.includes('/verify/')) setVerifyUserId(text.split('/verify/')[1]); }} />
-               </div>
-               <Button block size="large" type="text" className="mt-8 text-slate-400 font-bold hover:text-white bg-slate-800 rounded-2xl h-12" onClick={() => setIsScannerOpen(false)}>ปิดกล้อง</Button>
-            </div>
-          </Modal>
-
-          {/* ==========================================
-              🎨 GLOBAL CSS OVERRIDES
-             ========================================== */}
-          <style>{`
-            .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-            
-            /* Custom Scrollbar */
-            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-            
-            /* Modals & Drawers Reset */
-            .emergency-modal .ant-modal-content { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
-            .emergency-modal .ant-modal { max-width: 100vw !important; margin: 0 !important; top: 0 !important; padding: 0 !important; }
-            
-            /* Tabs Customization */
-            .custom-bbs-tabs .ant-tabs-nav::before { border-bottom: 1px solid #f1f5f9; }
-            .custom-bbs-tabs .ant-tabs-tab { padding: 16px 0; margin-right: 0 !important; flex: 1; justify-content: center; border-radius: 16px 16px 0 0; }
-            .custom-bbs-tabs .ant-tabs-tab:hover { background: #f8fafc; }
-            .custom-bbs-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #2563eb !important; }
-            .custom-bbs-tabs .ant-tabs-ink-bar { background: #2563eb !important; height: 3px !important; border-radius: 3px 3px 0 0; }
-
-            /* ✨ UI Tip: Custom Form Label spacing */
-            .custom-login-form .ant-form-item-label > label { height: auto !important; padding-bottom: 6px !important; }
-            
-            /* AntD Select Radius Override */
-            .custom-select-radius .ant-select-selector { border-radius: 16px !important; background-color: #f8fafc !important; }
-          `}</style>
 
         </Layout>
       </div>
