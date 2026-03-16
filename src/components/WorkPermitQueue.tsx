@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag } from 'antd';
+import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag, Divider } from 'antd';
 import { 
   FileTextOutlined, EnvironmentOutlined, UserOutlined, 
   EyeOutlined, CheckOutlined, CloseOutlined, CheckCircleOutlined, 
@@ -33,11 +33,12 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [extendForm] = Form.useForm();
 
+  // ✨ UI Tip: Pulse animation restricted to tiny indicators (No animation fatigue)
   const getStatusDisplayModern = (status: string) => { 
     switch(status) { 
       case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
       case 'PENDING_SAFETY': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>; 
-      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>; 
+      case 'APPROVED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap"><CheckCircleOutlined className="text-emerald-500" /> กำลังปฏิบัติงาน</span>; 
       case 'REJECTED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm whitespace-nowrap"><CloseOutlined /> ไม่อนุมัติ</span>; 
       case 'CLOSED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-slate-100 text-slate-700 border border-slate-200 shadow-sm whitespace-nowrap"><LockOutlined /> ปิดงานแล้ว</span>; 
       case 'REVOKED': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-red-600 text-white shadow-md whitespace-nowrap"><StopOutlined /> ถูกระงับงานฉุกเฉิน</span>; 
@@ -48,10 +49,10 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
 
   const getPermitTypeDisplayModern = (type: string) => { 
     switch(type) { 
-      case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap shadow-sm"><FireOutlined /> Hot Work</span>; 
-      case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap shadow-sm"><BuildOutlined /> Confined Space</span>; 
-      case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap shadow-sm"><ThunderboltOutlined /> Electrical</span>; 
-      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap shadow-sm"><ToolOutlined /> Cold Work</span>; 
+      case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><FireOutlined /> Hot Work</span>; 
+      case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><BuildOutlined /> Confined Space</span>; 
+      case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><ThunderboltOutlined /> Electrical</span>; 
+      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><ToolOutlined /> Cold Work</span>; 
     } 
   };
 
@@ -133,7 +134,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100">
+            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors duration-300">
               <EnvironmentOutlined className="text-emerald-500 mt-0.5 text-sm" />
               <div className="flex flex-col">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">สถานที่ปฏิบัติงาน</span>
@@ -141,7 +142,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
               </div>
             </div>
             
-            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100">
+            <div className="flex items-start gap-2 bg-[#f8fafc] p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors duration-300">
               <ClockCircleOutlined className="text-blue-500 mt-0.5 text-sm" />
               <div className="flex flex-col">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">เวลาปฏิบัติงาน</span>
@@ -159,7 +160,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             </div>
             
             {record?.attachment_url && (
-              <button onClick={() => onPreviewFile(record.attachment_url)} className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors">
+              // ✨ UI Tip: Micro-interaction with active:scale for tactile feedback
+              <button onClick={() => onPreviewFile(record.attachment_url)} className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]">
                 <FileTextOutlined /> ดูเอกสาร JSA
               </button>
             )}
@@ -186,18 +188,18 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         const requiresGasTest = record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE';
 
         return (
-          <div className="flex flex-col gap-2 w-full pr-2 pb-2">
-            {/* 🔴 ปุ่มนี้ถูกกดแล้วจะวิ่งไปเรียกฟังก์ชัน onViewDetails ที่อยู่ใน App.tsx ครับ */}
-            <button onClick={() => onViewDetails(record)} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-xs font-extrabold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm">
+          // ✨ UI Tip: Add subtle stagger fade-in for actions
+          <div className="flex flex-col gap-2 w-full pr-2 pb-2 animate-fade-in-up">
+            <button onClick={() => onViewDetails(record)} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-xs font-extrabold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all duration-200 ease-out active:scale-[0.98] shadow-sm">
               <FilePdfOutlined /> Print / เอกสารเต็ม
             </button>
 
             {(isAreaOwnerTurn || isSafetyTurn) && ( 
               <div className="flex gap-2 w-full">
-                <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:bg-emerald-600 active:scale-95 transition-all">
+                <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:bg-emerald-600 transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.96]">
                   <CheckOutlined /> อนุมัติ
                 </button>
-                <button onClick={() => onUpdateStatus(record.id, record.status, 'REJECT')} className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-white text-rose-500 rounded-xl border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-300 shadow-sm active:scale-95 transition-all" title="ไม่อนุมัติ">
+                <button onClick={() => onUpdateStatus(record.id, record.status, 'REJECT')} className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-white text-rose-500 rounded-xl border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-300 shadow-sm transition-all duration-200 ease-out active:scale-[0.92]" title="ไม่อนุมัติ">
                   <CloseOutlined className="text-sm" />
                 </button>
               </div> 
@@ -211,12 +213,12 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                   if (hasGasLog) {
                     return (
                       <div className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-extrabold border border-emerald-200 shadow-sm cursor-default">
-                        <CheckCircleOutlined /> ตรวจก๊าซเรียบร้อยแล้ว
+                        <CheckCircleOutlined className="animate-pulse" /> ตรวจก๊าซเรียบร้อยแล้ว
                       </div>
                     );
                   } else {
                     return (
-                      <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all border border-cyan-200 shadow-sm">
+                      <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-cyan-200 shadow-sm">
                         <DashboardOutlined /> ตรวจก๊าซหน้างาน
                       </button>
                     );
@@ -224,14 +226,14 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                 })()}
 
                 {isApplicant && (
-                  <button onClick={() => handleOpenExtendModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-purple-50 hover:bg-purple-500 text-purple-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all border border-purple-200 shadow-sm">
+                  <button onClick={() => handleOpenExtendModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-purple-50 hover:bg-purple-500 text-purple-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-purple-200 shadow-sm">
                     <ClockCircleOutlined /> ขอต่อเวลา (Extend)
                   </button>
                 )}
 
                 {isApplicant && (
                   <Popconfirm title="ยืนยันการปิดงาน?" description="คุณได้ทำความสะอาดพื้นที่เรียบร้อยแล้วใช่หรือไม่?" onConfirm={() => onUpdateStatus(record.id, record.status, 'CLOSE')} okText="ยืนยันปิดงาน" cancelText="ยกเลิก">
-                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-[11px] font-extrabold transition-all shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
                       <CheckCircleOutlined /> คืนพื้นที่ / ปิดงาน
                     </button>
                   </Popconfirm>
@@ -239,7 +241,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
 
                 {isOwnerOrSafety && (
                   <Popconfirm title="สั่งระงับงานฉุกเฉิน!" description="ต้องการยกเลิกใบอนุญาตนี้ทันทีใช่หรือไม่?" onConfirm={() => onUpdateStatus(record.id, record.status, 'REVOKE')} okText="ระงับงาน" okButtonProps={{danger: true}} cancelText="ยกเลิก">
-                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[11px] font-extrabold transition-all shadow-[0_4px_12px_rgba(244,63,94,0.3)]">
+                    <button className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] shadow-[0_4px_12px_rgba(244,63,94,0.3)]">
                       <StopOutlined /> ระงับงาน (Revoke)
                     </button>
                   </Popconfirm>
@@ -274,7 +276,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             expandedRowRender: (record) => {
               if (!record) return null; 
               return (
-              <div className="p-6 md:p-8 bg-[#f8fafc] rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner">
+              // ✨ UI Tip: smooth slide-down effect when row expands
+              <div className="p-6 md:p-8 bg-[#f8fafc] rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner animate-[slideDown_0.3s_ease-out_forwards] origin-top">
                  <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-3">
                    <InfoCircleOutlined className="text-blue-500" /> ข้อมูลใบอนุญาตเชิงลึก (Deep Details)
                  </h4>
@@ -289,7 +292,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                             </div>
                           </div>
 
-                          {/* ✨ ส่วนแสดง LOTO (Protected by optional chaining) */}
                           {record?.is_loto_required && (
                             <div className="bg-red-50 p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 text-lg shrink-0 shadow-sm"><KeyOutlined /></div>
@@ -313,7 +315,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                     
                     <Col xs={24} md={12}>
                        <div className="flex flex-col gap-4">
-                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300">
                              <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-lg"><FireOutlined /></div>
                              <div>
                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้ตรวจสอบสภาพอากาศ (Gas Tester)</span>
@@ -321,7 +323,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                              </div>
                           </div>
                           
-                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300">
                              <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 text-lg"><EyeOutlined /></div>
                              <div>
                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้เฝ้าระวัง (Standby Person)</span>
@@ -329,17 +331,16 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                              </div>
                           </div>
 
-                          {/* ✨ ข้อมูลเพิ่มเติมสำหรับที่อับอากาศ (Confined Space) */}
                           {record?.permit_type === 'CONFINED_SPACE' && (
                             <>
-                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300">
                                  <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 text-lg"><ProfileOutlined /></div>
                                  <div>
                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">ผู้ควบคุมงาน (Supervisor)</span>
                                    <span className="text-sm font-extrabold text-slate-800">{record?.supervisor_name || 'ระบุในขั้นตอนการเตรียมงาน'}</span>
                                  </div>
                               </div>
-                              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 shadow-sm flex justify-between items-center">
+                              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 shadow-sm flex justify-between items-center hover:-translate-y-0.5 transition-transform duration-300">
                                  <div className="flex items-center gap-4">
                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-emerald-500 text-lg"><MedicineBoxOutlined /></div>
                                    <div>
@@ -408,8 +409,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             </div>
 
             <div className="flex gap-4">
-              <Button size="large" onClick={() => setIsGasModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none">ยกเลิก</Button>
-              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingGas} icon={<SaveOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-cyan-600 hover:bg-cyan-700 border-none shadow-[0_8px_24px_rgba(8,145,178,0.3)]">บันทึกผล</Button>
+              <Button size="large" onClick={() => setIsGasModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none transition-transform active:scale-[0.98]">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingGas} icon={<SaveOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-cyan-600 hover:bg-cyan-700 border-none shadow-[0_8px_24px_rgba(8,145,178,0.3)] transition-transform hover:scale-[1.02] active:scale-[0.98]">บันทึกผล</Button>
             </div>
           </Form>
         </div>
@@ -426,27 +427,51 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
           <Form form={extendForm} layout="vertical" onFinish={handleSubmitExtend} requiredMark={false} className="anatomy-form">
             <Form.Item name="new_end_time" label={<span className="font-extrabold text-slate-800 text-[13px] mb-1.5 block">เวลาสิ้นสุดใหม่ <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเวลา' }]}>
-              <input type="datetime-local" className="w-full bg-white border border-slate-200 rounded-2xl px-5 h-14 text-slate-700 font-bold focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm" />
+              <input type="datetime-local" className="w-full bg-white border border-slate-200 rounded-2xl px-5 h-14 text-slate-700 font-bold focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm transition-shadow" />
             </Form.Item>
             <Form.Item name="reason" label={<span className="font-extrabold text-slate-800 text-[13px] mb-1.5 block mt-2">เหตุผล <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'ระบุเหตุผล' }]}>
-              <Input.TextArea rows={4} className="rounded-2xl border-slate-200 bg-white px-5 py-4 text-base focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm font-medium" />
+              <Input.TextArea rows={4} className="rounded-2xl border-slate-200 bg-white px-5 py-4 text-base focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 shadow-sm font-medium transition-shadow" />
             </Form.Item>
             <div className="flex gap-4 pt-6 border-t border-slate-200/60 mt-4">
-              <Button size="large" onClick={() => setIsExtendModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none">ยกเลิก</Button>
-              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingExtend} icon={<ClockCircleOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-purple-600 hover:bg-purple-700 border-none shadow-[0_8px_24px_rgba(147,51,234,0.3)]">ส่งคำขอต่อเวลา</Button>
+              <Button size="large" onClick={() => setIsExtendModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none transition-transform active:scale-[0.98]">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingExtend} icon={<ClockCircleOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-purple-600 hover:bg-purple-700 border-none shadow-[0_8px_24px_rgba(147,51,234,0.3)] transition-transform hover:scale-[1.02] active:scale-[0.98]">ส่งคำขอต่อเวลา</Button>
             </div>
           </Form>
         </div>
       </Modal>
 
       <style>{`
+        /* ✨ Accessibility: Respect user's motion preferences globally */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        /* ✨ UI Tip: Specific animations for components */
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-10px) scaleY(0.95); }
+          to { opacity: 1; transform: translateY(0) scaleY(1); }
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+
         .modern-expanded-table .ant-table { background: transparent !important; }
         .modern-expanded-table .ant-table-thead > tr > th { background: #f8fafc !important; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding: 16px 24px; }
         .modern-expanded-table .ant-table-tbody > tr > td { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; }
         .modern-expanded-table .ant-table-tbody > tr:hover > td { background: #fdfdfd !important; }
         .modern-expanded-table .ant-table-expanded-row > td { background: #ffffff !important; padding: 0 !important; }
-        .modern-expanded-table .ant-table-row-expand-icon { width: 24px; height: 24px; border-radius: 8px; color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; display: flex; align-items: center; justify-content: center; }
-        .modern-expanded-table .ant-table-row-expand-icon:hover { background: #3b82f6; color: white; }
+        
+        /* Interactive icon hover for expand row */
+        .modern-expanded-table .ant-table-row-expand-icon { width: 24px; height: 24px; border-radius: 8px; color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease-out; }
+        .modern-expanded-table .ant-table-row-expand-icon:hover { background: #3b82f6; color: white; transform: scale(1.1); }
+        
         .custom-modern-modal .ant-modal-content { border-radius: 2.5rem !important; padding: 0 !important; overflow: hidden; background: transparent; box-shadow: 0 32px 64px -12px rgba(0,0,0,0.15) !important; }
         .anatomy-form .ant-form-item-label > label { height: auto !important; padding-bottom: 0 !important; }
         .anatomy-form .ant-input-number-input { font-weight: 800; }
