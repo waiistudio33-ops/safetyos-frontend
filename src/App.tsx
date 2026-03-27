@@ -22,7 +22,8 @@ import {
   CloseOutlined, LockOutlined, StopOutlined, FireOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 
-// --- Extracted Features ---
+// --- Extracted Features & Common Components ---
+import WelcomeEmptyState from './components/common/WelcomeEmptyState';
 import LoginScreen from './features/auth/LoginScreen';
 import CreatePermitModal from './features/permits/CreatePermitModal';
 import PermitDetailModal from './features/permits/PermitDetailModal';
@@ -42,6 +43,7 @@ import ELearning from './components/ELearning';
 import EquipmentInspection from './components/EquipmentInspection';
 import Dashboard from './components/Dashboard';
 
+// --- Utils & Config ---
 import { supabase } from './supabase';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -91,16 +93,19 @@ export default function App() {
   const isMobile = !screens.md;
   const isTablet = screens.md && !screens.lg;
 
+  // Global States
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [lineProfile, setLineProfile] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Menu & Navigation States
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('DASHBOARD');
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
 
+  // Data States
   const [realPermits, setRealPermits] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [bbsRecords, setBbsRecords] = useState<any[]>([]);
@@ -109,12 +114,13 @@ export default function App() {
   const [confinedEntries, setConfinedEntries] = useState<any[]>([]);
   const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
 
+  // UI Action States
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingBbs, setIsSubmittingBbs] = useState(false);
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
-  // Modals UI States
+  // Modals & Drawers States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -141,6 +147,7 @@ export default function App() {
     onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
   });
 
+  // URL Parsing
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const targetPage = queryParams.get('page');
@@ -151,6 +158,7 @@ export default function App() {
     if (path.startsWith('/verify/')) setVerifyUserId(path.split('/verify/')[2]);
   }, []);
 
+  // Initialization & LINE LIFF
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -185,6 +193,7 @@ export default function App() {
     initializeApp();
   }, []);
 
+  // Supabase Channels
   useEffect(() => {
     const safetyChannel = supabase.channel('safety-alert-channel');
     safetyChannel
@@ -194,6 +203,7 @@ export default function App() {
     return () => { supabase.removeChannel(safetyChannel); };
   }, []);
 
+  // Data Fetchers
   const fetchUsers = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/users'); setUsers(res.data); } catch (error) {} };
   const fetchPermits = async () => { setLoading(true); try { const response = await axios.get('https://safetyos-backend.onrender.com/permits'); setRealPermits(response.data); } catch (error) {} finally { setLoading(false); } };
   const fetchBbs = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/bbs'); setBbsRecords(res.data); } catch (error) {} };
@@ -206,6 +216,7 @@ export default function App() {
   };
   const fetchEntries = async (permitId: string) => { try { const res = await axios.get(`https://safetyos-backend.onrender.com/confined-space/${permitId}/entries`); setConfinedEntries(res.data); } catch (error) {} };
 
+  // Data Refresh Triggers
   useEffect(() => { fetchUsers(); }, []);
   useEffect(() => { if (isAuthenticated && (activeMenu === 'DASHBOARD' || activeMenu === 'E_PERMIT')) fetchPermits(); }, [isAuthenticated, activeMenu]);
   useEffect(() => { if (isAuthenticated && activeMenu === 'BBS') fetchBbs(); }, [isAuthenticated, activeMenu]);
@@ -218,6 +229,7 @@ export default function App() {
     }
   }, [activeMenu, selectedConfinedPermit]);
 
+  // Event Handlers
   const handleLogin = async (values: any) => {
     setIsLoggingIn(true);
     try {
@@ -446,56 +458,60 @@ export default function App() {
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
                 {activeMenu === 'PROFILE' && <UserProfile currentUser={currentUser} lineProfile={lineProfile} />}
+                
                 {activeMenu === 'E_PERMIT' && (
-  <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden p-2 md:p-6 min-h-[60vh] flex flex-col">
-    {!loading && realPermits.length === 0 ? (
-      <div className="flex-1 flex items-center justify-center">
-        <WelcomeEmptyState 
-          title="เริ่มต้นสร้างคำขอทำงานใบแรก"
-          description="ระบบ E-Permit พร้อมใช้งานแล้ว คุณสามารถสร้างคำขออนุญาตทำงาน (PTW) พร้อมแนบเอกสาร JSA เพื่อให้เจ้าหน้าที่ตรวจสอบและอนุมัติได้ทันที"
-          buttonText="สร้างคำขอทำงาน (E-Permit)"
-          icon={<FileTextOutlined />}
-          onAction={() => setIsModalOpen(true)}
-        />
-      </div>
-    ) : (
-      <WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} />
-    )}
-  </div>
-)}
+                  <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden p-2 md:p-6 min-h-[60vh] flex flex-col">
+                    {!loading && realPermits.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <WelcomeEmptyState 
+                          title="เริ่มต้นสร้างคำขอทำงานใบแรก"
+                          description="ระบบ E-Permit พร้อมใช้งานแล้ว คุณสามารถสร้างคำขออนุญาตทำงาน (PTW) พร้อมแนบเอกสาร JSA เพื่อให้เจ้าหน้าที่ตรวจสอบและอนุมัติได้ทันที"
+                          buttonText="สร้างคำขอทำงาน (E-Permit)"
+                          icon={<FileTextOutlined />}
+                          onAction={() => setIsModalOpen(true)}
+                        />
+                      </div>
+                    ) : (
+                      <WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} />
+                    )}
+                  </div>
+                )}
+                
                 {activeMenu === 'E_PASSPORT' && <EPassport currentUser={currentUser} lineProfile={lineProfile} />}
+                
                 {activeMenu === 'BBS' && (
-  <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
-    <Tabs activeKey={activeBbsTab} onChange={setActiveBbsTab} centered size="large" items={[
-      { 
-        key: 'form', 
-        label: <span className="font-bold px-4"><FormOutlined /> สร้างรายงาน BBS</span>, 
-        children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={handleCreateBbs} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> 
-      }, 
-      { 
-        key: 'history', 
-        label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, 
-        children: (
-          <div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">
-            {bbsRecords.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <WelcomeEmptyState 
-                  title="ยังไม่มีประวัติการรายงาน BBS"
-                  description="การสังเกตการณ์ความปลอดภัย (BBS) ช่วยลดอุบัติเหตุในพื้นที่ทำงาน เริ่มต้นสร้างรายงานฉบับแรกของคุณเพื่อความปลอดภัยของทุกคน"
-                  buttonText="สร้างรายงาน BBS"
-                  icon={<EyeOutlined />}
-                  onAction={() => setActiveBbsTab('form')}
-                />
-              </div>
-            ) : (
-              <BBSHistory records={bbsRecords} />
-            )}
-          </div>
-        ) 
-      }
-    ]} />
-  </div>
-)}
+                  <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
+                    <Tabs activeKey={activeBbsTab} onChange={setActiveBbsTab} centered size="large" items={[
+                      { 
+                        key: 'form', 
+                        label: <span className="font-bold px-4"><FormOutlined /> สร้างรายงาน BBS</span>, 
+                        children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={handleCreateBbs} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> 
+                      }, 
+                      { 
+                        key: 'history', 
+                        label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, 
+                        children: (
+                          <div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">
+                            {bbsRecords.length === 0 ? (
+                              <div className="flex-1 flex items-center justify-center">
+                                <WelcomeEmptyState 
+                                  title="ยังไม่มีประวัติการรายงาน BBS"
+                                  description="การสังเกตการณ์ความปลอดภัย (BBS) ช่วยลดอุบัติเหตุในพื้นที่ทำงาน เริ่มต้นสร้างรายงานฉบับแรกของคุณเพื่อความปลอดภัยของทุกคน"
+                                  buttonText="สร้างรายงาน BBS"
+                                  icon={<EyeOutlined />}
+                                  onAction={() => setActiveBbsTab('form')}
+                                />
+                              </div>
+                            ) : (
+                              <BBSHistory records={bbsRecords} />
+                            )}
+                          </div>
+                        ) 
+                      }
+                    ]} />
+                  </div>
+                )}
+                
                 {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 1)', borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }} />}
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}

@@ -14,10 +14,11 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
   const [loginForm] = Form.useForm();
 
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "'Prompt', sans-serif" } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', fontFamily: "var(--font-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)" } }}>
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f7f9] p-4 sm:p-8">
         <div className="w-full max-w-[1000px] bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] flex flex-col md:flex-row overflow-hidden relative">
           
+          {/* 🌈 Colorful Vibrant Gradient Background */}
           <div 
             className="w-full md:w-1/2 min-h-[350px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100/50"
             style={{
@@ -76,7 +77,7 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
 
                 <Button size="large" onClick={onSSOLogin} className="h-[52px] rounded-2xl font-extrabold text-[#1e293b] border border-slate-200 hover:border-[#00a4ef] hover:bg-blue-50/30 bg-white flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" className="group-hover:scale-110 transition-transform"><path fill="#f25022" d="M11.4 11.4H0V0h11.4v11.4z"/><path fill="#7fba00" d="M24 11.4H12.6V0H24v11.4z"/><path fill="#00a4ef" d="M11.4 24H0V12.6h11.4V24z"/><path fill="#ffb900" d="M24 24H12.6V12.6H24V24z"/></svg>
-                  SCG SSO
+                  SSO
                 </Button>
               </div>
               
