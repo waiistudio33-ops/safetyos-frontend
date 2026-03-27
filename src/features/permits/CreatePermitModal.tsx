@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Row, Col, Divider, Checkbox, Upload, Button, message, Steps, Grid, Space } from 'antd';
+import React, { useState } from 'react';
+import { Modal, Form, Input, Select, Row, Col, Divider, Checkbox, Upload, Button, message, Steps, Grid } from 'antd';
 import { 
   FileAddOutlined, FireOutlined, BuildOutlined, ThunderboltOutlined, 
   ToolOutlined, WarningOutlined, MedicineBoxOutlined, KeyOutlined, 
@@ -28,18 +28,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
   const [selectedPermitType, setSelectedPermitType] = useState<string>('');
   const [isLotoRequired, setIsLotoRequired] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      form.resetFields();
-      setCurrentStep(0);
-      setFileList([]);
-      setSelectedPermitType('');
-      setIsLotoRequired(false);
-      // ตั้งค่าเริ่มต้นให้มีรายชื่อคนงานอย่างน้อย 1 ช่อง
-      form.setFieldsValue({ workers: [''] });
-    }
-  }, [open, form]);
-
+  // เช็คว่างานนี้เป็นงานเสี่ยงสูงไหม?
   const isHazardousWork = ['HOT_WORK', 'CONFINED_SPACE', 'ELECTRICAL'].includes(selectedPermitType);
 
   const next = async () => {
@@ -50,7 +39,18 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       message.warning('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
     }
   };
+  
   const prev = () => setCurrentStep(currentStep - 1);
+
+  // 🚀 ฟังก์ชันเวลาปิด Modal ให้ล้างข้อมูลทั้งหมดให้เกลี้ยง (ลด Error Warning ใน Console)
+  const handleClose = () => {
+    form.resetFields();
+    setCurrentStep(0);
+    setFileList([]);
+    setSelectedPermitType('');
+    setIsLotoRequired(false);
+    onCancel();
+  };
 
   const handleFinish = async () => {
     try {
@@ -59,6 +59,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         message.error('กรุณาแนบเอกสาร JSA หรือเอกสารที่เกี่ยวข้องก่อนดำเนินการ');
         return;
       }
+      
       const values = form.getFieldsValue();
       
       // กรองรายชื่อคนงานที่เป็นช่องว่างทิ้งไป
@@ -66,9 +67,26 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         values.workers = values.workers.filter((name: string) => name && name.trim() !== '');
       }
 
-      onSubmit(values, fileList);
+      // 🟢 [จุดแก้บัค!] แปลงวันที่จาก Component DateRange ให้เป็น Format แบบเป๊ะๆ
+      if (values.timeRange && values.timeRange.length === 2) {
+        const d1 = values.timeRange[0];
+        const d2 = values.timeRange[1];
+        // เช็คว่ามันมีฟังก์ชัน toDate ไหม (ของ Ant Design Dayjs) ถ้ามีก็ใช้ ถ้าไม่มีก็โยนใส่ new Date()
+        values.start_time = d1.toDate ? d1.toDate().toISOString() : new Date(d1).toISOString();
+        values.end_time = d2.toDate ? d2.toDate().toISOString() : new Date(d2).toISOString();
+      }
+
+      // ส่งคำขอไปหา App.tsx
+      await onSubmit(values, fileList);
+      
+      // ล้างข้อมูลและปิดหน้าต่าง
+      form.resetFields();
+      setCurrentStep(0);
+      setFileList([]);
+      onCancel();
+
     } catch (error) {
-      message.error('กรุณาตรวจสอบข้อมูลอีกครั้ง');
+      console.error("Form Validation Error:", error);
     }
   };
 
@@ -77,7 +95,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
   // =====================================
   const renderStep1 = () => (
     <div className="animate-fade-in pb-4">
-      {/* 🔴 ส่วนข้อมูลงาน */}
       <Divider orientation="left" className="m-0 mb-4 md:mb-6 border-slate-200">
         <span className="font-black text-base md:text-lg text-slate-800">ข้อมูลพื้นฐานของงาน</span>
       </Divider>
@@ -108,7 +125,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         </Form.Item>
       </div>
 
-      {/* 🔵 ส่วนข้อมูลทีมผู้รับเหมา */}
       <Divider orientation="left" className="m-0 mb-4 md:mb-6 border-slate-200">
         <span className="font-black text-base md:text-lg text-slate-800">ข้อมูลผู้ขออนุญาต / ผู้รับเหมา</span>
       </Divider>
@@ -135,12 +151,11 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         </Col>
       </Row>
 
-      {/* 🟢 ส่วนรายชื่อคนงาน (Dynamic List) */}
       <div className="bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 md:p-6 mt-2">
         <div className="flex items-center gap-2 mb-4 font-black text-slate-800 text-sm md:text-base">
           <TeamOutlined className="text-blue-500" /> รายชื่อผู้ปฏิบัติงาน (Worker List)
         </div>
-        <Form.List name="workers">
+        <Form.List name="workers" initialValue={['']}>
           {(fields, { add, remove }) => (
             <>
               {fields.map((field, index) => (
@@ -149,7 +164,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
                     {index + 1}
                   </div>
                   <Form.Item
-                    {...field}
+                    name={field.name}
                     validateTrigger={['onChange', 'onBlur']}
                     rules={[{ required: true, whitespace: true, message: 'กรุณาระบุชื่อ' }]}
                     className="mb-0 flex-1"
@@ -157,23 +172,11 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
                     <Input placeholder="ชื่อ-นามสกุล ผู้ปฏิบัติงาน" className="!h-10" />
                   </Form.Item>
                   {fields.length > 1 && (
-                    <Button 
-                      type="text" 
-                      danger 
-                      icon={<MinusCircleOutlined />} 
-                      onClick={() => remove(field.name)}
-                      className="shrink-0"
-                    />
+                    <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(field.name)} className="shrink-0" />
                   )}
                 </div>
               ))}
-              <Button 
-                type="dashed" 
-                onClick={() => add()} 
-                block 
-                icon={<PlusOutlined />} 
-                className="mt-2 border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:text-blue-700 font-bold h-12 rounded-xl"
-              >
+              <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} className="mt-2 border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:text-blue-700 font-bold h-12 rounded-xl">
                 เพิ่มรายชื่อผู้ปฏิบัติงาน
               </Button>
             </>
@@ -329,7 +332,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       footer={null} 
       open={open} 
       destroyOnClose={true} 
-      onCancel={onCancel} 
+      onCancel={handleClose} 
       width={isMobile ? '100%' : 850} 
       centered 
       styles={{ 
@@ -432,7 +435,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
             ย้อนกลับ
           </Button>
         ) : (
-          <Button size={isMobile ? "middle" : "large"} onClick={onCancel} className="h-12 md:h-14 px-4 md:px-8 rounded-lg md:rounded-xl font-bold text-slate-500 hover:bg-slate-50 border-none bg-transparent text-sm">
+          <Button size={isMobile ? "middle" : "large"} onClick={handleClose} className="h-12 md:h-14 px-4 md:px-8 rounded-lg md:rounded-xl font-bold text-slate-500 hover:bg-slate-50 border-none bg-transparent text-sm">
             ยกเลิก
           </Button>
         )}

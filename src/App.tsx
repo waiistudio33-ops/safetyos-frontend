@@ -294,6 +294,9 @@ export default function App() {
     }
   };
 
+  // =======================================================
+  // 🟢 [แก้ไข] ป้องกัน Error TypeError (Cannot read properties of undefined reading '0')
+  // =======================================================
   const handleCreatePermit = async (values: any, uploadedFiles: any[]) => {
     try {
       if (!currentUser) return;
@@ -311,10 +314,23 @@ export default function App() {
         }
       }
 
+      // ดักจับวันที่ (กันพัง 100%)
+      let startTime = new Date().toISOString();
+      let endTime = new Date(Date.now() + 2 * 3600000).toISOString();
+
+      if (values.timeRange && Array.isArray(values.timeRange) && values.timeRange.length === 2) {
+        startTime = dayjs(values.timeRange[0]).toISOString();
+        endTime = dayjs(values.timeRange[1]).toISOString();
+      } else if (values.start_time && values.end_time) {
+        startTime = values.start_time;
+        endTime = values.end_time;
+      }
+
+      // สร้าง Payload ตาม Data Structure ใหม่
       const payload = {
         ...values,
-        start_time: dayjs(values.timeRange[0]).toISOString(),
-        end_time: dayjs(values.timeRange[1]).toISOString(),
+        start_time: startTime,
+        end_time: endTime,
         applicant_id: currentUser.id,
         attachment_url: fileUrl,
         attachment_name: fileNameToSave,
@@ -325,14 +341,23 @@ export default function App() {
         loto_isolation_point: values.loto_isolation_point || null,
         loto_energy_type: values.loto_energy_type || null,
         loto_lock_number: values.loto_lock_number || null,
+        // ข้อมูลผู้รับเหมาที่เพิ่มมาใหม่
+        applicant_phone: values.applicant_phone || null,
+        contractor_company: values.contractor_company || null,
+        contractor_supervisor: values.contractor_supervisor || null,
+        project_manager: values.project_manager || null,
+        workers: values.workers || [],
       };
 
       await axios.post('https://safetyos-backend.onrender.com/permits', payload);
       message.success('ส่งคำขอสร้าง Permit สำเร็จ');
       setIsModalOpen(false);
       fetchPermits();
+      
     } catch (error: any) {
-      message.error(`ระบบขัดข้อง ไม่สามารถส่งคำขอได้`);
+      console.error("Submit Exception:", error);
+      message.error('ระบบขัดข้อง ไม่สามารถส่งคำขอได้');
+      throw error; // บอก Modal ไม่ให้ปิดหนีไปก่อน
     } finally {
       setIsSubmitting(false);
     }
