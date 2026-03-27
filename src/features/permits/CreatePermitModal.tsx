@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Row, Col, Divider, Checkbox, Upload, Button, message, Steps, Grid } from 'antd';
+import { Modal, Form, Input, Select, Row, Col, Divider, Checkbox, Upload, Button, message, Steps, Grid, Space } from 'antd';
 import { 
   FileAddOutlined, FireOutlined, BuildOutlined, ThunderboltOutlined, 
   ToolOutlined, WarningOutlined, MedicineBoxOutlined, KeyOutlined, 
-  UploadOutlined, EnvironmentOutlined, SafetyCertificateOutlined
+  UploadOutlined, EnvironmentOutlined, SafetyCertificateOutlined,
+  PlusOutlined, MinusCircleOutlined, IdcardOutlined, PhoneOutlined, TeamOutlined
 } from '@ant-design/icons';
 import ModernDateRange from '../../components/common/ModernDateRange';
 
@@ -18,7 +19,7 @@ interface CreatePermitModalProps {
 
 export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitting }: CreatePermitModalProps) {
   const screens = useBreakpoint();
-  const isMobile = !screens.md; // เช็คว่าเป็นหน้าจอมือถือหรือไม่
+  const isMobile = !screens.md;
 
   const [form] = Form.useForm();
   const [currentStep, setCurrentStep] = useState(0);
@@ -34,6 +35,8 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       setFileList([]);
       setSelectedPermitType('');
       setIsLotoRequired(false);
+      // ตั้งค่าเริ่มต้นให้มีรายชื่อคนงานอย่างน้อย 1 ช่อง
+      form.setFieldsValue({ workers: [''] });
     }
   }, [open, form]);
 
@@ -57,6 +60,12 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         return;
       }
       const values = form.getFieldsValue();
+      
+      // กรองรายชื่อคนงานที่เป็นช่องว่างทิ้งไป
+      if (values.workers) {
+        values.workers = values.workers.filter((name: string) => name && name.trim() !== '');
+      }
+
       onSubmit(values, fileList);
     } catch (error) {
       message.error('กรุณาตรวจสอบข้อมูลอีกครั้ง');
@@ -64,10 +73,11 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
   };
 
   // =====================================
-  // 🎨 STEP 1: ข้อมูลพื้นฐาน
+  // 🎨 STEP 1: ข้อมูลพื้นฐาน & ทีมงาน
   // =====================================
   const renderStep1 = () => (
     <div className="animate-fade-in pb-4">
+      {/* 🔴 ส่วนข้อมูลงาน */}
       <Divider orientation="left" className="m-0 mb-4 md:mb-6 border-slate-200">
         <span className="font-black text-base md:text-lg text-slate-800">ข้อมูลพื้นฐานของงาน</span>
       </Divider>
@@ -92,10 +102,83 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
           </Form.Item>
         </Col>
       </Row>
-      <div className="mt-2">
+      <div className="mt-2 mb-6">
         <Form.Item name="timeRange" rules={[{ required: true }]} className="mb-0">
           <ModernDateRange />
         </Form.Item>
+      </div>
+
+      {/* 🔵 ส่วนข้อมูลทีมผู้รับเหมา */}
+      <Divider orientation="left" className="m-0 mb-4 md:mb-6 border-slate-200">
+        <span className="font-black text-base md:text-lg text-slate-800">ข้อมูลผู้ขออนุญาต / ผู้รับเหมา</span>
+      </Divider>
+      <Row gutter={[16, { xs: 0, sm: 16 }]}>
+        <Col xs={24} md={12}>
+          <Form.Item name="contractor_company" label={<span className="font-black text-slate-700 text-[11px] md:text-[12px] uppercase tracking-widest">บริษัทผู้รับเหมา / แผนก</span>} rules={[{ required: true }]}>
+            <Input prefix={<IdcardOutlined className="text-slate-400" />} placeholder="ระบุชื่อบริษัท" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12}>
+          <Form.Item name="applicant_phone" label={<span className="font-black text-slate-700 text-[11px] md:text-[12px] uppercase tracking-widest">เบอร์โทรศัพท์ติดต่อ</span>} rules={[{ required: true }]}>
+            <Input prefix={<PhoneOutlined className="text-slate-400" />} placeholder="08X-XXX-XXXX" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12}>
+          <Form.Item name="contractor_supervisor" label={<span className="font-black text-slate-700 text-[11px] md:text-[12px] uppercase tracking-widest">ชื่อหัวหน้างาน (ผู้ควบคุมหน้างาน)</span>} rules={[{ required: true }]}>
+            <Input placeholder="ระบุชื่อ-นามสกุล" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12}>
+          <Form.Item name="project_manager" label={<span className="font-black text-slate-700 text-[11px] md:text-[12px] uppercase tracking-widest">ผู้จัดการโครงการ (Project Manager)</span>}>
+            <Input placeholder="ระบุชื่อ-นามสกุล (ถ้ามี)" />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      {/* 🟢 ส่วนรายชื่อคนงาน (Dynamic List) */}
+      <div className="bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 md:p-6 mt-2">
+        <div className="flex items-center gap-2 mb-4 font-black text-slate-800 text-sm md:text-base">
+          <TeamOutlined className="text-blue-500" /> รายชื่อผู้ปฏิบัติงาน (Worker List)
+        </div>
+        <Form.List name="workers">
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map((field, index) => (
+                <div key={field.key} className="flex gap-2 items-center mb-3">
+                  <div className="bg-white border-2 border-slate-200 text-slate-400 font-bold rounded-xl w-10 h-10 flex items-center justify-center shrink-0">
+                    {index + 1}
+                  </div>
+                  <Form.Item
+                    {...field}
+                    validateTrigger={['onChange', 'onBlur']}
+                    rules={[{ required: true, whitespace: true, message: 'กรุณาระบุชื่อ' }]}
+                    className="mb-0 flex-1"
+                  >
+                    <Input placeholder="ชื่อ-นามสกุล ผู้ปฏิบัติงาน" className="!h-10" />
+                  </Form.Item>
+                  {fields.length > 1 && (
+                    <Button 
+                      type="text" 
+                      danger 
+                      icon={<MinusCircleOutlined />} 
+                      onClick={() => remove(field.name)}
+                      className="shrink-0"
+                    />
+                  )}
+                </div>
+              ))}
+              <Button 
+                type="dashed" 
+                onClick={() => add()} 
+                block 
+                icon={<PlusOutlined />} 
+                className="mt-2 border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:text-blue-700 font-bold h-12 rounded-xl"
+              >
+                เพิ่มรายชื่อผู้ปฏิบัติงาน
+              </Button>
+            </>
+          )}
+        </Form.List>
       </div>
     </div>
   );
@@ -252,8 +335,8 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       styles={{ 
         body: { padding: 0 },
         content: { 
-          borderRadius: isMobile ? '0' : '1.5rem', // เอาขอบโค้งออกบนมือถือถ้าเต็มจอ
-          height: isMobile ? '100vh' : 'auto',     // สูงเต็มจอบนมือถือ
+          borderRadius: isMobile ? '0' : '1.5rem',
+          height: isMobile ? '100vh' : 'auto',     
           margin: 0,
           padding: 0,
           display: 'flex',
@@ -277,7 +360,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         .anatomy-form .ant-input {
           height: ${isMobile ? '3rem' : '3.5rem'} !important; 
           padding: 0 ${isMobile ? '0.75rem' : '1rem'} !important;
-          font-size: ${isMobile ? '14px' : '16px'} !important; /* ป้องกัน iOS ซูมเวลากด input */
+          font-size: ${isMobile ? '14px' : '16px'} !important; 
         }
         .anatomy-form .ant-select-selector {
           height: ${isMobile ? '3rem' : '3.5rem'} !important; 
@@ -298,7 +381,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
           height: auto !important;
           padding: 0.75rem !important;
         }
-        /* Full screen modal overrides for mobile */
         .full-screen-modal .ant-modal {
           max-width: 100% !important;
           margin: 0 !important;
@@ -324,7 +406,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
           <Steps 
             current={currentStep} 
             size={isMobile ? 'small' : 'default'} 
-            className="font-bold min-w-[300px]" // บังคับไม่ให้บีบจนน่าเกลียดบนมือถือ
+            className="font-bold min-w-[300px]"
             items={[
               { title: <span className="text-[11px] md:text-sm">ข้อมูลทั่วไป</span> },
               { title: <span className="text-[11px] md:text-sm">มาตรการควบคุม</span> },
