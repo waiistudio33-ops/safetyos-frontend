@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, Row, Col, Divider, Checkbox, Upload, Button, message, Steps, Grid } from 'antd';
 import { 
   FileAddOutlined, FireOutlined, BuildOutlined, ThunderboltOutlined, 
@@ -7,6 +7,7 @@ import {
   PlusOutlined, MinusCircleOutlined, IdcardOutlined, PhoneOutlined, TeamOutlined
 } from '@ant-design/icons';
 import ModernDateRange from '../../components/common/ModernDateRange';
+import dayjs from 'dayjs';
 
 const { useBreakpoint } = Grid;
 
@@ -28,8 +29,18 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
   const [selectedPermitType, setSelectedPermitType] = useState<string>('');
   const [isLotoRequired, setIsLotoRequired] = useState(false);
 
-  // เช็คว่างานนี้เป็นงานเสี่ยงสูงไหม?
-  const isHazardousWork = ['HOT_WORK', 'CONFINED_SPACE', 'ELECTRICAL'].includes(selectedPermitType);
+  const isHazardousWork = ['HOT_WORK', 'CONFINED_SPACE', 'WORKING_AT_HEIGHT', 'ELECTRICAL'].includes(selectedPermitType);
+
+  useEffect(() => {
+    if (!open) {
+      form.resetFields();
+      setCurrentStep(0);
+      setFileList([]);
+      setSelectedPermitType('');
+      setIsLotoRequired(false);
+      form.setFieldsValue({ workers: [''] });
+    }
+  }, [open, form]);
 
   const next = async () => {
     try {
@@ -42,7 +53,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
   
   const prev = () => setCurrentStep(currentStep - 1);
 
-  // 🚀 ฟังก์ชันเวลาปิด Modal ให้ล้างข้อมูลทั้งหมดให้เกลี้ยง (ลด Error Warning ใน Console)
   const handleClose = () => {
     form.resetFields();
     setCurrentStep(0);
@@ -65,21 +75,18 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       // กรองรายชื่อคนงานที่เป็นช่องว่างทิ้งไป
       if (values.workers) {
         values.workers = values.workers.filter((name: string) => name && name.trim() !== '');
+      } else {
+        values.workers = [];
       }
 
-      // 🟢 [จุดแก้บัค!] แปลงวันที่จาก Component DateRange ให้เป็น Format แบบเป๊ะๆ
+      // 🟢 จัดการวันที่ให้ตรงเป๊ะ ป้องกันปัญหา Timezone เพี้ยน
       if (values.timeRange && values.timeRange.length === 2) {
-        const d1 = values.timeRange[0];
-        const d2 = values.timeRange[1];
-        // เช็คว่ามันมีฟังก์ชัน toDate ไหม (ของ Ant Design Dayjs) ถ้ามีก็ใช้ ถ้าไม่มีก็โยนใส่ new Date()
-        values.start_time = d1.toDate ? d1.toDate().toISOString() : new Date(d1).toISOString();
-        values.end_time = d2.toDate ? d2.toDate().toISOString() : new Date(d2).toISOString();
+        values.start_time = dayjs(values.timeRange[0]).format('YYYY-MM-DDTHH:mm:ssZ');
+        values.end_time = dayjs(values.timeRange[1]).format('YYYY-MM-DDTHH:mm:ssZ');
       }
 
-      // ส่งคำขอไปหา App.tsx
       await onSubmit(values, fileList);
       
-      // ล้างข้อมูลและปิดหน้าต่าง
       form.resetFields();
       setCurrentStep(0);
       setFileList([]);
@@ -195,7 +202,7 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         <div className="text-center py-8 md:py-12 bg-slate-50 rounded-xl md:rounded-2xl border-2 border-slate-100 shadow-sm mx-1 md:mx-0">
           <SafetyCertificateOutlined className="text-4xl md:text-5xl text-emerald-500 mb-3 md:mb-4 drop-shadow-sm" />
           <h3 className="font-black text-slate-800 text-lg md:text-xl m-0">งานทั่วไป (Cold Work)</h3>
-          <p className="text-slate-500 font-medium text-xs md:text-sm mt-2 px-4">ไม่จำเป็นต้องระบุผู้เฝ้าระวังหรือแผนกู้ภัยฉุกเฉิน</p>
+          <p className="text-slate-500 font-medium text-xs md:text-sm mt-2 px-4">ไม่จำเป็นต้องระบุผู้เฝ้าระวัง หรือมาตรการพิเศษเพิ่มเติม สามารถใช้ PPE พื้นฐานได้</p>
         </div>
       ) : (
         <>
@@ -203,14 +210,26 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
             <span className="font-black text-base md:text-lg text-slate-800">มาตรการควบคุมความเสี่ยงเฉพาะงาน</span>
           </Divider>
           
-          {(selectedPermitType === 'HOT_WORK' || selectedPermitType === 'CONFINED_SPACE') && (
+          {/* 🔴 HOT WORK */}
+          {selectedPermitType === 'HOT_WORK' && (
             <div className="mb-4 md:mb-6 bg-orange-50 p-4 md:p-6 rounded-xl md:rounded-2xl border-2 border-orange-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3 md:mb-4 text-orange-700 font-black text-[11px] md:text-sm uppercase tracking-widest border-b border-orange-200 pb-2 md:pb-3">
-                <WarningOutlined className="text-base md:text-lg" /> การตรวจสอบสภาพอากาศ & ผู้เฝ้าระวัง
+              <div className="flex items-center gap-2 mb-4 text-orange-700 font-black text-sm uppercase tracking-widest border-b border-orange-200 pb-3">
+                <FireOutlined className="text-lg" /> มาตรการงานความร้อน (Hot Work)
               </div>
+              
+              {/* 🟢 [NEW] ลักษณะงานย่อย */}
+              <Form.Item name="work_sub_type" label={<span className="font-bold text-slate-700 text-xs">ลักษณะของงาน (เลือกได้มากกว่า 1)</span>}>
+                <Checkbox.Group className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  <Checkbox value="GRINDING">เจียร / ตัด</Checkbox>
+                  <Checkbox value="ARC_WELDING">เชื่อม / ตัดด้วยไฟฟ้า</Checkbox>
+                  <Checkbox value="GAS_WELDING">เชื่อม / ตัดด้วยแก๊ส</Checkbox>
+                  <Checkbox value="DRILLING">เจาะ / ขุด</Checkbox>
+                </Checkbox.Group>
+              </Form.Item>
+
               <Row gutter={[16, { xs: 0, sm: 16 }]}>
                 <Col xs={24} md={12}>
-                  <Form.Item name="gas_tester_name" label={<span className="font-black text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">ผู้ตรวจสอบสภาพอากาศ</span>} rules={[{ required: true }]}>
+                  <Form.Item name="gas_tester_name" label={<span className="font-black text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">ผู้ตรวจวัดก๊าซ</span>} rules={[{ required: true }]}>
                     <Input size="large" placeholder="ระบุชื่อ-นามสกุล" />
                   </Form.Item>
                 </Col>
@@ -220,9 +239,58 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
                   </Form.Item>
                 </Col>
               </Row>
+
+              {/* 🟢 [NEW] PPE เฉพาะทางงานความร้อน */}
+              <Form.Item name="ppe_required" label={<span className="font-bold text-slate-700 text-xs">อุปกรณ์ป้องกันอันตราย (PPE) เฉพาะทาง</span>}>
+                <Select mode="multiple" size="large" placeholder="เลือก PPE เพิ่มเติม (หมวก/รองเท้า ถือเป็นพื้นฐาน)">
+                  <Select.Option value="WELDING_MASK">หน้ากากเชื่อม / กระบังหน้า</Select.Option>
+                  <Select.Option value="WELDING_GLOVES">ถุงมือหนัง / ถุงมือเชื่อม</Select.Option>
+                  <Select.Option value="FIRE_SUIT">ชุดกันสะเก็ดไฟ / ผ้ากันไฟ</Select.Option>
+                  <Select.Option value="EAR_PLUG">ปลั๊กอุดหู / ที่ครอบหู</Select.Option>
+                  <Select.Option value="RESPIRATOR">หน้ากากกันฝุ่น / ฟูม / สารเคมี</Select.Option>
+                </Select>
+              </Form.Item>
             </div>
           )}
 
+          {/* 🔵 WORK AT HEIGHT */}
+          {selectedPermitType === 'WORKING_AT_HEIGHT' && (
+            <div className="mb-4 md:mb-6 bg-sky-50 p-4 md:p-6 rounded-xl md:rounded-2xl border-2 border-sky-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 text-sky-700 font-black text-sm uppercase tracking-widest border-b border-sky-200 pb-3">
+                <EnvironmentOutlined className="text-lg" /> มาตรการงานบนที่สูง
+              </div>
+              
+              {/* 🟢 [NEW] ความสูง และ มาตรการ */}
+              <Row gutter={[16, { xs: 0, sm: 16 }]}>
+                <Col xs={24} md={12}>
+                  <Form.Item name="height_level" label={<span className="font-bold text-slate-700 text-xs">ระดับความสูงจากพื้น (เมตร)</span>} rules={[{ required: true }]}>
+                    <Input type="number" size="large" placeholder="เช่น 2.5, 5.0" suffix="เมตร" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item name="safety_measures" label={<span className="font-bold text-slate-700 text-xs">มาตรการเตรียมความพร้อม (เลือกได้มากกว่า 1)</span>}>
+                <Checkbox.Group className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  <Checkbox value="SCAFFOLD">ติดตั้งนั่งร้านที่ผ่านการตรวจสอบ</Checkbox>
+                  <Checkbox value="GUARD_RAIL">ติดตั้งราวกันตก 90-110 cm.</Checkbox>
+                  <Checkbox value="ANCHOR_POINT">มีจุดยึดเข็มขัดนิรภัยที่แข็งแรง</Checkbox>
+                  <Checkbox value="SAFETY_NET">ติดตั้งตาข่ายกันของตก</Checkbox>
+                  <Checkbox value="BARRICADE">กั้นพื้นที่ด้านล่าง</Checkbox>
+                </Checkbox.Group>
+              </Form.Item>
+
+              {/* 🟢 [NEW] PPE งานบนที่สูง */}
+              <Form.Item name="ppe_required" label={<span className="font-bold text-slate-700 text-xs">อุปกรณ์ป้องกันอันตราย (PPE) เฉพาะทาง</span>} rules={[{ required: true, message: 'กรุณาเลือก PPE อย่างน้อย 1 รายการ' }]}>
+                <Select mode="multiple" size="large" placeholder="เลือก PPE เพิ่มเติม">
+                  <Select.Option value="FULL_BODY_HARNESS">เข็มขัดนิรภัยแบบเต็มตัว (Full Body Harness)</Select.Option>
+                  <Select.Option value="LIFELINE">สายช่วยชีวิต (Lifeline / Lanyard)</Select.Option>
+                  <Select.Option value="GLOVES">ถุงมือผ้า / ถุงมือหนัง</Select.Option>
+                </Select>
+              </Form.Item>
+            </div>
+          )}
+
+          {/* 🟣 CONFINED SPACE */}
           {selectedPermitType === 'CONFINED_SPACE' && (
             <div className="mb-4 md:mb-6 bg-purple-50 p-4 md:p-6 rounded-xl md:rounded-2xl border-2 border-purple-100 shadow-sm">
               <div className="flex items-center gap-2 mb-3 md:mb-4 text-purple-700 font-black text-[11px] md:text-sm uppercase tracking-widest border-b border-purple-200 pb-2 md:pb-3">
@@ -235,23 +303,45 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name="rescue_plan_url" label={<span className="font-bold text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">แผนกู้ภัย (Rescue Plan)</span>} rules={[{ required: true }]}>
-                    <Input size="large" placeholder="ระบุรายละเอียด หรือ ลิงก์เอกสาร" />
+                  <Form.Item name="gas_tester_name" label={<span className="font-black text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">ผู้ตรวจสอบสภาพอากาศ</span>} rules={[{ required: true }]}>
+                    <Input size="large" placeholder="ระบุชื่อ-นามสกุล" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="rescuer_name" label={<span className="font-black text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">ผู้ช่วยเหลือ (Rescuer)</span>} rules={[{ required: true }]}>
+                    <Input size="large" placeholder="ระบุชื่อ-นามสกุล" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="communication_method" label={<span className="font-bold text-slate-800 text-[11px] md:text-[12px] uppercase tracking-widest">ช่องทางสื่อสารกับทีมช่วยเหลือ</span>}>
+                    <Input size="large" placeholder="เช่น วิทยุสื่อสาร ว.แดง ช่อง 3" />
                   </Form.Item>
                 </Col>
               </Row>
+
+              {/* 🟢 [NEW] PPE งานอับอากาศ */}
+              <Form.Item name="ppe_required" label={<span className="font-bold text-slate-700 text-xs">อุปกรณ์ป้องกันอันตราย (PPE) เฉพาะทาง</span>}>
+                <Select mode="multiple" size="large" placeholder="เลือก PPE พิเศษ">
+                  <Select.Option value="SCBA">เครื่องช่วยหายใจ (SCBA / Air Line)</Select.Option>
+                  <Select.Option value="RESCUE_TRIPOD">สามขากู้ภัย (Rescue Tripod)</Select.Option>
+                  <Select.Option value="GAS_DETECTOR">เครื่องวัดก๊าซแบบพกพา</Select.Option>
+                  <Select.Option value="SAFETY_HARNESS">เข็มขัดนิรภัยและสายกู้ภัย</Select.Option>
+                </Select>
+              </Form.Item>
+
               <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl border-2 border-emerald-100 mt-1 md:mt-2 flex items-start gap-2 md:gap-3 shadow-sm transition-all hover:border-emerald-300">
                 <MedicineBoxOutlined className="text-xl md:text-2xl text-emerald-500 mt-0.5" />
                 <div className="flex-1 pt-0 md:pt-0.5">
                   <Form.Item name="is_med_cert_verified" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('ต้องยืนยันใบรับรองแพทย์') }]} className="m-0 mb-1">
                     <Checkbox className="font-black text-slate-800 text-[12px] md:text-sm">ยืนยันการตรวจสุขภาพ (Fit to Work)</Checkbox>
                   </Form.Item>
-                  <p className="text-[10px] md:text-xs text-slate-500 mt-0.5 md:mt-1 mb-0 font-medium pl-6">บังคับตามกฎหมายงานอับอากาศ</p>
+                  <p className="text-[10px] md:text-xs text-slate-500 mt-0.5 md:mt-1 mb-0 font-medium pl-6">บังคับตามกฎหมายงานอับอากาศ ผู้ปฏิบัติงานทุกคนต้องมีใบรับรองแพทย์</p>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ⚡ ระบบ LOTO */}
           <div className="mb-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 border-b-2 border-slate-100 pb-3 md:pb-4 mb-4 md:mb-5">
               <span className="font-black text-slate-800 text-[12px] md:text-sm uppercase tracking-widest flex items-center gap-2">
@@ -348,7 +438,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
       }}
       wrapClassName={isMobile ? 'full-screen-modal' : ''}
     >
-      {/* 🔮 CSS Overrides: Responsive Adjustments */}
       <style>{`
         .anatomy-form .ant-input, 
         .anatomy-form .ant-select-selector {
@@ -398,7 +487,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         }
       `}</style>
 
-      {/* 🔮 Header */}
       <div className={`p-5 md:p-8 md:pb-6 bg-white border-b border-slate-100 ${isMobile ? '' : 'rounded-t-[1.5rem]'}`}>
         <h2 className="text-xl md:text-3xl font-black m-0 text-slate-800 flex items-center gap-2 md:gap-3">
           <FileAddOutlined className="text-blue-600" /> ขออนุญาตทำงาน
@@ -419,7 +507,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         </div>
       </div>
 
-      {/* 🔮 Content Area */}
       <div className={`p-4 md:p-8 flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50 ${isMobile ? '' : 'max-h-[60vh]'}`}>
         <Form form={form} layout="vertical" requiredMark={false} className="anatomy-form">
           {currentStep === 0 && renderStep1()}
@@ -428,7 +515,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
         </Form>
       </div>
 
-      {/* 🕹️ Footer & Navigation Buttons */}
       <div className={`bg-white p-4 md:p-6 border-t border-slate-100 flex justify-between gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] relative z-10 ${isMobile ? '' : 'rounded-b-[1.5rem]'}`}>
         {currentStep > 0 ? (
           <Button size={isMobile ? "middle" : "large"} onClick={prev} className="h-12 md:h-14 px-4 md:px-8 rounded-lg md:rounded-xl font-extrabold text-slate-600 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors text-sm">

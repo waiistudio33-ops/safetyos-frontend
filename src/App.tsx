@@ -49,6 +49,9 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
 
+// 🟢 [แก้ไข] บังคับให้วิ่งไปหา Backend ในเครื่องก่อนเพื่อทดสอบ
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('th');
@@ -173,7 +176,7 @@ export default function App() {
 
         if (profile) {
           try {
-            const res = await axios.post('https://safetyos-backend.onrender.com/login/line', {
+            const res = await axios.post(`${API_URL}/login/line`, {
               line_id: profile.userId, picture_url: profile.pictureUrl, display_name: profile.displayName
             });
             localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
@@ -204,17 +207,17 @@ export default function App() {
   }, []);
 
   // Data Fetchers
-  const fetchUsers = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/users'); setUsers(res.data); } catch (error) {} };
-  const fetchPermits = async () => { setLoading(true); try { const response = await axios.get('https://safetyos-backend.onrender.com/permits'); setRealPermits(response.data); } catch (error) {} finally { setLoading(false); } };
-  const fetchBbs = async () => { try { const res = await axios.get('https://safetyos-backend.onrender.com/bbs'); setBbsRecords(res.data); } catch (error) {} };
+  const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (error) {} };
+  const fetchPermits = async () => { setLoading(true); try { const response = await axios.get(`${API_URL}/permits`); setRealPermits(response.data); } catch (error) {} finally { setLoading(false); } };
+  const fetchBbs = async () => { try { const res = await axios.get(`${API_URL}/bbs`); setBbsRecords(res.data); } catch (error) {} };
   const fetchConfinedSpaceData = async () => { 
     try { 
-      const res = await axios.get('https://safetyos-backend.onrender.com/confined-space/active-permits'); 
+      const res = await axios.get(`${API_URL}/confined-space/active-permits`); 
       setActiveConfinedPermits(res.data); 
       if (res.data.length > 0 && !selectedConfinedPermit) { setSelectedConfinedPermit(res.data[0].id); fetchEntries(res.data[0].id); } 
     } catch (error) {} 
   };
-  const fetchEntries = async (permitId: string) => { try { const res = await axios.get(`https://safetyos-backend.onrender.com/confined-space/${permitId}/entries`); setConfinedEntries(res.data); } catch (error) {} };
+  const fetchEntries = async (permitId: string) => { try { const res = await axios.get(`${API_URL}/confined-space/${permitId}/entries`); setConfinedEntries(res.data); } catch (error) {} };
 
   // Data Refresh Triggers
   useEffect(() => { fetchUsers(); }, []);
@@ -234,7 +237,7 @@ export default function App() {
     setIsLoggingIn(true);
     try {
       const payload = { ...values, line_id: lineProfile?.userId || null, picture_url: lineProfile?.pictureUrl || null };
-      const response = await axios.post('https://safetyos-backend.onrender.com/login', payload);
+      const response = await axios.post(`${API_URL}/login`, payload);
       localStorage.setItem('safetyos_user', JSON.stringify(response.data.user));
       setCurrentUser(response.data.user);
       setIsAuthenticated(true);
@@ -247,7 +250,7 @@ export default function App() {
     if (liff.isInClient() && lineProfile) {
       setIsLoggingIn(true);
       try {
-        const res = await axios.post('https://safetyos-backend.onrender.com/login/line', { line_id: lineProfile.userId, picture_url: lineProfile.pictureUrl, display_name: lineProfile.displayName });
+        const res = await axios.post(`${API_URL}/login/line`, { line_id: lineProfile.userId, picture_url: lineProfile.pictureUrl, display_name: lineProfile.displayName });
         localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
         setCurrentUser(res.data.user);
         setIsAuthenticated(true);
@@ -272,14 +275,14 @@ export default function App() {
         }
       }
       const formattedValues = { ...values, date: values.date ? values.date.toISOString() : new Date().toISOString(), observer_id: currentUser.id, image_url: fileUrl };
-      await axios.post('https://safetyos-backend.onrender.com/bbs', formattedValues);
+      await axios.post(`${API_URL}/bbs`, formattedValues);
       message.success('บันทึกข้อมูล BBS สำเร็จ!'); fetchBbs(); setActiveBbsTab('history');
     } catch (error: any) { message.error(`บันทึกไม่สำเร็จ`); } finally { setIsSubmittingBbs(false); }
   };
 
-  const handleCheckIn = async (values: any) => { try { await axios.post('https://safetyos-backend.onrender.com/confined-space/in', { ...values, permit_id: selectedConfinedPermit }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
-  const handleCheckOut = async (entryId: string) => { try { await axios.put(`https://safetyos-backend.onrender.com/confined-space/out/${entryId}`); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
-  const handleEvacuateAll = async () => { try { await axios.post('https://safetyos-backend.onrender.com/confined-space/evacuate', { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'EMERGENCY_EVACUATE', payload: { message: `สั่งอพยพโดย: ${currentUser.full_name}` } }); } catch (error) {} };
+  const handleCheckIn = async (values: any) => { try { await axios.post(`${API_URL}/confined-space/in`, { ...values, permit_id: selectedConfinedPermit }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
+  const handleCheckOut = async (entryId: string) => { try { await axios.put(`${API_URL}/confined-space/out/${entryId}`); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
+  const handleEvacuateAll = async () => { try { await axios.post(`${API_URL}/confined-space/evacuate`, { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'EMERGENCY_EVACUATE', payload: { message: `สั่งอพยพโดย: ${currentUser.full_name}` } }); } catch (error) {} };
 
   const handlePreviewFile = (url: string) => { setPreviewUrl(url); setIsPreviewOpen(true); };
 
@@ -289,13 +292,13 @@ export default function App() {
     setIsDetailModalOpen(true);
     setGasLogsDetail([]);
     if (record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE') {
-      try { if (record?.id) { const res = await axios.get(`https://safetyos-backend.onrender.com/permits/${record.id}/gas-logs`); setGasLogsDetail(Array.isArray(res.data) ? res.data : []); } } 
+      try { if (record?.id) { const res = await axios.get(`${API_URL}/permits/${record.id}/gas-logs`); setGasLogsDetail(Array.isArray(res.data) ? res.data : []); } } 
       catch (error) { setGasLogsDetail([]); }
     }
   };
 
   // =======================================================
-  // 🟢 [แก้ไข] ป้องกัน Error TypeError (Cannot read properties of undefined reading '0')
+  // 🟢 [แก้ไข] แพ็คข้อมูลใหม่ทั้งหมดส่งให้ Backend อย่างครบถ้วน
   // =======================================================
   const handleCreatePermit = async (values: any, uploadedFiles: any[]) => {
     try {
@@ -314,42 +317,55 @@ export default function App() {
         }
       }
 
-      // ดักจับวันที่ (กันพัง 100%)
-      let startTime = new Date().toISOString();
-      let endTime = new Date(Date.now() + 2 * 3600000).toISOString();
+      // ดึงเวลาที่แปลงแล้วจาก Modal (เพราะ Modal จัดการ Timezone ให้แล้ว)
+      let startTime = values.start_time || new Date().toISOString();
+      let endTime = values.end_time || new Date(Date.now() + 2 * 3600000).toISOString();
 
-      if (values.timeRange && Array.isArray(values.timeRange) && values.timeRange.length === 2) {
-        startTime = dayjs(values.timeRange[0]).toISOString();
-        endTime = dayjs(values.timeRange[1]).toISOString();
-      } else if (values.start_time && values.end_time) {
-        startTime = values.start_time;
-        endTime = values.end_time;
-      }
-
-      // สร้าง Payload ตาม Data Structure ใหม่
+      // 📦 Payload ฉบับสมบูรณ์ (ครบทุกฟิลด์ที่ส่งจาก Modal)
       const payload = {
-        ...values,
+        // ข้อมูลหลัก
+        title: values.title,
+        description: values.description,
+        permit_type: values.permit_type,
+        location_detail: values.location_detail,
         start_time: startTime,
         end_time: endTime,
         applicant_id: currentUser.id,
+        
+        // เอกสารแนบ
         attachment_url: fileUrl,
         attachment_name: fileNameToSave,
-        supervisor_name: values.supervisor_name || null,
-        rescue_plan_url: values.rescue_plan_url || null,
-        is_med_cert_verified: values.is_med_cert_verified || false,
-        is_loto_required: values.is_loto_required || false,
-        loto_isolation_point: values.loto_isolation_point || null,
-        loto_energy_type: values.loto_energy_type || null,
-        loto_lock_number: values.loto_lock_number || null,
-        // ข้อมูลผู้รับเหมาที่เพิ่มมาใหม่
+        
+        // ข้อมูลทีมงาน / ผู้รับเหมา
         applicant_phone: values.applicant_phone || null,
         contractor_company: values.contractor_company || null,
         contractor_supervisor: values.contractor_supervisor || null,
         project_manager: values.project_manager || null,
         workers: values.workers || [],
+
+        // มาตรการเฉพาะงาน (JSON Checklists)
+        work_sub_type: values.work_sub_type || [],
+        safety_measures: values.safety_measures || [],
+        ppe_required: values.ppe_required || [],
+        
+        // ผู้ดูแลงานอับอากาศ / ความร้อน
+        supervisor_name: values.supervisor_name || null,
+        gas_tester_name: values.gas_tester_name || null,
+        standby_person_name: values.standby_person_name || null,
+        rescuer_name: values.rescuer_name || null,
+        communication_method: values.communication_method || null,
+        height_level: values.height_level || null,
+        rescue_plan_url: values.rescue_plan_url || null,
+        is_med_cert_verified: values.is_med_cert_verified || false,
+
+        // ระบบ LOTO
+        is_loto_required: values.is_loto_required || false,
+        loto_isolation_point: values.loto_isolation_point || null,
+        loto_energy_type: values.loto_energy_type || null,
+        loto_lock_number: values.loto_lock_number || null,
       };
 
-      await axios.post('https://safetyos-backend.onrender.com/permits', payload);
+      await axios.post(`${API_URL}/permits`, payload);
       message.success('ส่งคำขอสร้าง Permit สำเร็จ');
       setIsModalOpen(false);
       fetchPermits();
@@ -357,7 +373,7 @@ export default function App() {
     } catch (error: any) {
       console.error("Submit Exception:", error);
       message.error('ระบบขัดข้อง ไม่สามารถส่งคำขอได้');
-      throw error; // บอก Modal ไม่ให้ปิดหนีไปก่อน
+      throw error; 
     } finally {
       setIsSubmitting(false);
     }
@@ -366,7 +382,7 @@ export default function App() {
   const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT' | 'CLOSE' | 'REVOKE') => {
     try {
       let nextStatus = action === 'REJECT' ? 'REJECTED' : action === 'CLOSE' ? 'CLOSED' : action === 'REVOKE' ? 'REVOKED' : (currentStatus === 'PENDING_AREA_OWNER' ? 'PENDING_SAFETY' : 'APPROVED');
-      await axios.put(`https://safetyos-backend.onrender.com/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id });
+      await axios.put(`${API_URL}/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id });
       fetchPermits(); message.success(`ดำเนินการ ${action} สำเร็จ`);
     } catch (error) {}
   };

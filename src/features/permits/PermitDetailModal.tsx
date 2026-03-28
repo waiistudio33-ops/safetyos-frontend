@@ -3,7 +3,7 @@ import { Modal, Descriptions, Tag, Button, Divider, Space, Typography, Checkbox,
 import { 
   PrinterOutlined, CheckCircleOutlined, CloseCircleOutlined, 
   SafetyOutlined, ClockCircleOutlined, LockOutlined, EnvironmentOutlined,
-  TeamOutlined, WarningOutlined, FileTextOutlined
+  TeamOutlined, WarningOutlined, FileTextOutlined, IdcardOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -47,18 +47,15 @@ export default function PermitDetailModal({
       const values = form.getFieldsValue();
 
       if (actionType === 'EXTEND' && onExtendPermit) {
-        // ขอต่อเวลา ต้องมีเวลาใหม่ส่งไปด้วย
         const newTime = values.new_end_time.toISOString();
         await onExtendPermit(permit.id, newTime, values.reason);
         message.success('ส่งคำขอต่อเวลาสำเร็จ');
       } 
       else if (actionType === 'CLOSE' && onUpdateStatus) {
-        // ขอปิดงาน
         await onUpdateStatus(permit.id, permit.status, 'CLOSE', values.reason);
         message.success('ส่งคำขอปิดใบอนุญาตเรียบร้อย');
       }
       else if ((actionType === 'APPROVE' || actionType === 'REJECT') && onUpdateStatus) {
-        // อนุมัติ / ไม่อนุมัติ
         await onUpdateStatus(permit.id, permit.status, actionType, values.reason);
       }
       
@@ -78,16 +75,31 @@ export default function PermitDetailModal({
     onCancel();
   };
 
-  // Helper: เรนเดอร์ JSON Array เป็น Tag สีสวยๆ
+  // Helper: เรนเดอร์ JSON Array ให้ดูแพง ไม่รก
   const renderJsonList = (data: any, color: string = 'blue') => {
-    if (!data || !Array.isArray(data) || data.length === 0) return <Text type="secondary">-</Text>;
+    if (!data || !Array.isArray(data) || data.length === 0) return <Text type="secondary" className="italic text-sm">ไม่ได้ระบุ</Text>;
     return (
-      <div className="flex flex-wrap gap-1.5 mt-1">
-        {data.map((item: string, index: number) => (
-          <Tag key={index} color={color} className="rounded-md font-bold m-0 border-opacity-50">
-            {item.replace(/_/g, ' ')}
-          </Tag>
-        ))}
+      <div className="flex flex-wrap gap-2 mt-1">
+        {data.map((item: string, index: number) => {
+          let translated = item;
+          // แปลงค่าภาษาอังกฤษเป็นไทยให้สวยๆ
+          const dictionary: Record<string, string> = {
+            'GRINDING': 'เจียร / ตัด', 'ARC_WELDING': 'เชื่อมไฟฟ้า', 'GAS_WELDING': 'เชื่อมแก๊ส', 'DRILLING': 'เจาะ / ขุด',
+            'HARD_HAT': 'หมวกนิรภัย', 'SAFETY_SHOES': 'รองเท้านิรภัย', 'WELDING_MASK': 'หน้ากากเชื่อม', 'WELDING_GLOVES': 'ถุงมือหนัง',
+            'FIRE_SUIT': 'ชุดกันสะเก็ดไฟ', 'EAR_PLUG': 'ที่อุดหู', 'RESPIRATOR': 'หน้ากากกันสารเคมี',
+            'FULL_BODY_HARNESS': 'เข็มขัดนิรภัยเต็มตัว', 'LIFELINE': 'สายช่วยชีวิต', 'GLOVES': 'ถุงมือกันบาด',
+            'SCBA': 'SCBA', 'RESCUE_TRIPOD': 'สามขากู้ภัย', 'GAS_DETECTOR': 'เครื่องวัดก๊าซพกพา', 'SAFETY_HARNESS': 'เข็มขัดกู้ภัย',
+            'SCAFFOLD': 'นั่งร้านตรวจสอบแล้ว', 'GUARD_RAIL': 'ราวกันตก', 'ANCHOR_POINT': 'จุดยึดเข็มขัด', 'SAFETY_NET': 'ตาข่ายกันตก', 'BARRICADE': 'กั้นพื้นที่'
+          };
+          if (dictionary[item]) translated = dictionary[item];
+          else translated = item.replace(/_/g, ' ');
+
+          return (
+            <Tag key={index} color={color} className="rounded-md font-bold m-0 border border-opacity-30 shadow-sm text-[12px] px-2.5 py-0.5">
+              {translated}
+            </Tag>
+          );
+        })}
       </div>
     );
   };
@@ -106,6 +118,7 @@ export default function PermitDetailModal({
       {/* 🟢 Header Section */}
       <div className="bg-slate-800 p-6 md:p-8 text-white rounded-t-[24px] relative overflow-hidden">
         <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[80px]"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[200px] h-[200px] bg-emerald-500/10 rounded-full blur-[60px]"></div>
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
@@ -113,11 +126,13 @@ export default function PermitDetailModal({
               {getPermitTypeDisplay(permit.permit_type)}
               {getStatusDisplay(permit.status)}
             </div>
-            <Title level={3} className="!text-white m-0 !font-black tracking-tight">{permit.title}</Title>
-            <Text className="text-slate-300 font-medium text-sm mt-1 block">เลขที่: {permit.permit_number}</Text>
+            <Title level={3} className="!text-white m-0 !font-black tracking-tight leading-tight">{permit.title}</Title>
+            <Text className="text-slate-300 font-medium text-sm mt-1.5 block flex items-center gap-2">
+              <FileTextOutlined /> เลขที่: <span className="text-white font-bold">{permit.permit_number}</span>
+            </Text>
           </div>
-          <Button type="primary" icon={<PrinterOutlined />} onClick={onPrint} className="bg-white/20 hover:bg-white/30 border-none backdrop-blur-md rounded-xl font-bold h-10 text-white shadow-sm">
-            พิมพ์ / บันทึก PDF
+          <Button type="primary" icon={<PrinterOutlined />} onClick={onPrint} className="bg-white/10 hover:bg-white/20 border-white/20 backdrop-blur-md rounded-xl font-bold h-11 px-5 text-white shadow-sm transition-all hover:scale-105">
+            พิมพ์ PDF
           </Button>
         </div>
       </div>
@@ -126,121 +141,165 @@ export default function PermitDetailModal({
       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar bg-slate-50">
         <div ref={documentRef} className="p-6 md:p-8 bg-white print-container">
           
-          {/* ส่วนที่ 1: ข้อมูลผู้รับเหมา & โครงการ */}
-          <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-blue-800 text-lg">1. ข้อมูลผู้ขออนุญาต / โครงการ</span></Divider>
-          <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="mb-6 bg-white shadow-sm rounded-lg overflow-hidden font-medium">
-            <Descriptions.Item label="ผู้ขออนุญาต">{permit.applicant?.full_name || '-'}</Descriptions.Item>
-            <Descriptions.Item label="เบอร์โทรติดต่อ">{permit.applicant_phone || '-'}</Descriptions.Item>
-            <Descriptions.Item label="บริษัทผู้รับเหมา">{permit.contractor_company || permit.applicant?.department || '-'}</Descriptions.Item>
-            <Descriptions.Item label="ผู้จัดการโครงการ">{permit.project_manager || '-'}</Descriptions.Item>
-            <Descriptions.Item label="สถานที่ปฏิบัติงาน" span={2}>
-              <EnvironmentOutlined className="text-rose-500 mr-1"/> {permit.location_detail}
-            </Descriptions.Item>
-            <Descriptions.Item label="ระยะเวลา">
-              {dayjs(permit.start_time).format('DD/MM/YYYY HH:mm')} - {dayjs(permit.end_time).format('HH:mm')} น.
-            </Descriptions.Item>
-            <Descriptions.Item label="รายละเอียดงาน">{permit.description || '-'}</Descriptions.Item>
-          </Descriptions>
+          {/* ส่วนที่ 1: ข้อมูลผู้ขออนุญาต & โครงการ */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-lg">1</div>
+              <h3 className="m-0 font-black text-slate-800 text-lg">ข้อมูลผู้ขออนุญาตและโครงการ</h3>
+            </div>
+            <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="bg-blue-50/30 rounded-xl overflow-hidden font-medium border border-blue-100" labelStyle={{ width: '35%', backgroundColor: 'rgba(239, 246, 255, 0.5)', fontWeight: 'bold', color: '#1e293b' }} contentStyle={{ backgroundColor: '#ffffff' }}>
+              <Descriptions.Item label={<><IdcardOutlined className="text-blue-500 mr-2"/>ผู้ขออนุญาต</>}>{permit.applicant?.full_name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="เบอร์โทรติดต่อ">{permit.applicant_phone || '-'}</Descriptions.Item>
+              <Descriptions.Item label="บริษัทผู้รับเหมา">{permit.contractor_company || permit.applicant?.department || '-'}</Descriptions.Item>
+              <Descriptions.Item label="ผู้จัดการโครงการ">{permit.project_manager || '-'}</Descriptions.Item>
+              <Descriptions.Item label={<><EnvironmentOutlined className="text-rose-500 mr-2"/>สถานที่ปฏิบัติงาน</>} span={2}>
+                <span className="font-bold text-slate-800">{permit.location_detail}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label={<><ClockCircleOutlined className="text-amber-500 mr-2"/>ระยะเวลา</>} span={2}>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
+                  {dayjs(permit.start_time).format('DD/MM/BBBB HH:mm')} น. &nbsp;—&nbsp; {dayjs(permit.end_time).format('DD/MM/BBBB HH:mm')} น.
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="รายละเอียดงาน" span={2}>{permit.description || '-'}</Descriptions.Item>
+            </Descriptions>
+          </div>
 
           {/* ส่วนที่ 2: รายชื่อผู้ปฏิบัติงาน */}
           {permit.workers && permit.workers.length > 0 && (
-            <>
-              <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-slate-800 text-lg">2. รายชื่อผู้ปฏิบัติงาน ({permit.workers.length} คน)</span></Divider>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-lg">2</div>
+                <h3 className="m-0 font-black text-slate-800 text-lg">รายชื่อผู้ปฏิบัติงาน <span className="text-slate-500 font-medium text-sm">({permit.workers.length} คน)</span></h3>
+              </div>
+              <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4">
                   {permit.workers.map((w: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                      <TeamOutlined className="text-blue-500"/> {i+1}. {w.worker_name}
+                    <div key={i} className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-emerald-100 shadow-sm">
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">{i+1}</div>
+                      <span className="font-bold text-slate-700 text-sm truncate">{w.worker_name}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* ส่วนที่ 3: มาตรการเฉพาะงาน (Hazard Details) */}
-          <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-rose-700 text-lg">3. มาตรการเฉพาะงาน (Hazard Details)</span></Divider>
-          <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="mb-6 bg-white shadow-sm rounded-lg overflow-hidden font-medium">
-            {permit.contractor_supervisor && <Descriptions.Item label="หัวหน้างาน (ผู้ควบคุม)">{permit.contractor_supervisor}</Descriptions.Item>}
-            {permit.supervisor_name && <Descriptions.Item label="ผู้ควบคุมงานอับอากาศ">{permit.supervisor_name}</Descriptions.Item>}
-            {permit.gas_tester_name && <Descriptions.Item label="ผู้ตรวจสภาพอากาศ">{permit.gas_tester_name}</Descriptions.Item>}
-            {permit.standby_person_name && <Descriptions.Item label="ผู้เฝ้าระวัง">{permit.standby_person_name}</Descriptions.Item>}
-            {permit.rescuer_name && <Descriptions.Item label="ผู้ช่วยเหลือ">{permit.rescuer_name}</Descriptions.Item>}
-            {permit.communication_method && <Descriptions.Item label="ช่องทางสื่อสารฉุกเฉิน">{permit.communication_method}</Descriptions.Item>}
-            {permit.height_level && <Descriptions.Item label="ความสูง (เมตร)">{permit.height_level} เมตร</Descriptions.Item>}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-black text-lg">3</div>
+              <h3 className="m-0 font-black text-slate-800 text-lg">มาตรการเฉพาะงาน (Hazard Details)</h3>
+            </div>
             
-            {permit.is_med_cert_verified !== undefined && (
-              <Descriptions.Item label="ใบรับรองแพทย์">
-                {permit.is_med_cert_verified ? <Tag color="success" className="font-bold">ผ่านการตรวจ (Fit to Work)</Tag> : <Text type="secondary">ไม่ได้ระบุ</Text>}
-              </Descriptions.Item>
-            )}
-            
-            {/* แสดง JSON Checklists */}
-            <Descriptions.Item label="ลักษณะงานย่อย" span={2}>{renderJsonList(permit.work_sub_type, 'orange')}</Descriptions.Item>
-            <Descriptions.Item label="มาตรการความปลอดภัย" span={2}>{renderJsonList(permit.safety_measures, 'blue')}</Descriptions.Item>
-            <Descriptions.Item label="PPE ที่บังคับใช้" span={2}>{renderJsonList(permit.ppe_required, 'purple')}</Descriptions.Item>
-          </Descriptions>
+            <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="bg-rose-50/30 rounded-xl overflow-hidden font-medium border border-rose-100" labelStyle={{ width: '35%', backgroundColor: 'rgba(255, 241, 242, 0.5)', fontWeight: 'bold', color: '#1e293b' }} contentStyle={{ backgroundColor: '#ffffff' }}>
+              
+              {/* Dynamic Fields ตามประเภทงาน */}
+              {permit.contractor_supervisor && <Descriptions.Item label="หัวหน้างาน (ควบคุมหน้างาน)">{permit.contractor_supervisor}</Descriptions.Item>}
+              {permit.supervisor_name && <Descriptions.Item label="ผู้ควบคุมงานอับอากาศ">{permit.supervisor_name}</Descriptions.Item>}
+              {permit.gas_tester_name && <Descriptions.Item label="ผู้ตรวจวัดสภาพอากาศ">{permit.gas_tester_name}</Descriptions.Item>}
+              {permit.standby_person_name && <Descriptions.Item label="ผู้เฝ้าระวัง (Standby)">{permit.standby_person_name}</Descriptions.Item>}
+              {permit.rescuer_name && <Descriptions.Item label="ผู้ช่วยเหลือ (Rescuer)">{permit.rescuer_name}</Descriptions.Item>}
+              {permit.communication_method && <Descriptions.Item label="ช่องทางสื่อสารฉุกเฉิน">{permit.communication_method}</Descriptions.Item>}
+              {permit.height_level && <Descriptions.Item label="ระดับความสูง">{permit.height_level} เมตร</Descriptions.Item>}
+              
+              {permit.is_med_cert_verified !== undefined && permit.permit_type === 'CONFINED_SPACE' && (
+                <Descriptions.Item label="การตรวจสุขภาพ (Fit to Work)">
+                  {permit.is_med_cert_verified ? <Tag color="success" className="font-bold border-emerald-300"><CheckCircleOutlined /> ผ่านการตรวจแล้ว</Tag> : <Tag color="error">ยังไม่ตรวจ</Tag>}
+                </Descriptions.Item>
+              )}
+              
+              {/* แสดง JSON Checklists */}
+              {['HOT_WORK'].includes(permit.permit_type) && (
+                <Descriptions.Item label="ลักษณะงานย่อย" span={2}>{renderJsonList(permit.work_sub_type, 'orange')}</Descriptions.Item>
+              )}
+              {['WORKING_AT_HEIGHT'].includes(permit.permit_type) && (
+                <Descriptions.Item label="มาตรการความปลอดภัยที่เตรียมไว้" span={2}>{renderJsonList(permit.safety_measures, 'blue')}</Descriptions.Item>
+              )}
+              {permit.permit_type !== 'COLD_WORK' && (
+                <Descriptions.Item label="PPE เฉพาะทางที่บังคับใช้" span={2}>{renderJsonList(permit.ppe_required, 'purple')}</Descriptions.Item>
+              )}
+            </Descriptions>
+          </div>
 
           {/* ส่วนที่ 4: เอกสารแนบ LOTO และ ประวัติก๊าซ */}
           {permit.is_loto_required && (
-            <>
-              <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-purple-700 text-lg">4. การตัดแยกพลังงาน (LOTO)</span></Divider>
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
-                <Row gutter={[16, 8]}>
-                  <Col xs={24} sm={8}><Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest">จุดตัดแยก:</Text><br/><Text strong>{permit.loto_records?.[0]?.isolation_point || '-'}</Text></Col>
-                  <Col xs={24} sm={8}><Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest">พลังงาน:</Text><br/><Text strong>{permit.loto_records?.[0]?.energy_type || '-'}</Text></Col>
-                  <Col xs={24} sm={8}><Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest">Lock No.:</Text><br/><Text strong>{permit.loto_records?.[0]?.lock_number || '-'}</Text></Col>
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-black text-sm"><LockOutlined /></div>
+                <h4 className="m-0 font-black text-slate-800 text-base">การตัดแยกพลังงาน (LOTO)</h4>
+              </div>
+              <div className="bg-gradient-to-r from-purple-50 to-white border border-purple-200 rounded-xl p-4 shadow-sm">
+                <Row gutter={[16, 12]}>
+                  <Col xs={24} sm={8}>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">จุดตัดแยก (Isolation Point)</Text><br/>
+                    <Text strong className="text-sm">{permit.loto_records?.[0]?.isolation_point || '-'}</Text>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">ประเภทพลังงาน</Text><br/>
+                    <Text strong className="text-sm">{permit.loto_records?.[0]?.energy_type || '-'}</Text>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">หมายเลขแม่กุญแจ (Lock No.)</Text><br/>
+                    <Text strong className="text-sm">{permit.loto_records?.[0]?.lock_number || '-'}</Text>
+                  </Col>
                 </Row>
               </div>
-            </>
+            </div>
           )}
 
           {gasLogs && gasLogs.length > 0 && (
-            <>
-              <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-emerald-700 text-lg">ประวัติวัดสภาพอากาศ (Gas Tests)</span></Divider>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-sm"><DashboardOutlined /></div>
+                <h4 className="m-0 font-black text-slate-800 text-base">ประวัติวัดสภาพอากาศ (Gas Tests)</h4>
+              </div>
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4">
                 {gasLogs.map((log: any, idx: number) => (
-                  <div key={idx} className="flex flex-wrap items-center justify-between border-b border-emerald-200/50 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0 gap-2">
-                    <Text className="font-bold text-slate-700 text-sm"><ClockCircleOutlined /> {dayjs(log.recorded_at).format('DD/MM/BB HH:mm')}</Text>
+                  <div key={idx} className="flex flex-wrap items-center justify-between border-b border-emerald-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-3">
+                    <Text className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><ClockCircleOutlined className="text-emerald-500" /> {dayjs(log.recorded_at).format('DD/MM/BBBB HH:mm')}</Text>
                     <Space size="small" wrap>
-                      <Tag color={log.o2_level >= 19.5 && log.o2_level <= 23.5 ? 'success' : 'error'} className="m-0 font-bold">O2: {log.o2_level}%</Tag>
-                      <Tag color={log.lel_level < 10 ? 'success' : 'error'} className="m-0 font-bold">LEL: {log.lel_level}%</Tag>
-                      <Tag color={log.co_level < 25 ? 'success' : 'error'} className="m-0 font-bold">CO: {log.co_level || 0}</Tag>
-                      <Tag color={log.h2s_level < 10 ? 'success' : 'error'} className="m-0 font-bold">H2S: {log.h2s_level || 0}</Tag>
+                      <Tag color={log.o2_level >= 19.5 && log.o2_level <= 23.5 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">O2: {log.o2_level}%</Tag>
+                      <Tag color={log.lel_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">LEL: {log.lel_level}%</Tag>
+                      <Tag color={log.co_level < 25 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">CO: {log.co_level || 0}</Tag>
+                      <Tag color={log.h2s_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">H2S: {log.h2s_level || 0}</Tag>
                     </Space>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
           {/* ส่วนที่ 5: ประวัติการต่อเวลา (ถ้ามี) */}
           {permit.extensions && permit.extensions.length > 0 && (
-            <>
-              <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-blue-700 text-lg">ประวัติการขอต่อเวลา (Extensions)</span></Divider>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <div className="mb-6">
+              <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-indigo-700 text-lg">ประวัติการขอต่อเวลา (Extensions)</span></Divider>
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
                 {permit.extensions.map((ext: any, idx: number) => (
-                  <div key={idx} className="flex items-start justify-between border-b border-blue-200/50 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0 text-sm">
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-indigo-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-2">
                     <div>
-                      <Text strong className="text-blue-800 block">ขอต่อเวลาถึง: {dayjs(ext.new_end_time).format('DD/MM/BB HH:mm น.')}</Text>
-                      <Text type="secondary">เหตุผล: {ext.action_details}</Text>
+                      <Text className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1">ครั้งที่ {idx + 1} | วันที่ขอ: {dayjs(ext.request_date).format('DD/MM/BB')}</Text>
+                      <Text strong className="text-indigo-900 text-sm block">ขยายเวลาสิ้นสุดถึง: <span className="bg-indigo-100 px-2 py-0.5 rounded text-indigo-700">{dayjs(ext.new_end_time).format('DD/MM/BBBB HH:mm น.')}</span></Text>
+                      <Text type="secondary" className="text-xs mt-1 block">เหตุผล: {ext.action_details}</Text>
                     </div>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
           
-          {/* ข้อมูลเอกสารแนบ */}
+          {/* ข้อมูลเอกสารแนบ JSA */}
           {permit.attached_file && (
-             <div className="mt-4 p-4 border border-slate-200 rounded-xl bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileTextOutlined className="text-2xl text-blue-500" />
+             <div className="mt-6 p-4 border border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-white flex items-center justify-between shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => window.open(permit.attached_file, '_blank')}>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FileTextOutlined className="text-xl text-blue-600" />
+                  </div>
                   <div>
-                    <div className="font-bold text-slate-700 text-sm">เอกสาร JSA / สแกนแบบฟอร์ม</div>
-                    <a href={permit.attached_file} target="_blank" rel="noreferrer" className="text-xs text-blue-600">คลิกเพื่อดูเอกสารแนบ</a>
+                    <div className="font-black text-slate-800 text-sm">เอกสารแนบ JSA / แบบฟอร์มสแกน</div>
+                    <Text type="secondary" className="text-[11px] font-bold">คลิกที่นี่เพื่อเปิดดูเอกสารฉบับเต็ม</Text>
                   </div>
                 </div>
+                <Button type="link" className="font-bold text-blue-600 px-0">ดูเอกสาร</Button>
              </div>
           )}
 
@@ -249,20 +308,20 @@ export default function PermitDetailModal({
 
       {/* ⚡ Action Form (ซ่อน/โชว์ตามปุ่มที่กด) */}
       {actionType !== 'NONE' && (
-        <div className="bg-slate-100 p-6 border-t border-slate-200 animate-fade-in">
+        <div className="bg-slate-100 p-6 border-t border-slate-200 animate-fade-in shadow-[inset_0_4px_10px_rgba(0,0,0,0.02)]">
           <Form form={form} layout="vertical">
             
             {actionType === 'EXTEND' && (
-              <Form.Item name="new_end_time" label={<span className="font-black text-slate-700">ขอขยายเวลาถึง (วันที่และเวลาใหม่)</span>} rules={[{ required: true, message: 'กรุณาระบุเวลาใหม่' }]}>
-                <DatePicker showTime format="YYYY-MM-DD HH:mm" size="large" className="w-full rounded-xl" />
+              <Form.Item name="new_end_time" label={<span className="font-black text-slate-800">ขอขยายเวลาถึง (วันที่และเวลาใหม่)</span>} rules={[{ required: true, message: 'กรุณาระบุเวลาใหม่' }]}>
+                <DatePicker showTime format="YYYY-MM-DD HH:mm" size="large" className="w-full rounded-xl border-slate-300 shadow-sm" />
               </Form.Item>
             )}
 
             {actionType === 'CLOSE' && (
-              <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 mb-4 shadow-sm">
+              <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 mb-5 shadow-sm">
                 <Form.Item name="is_housekeeping_done" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('ต้องยืนยันการเคลียร์พื้นที่') }]} className="m-0">
-                  <Checkbox className="font-black text-slate-800 text-sm md:text-base">
-                    ข้าพเจ้ายืนยันว่างานเสร็จสิ้น นำเครื่องจักรออก และเคลียร์พื้นที่เรียบร้อย ปลอดภัย 100%
+                  <Checkbox className="font-black text-emerald-900 text-sm md:text-base flex items-start">
+                    <span className="leading-snug block pt-1">ข้าพเจ้ายืนยันว่างานเสร็จสิ้น นำเครื่องจักรออก และเคลียร์พื้นที่เรียบร้อย ปลอดภัย 100%</span>
                   </Checkbox>
                 </Form.Item>
               </div>
@@ -270,16 +329,16 @@ export default function PermitDetailModal({
 
             <Form.Item 
               name="reason" 
-              label={<span className="font-black text-slate-700">{actionType === 'EXTEND' ? 'เหตุผลที่ขอต่อเวลา' : actionType === 'CLOSE' ? 'สรุปผลการทำงาน (ระบุปัญหาถ้ามี)' : 'ความคิดเห็น (ถ้าไม่อนุมัติ กรุณาระบุเหตุผล)'}</span>} 
+              label={<span className="font-black text-slate-800">{actionType === 'EXTEND' ? 'เหตุผลที่ขอต่อเวลา' : actionType === 'CLOSE' ? 'สรุปผลการทำงาน (ระบุปัญหาถ้ามี)' : 'ความคิดเห็น (ถ้าไม่อนุมัติ กรุณาระบุเหตุผล)'}</span>} 
               rules={[{ required: actionType === 'REJECT' || actionType === 'EXTEND', message: 'กรุณาระบุเหตุผล' }]}
               className="mb-4"
             >
-              <Input.TextArea rows={3} className="rounded-xl border-slate-300 focus:border-blue-400" />
+              <Input.TextArea rows={3} className="rounded-xl border-slate-300 focus:border-blue-400 shadow-sm" placeholder="พิมพ์รายละเอียดที่นี่..." />
             </Form.Item>
             
-            <div className="flex justify-end gap-3 mt-4">
-              <Button onClick={() => setActionType('NONE')} className="rounded-xl font-bold h-10">ยกเลิก</Button>
-              <Button type="primary" onClick={handleActionSubmit} loading={isSubmitting} className={`rounded-xl font-black h-10 px-8 ${actionType === 'REJECT' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'} shadow-md`}>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button onClick={() => setActionType('NONE')} className="rounded-xl font-bold h-11 px-6 text-slate-500 hover:bg-slate-200 border-transparent bg-slate-200/50">ยกเลิก</Button>
+              <Button type="primary" onClick={handleActionSubmit} loading={isSubmitting} className={`rounded-xl font-black h-11 px-8 ${actionType === 'REJECT' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'} shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-transform hover:scale-105`}>
                 ยืนยันการทำรายการ
               </Button>
             </div>
@@ -290,16 +349,16 @@ export default function PermitDetailModal({
       {/* 🕹️ Footer Action Buttons */}
       {actionType === 'NONE' && (
         <div className="bg-white p-5 md:px-8 border-t border-slate-100 rounded-b-[24px] flex flex-wrap items-center justify-between gap-4">
-          <Text type="secondary" className="text-[10px] font-bold uppercase tracking-widest">Ref: {permit.id.substring(0,8)}</Text>
+          <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Ref: {permit.id.substring(0,8)}</Text>
           
           <Space wrap className="justify-end w-full sm:w-auto">
             {/* ฝั่งผู้รับเหมา: ขอต่ออายุ หรือ ขอปิดงาน */}
             {canExtendOrClose && (
               <>
-                <Button icon={<ClockCircleOutlined />} onClick={() => setActionType('EXTEND')} className="h-10 rounded-xl font-bold text-purple-600 border-purple-200 hover:bg-purple-50">
+                <Button icon={<ClockCircleOutlined />} onClick={() => setActionType('EXTEND')} className="h-11 rounded-xl font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm">
                   ขอต่อเวลา (Extend)
                 </Button>
-                <Button icon={<LockOutlined />} onClick={() => setActionType('CLOSE')} className="h-10 rounded-xl font-black text-slate-700 border-slate-300 hover:bg-slate-100 shadow-sm">
+                <Button icon={<LockOutlined />} onClick={() => setActionType('CLOSE')} className="h-11 rounded-xl font-black text-slate-700 border-slate-300 hover:bg-slate-100 shadow-sm transition-all hover:border-slate-400">
                   ขอปิดใบอนุญาต (Close)
                 </Button>
               </>
@@ -308,10 +367,10 @@ export default function PermitDetailModal({
             {/* ฝั่ง Safety/Owner: อนุมัติ หรือ ไม่อนุมัติ */}
             {canApprove && (
               <>
-                <Button icon={<CloseCircleOutlined />} onClick={() => setActionType('REJECT')} className="h-10 rounded-xl font-bold text-rose-600 border-rose-200 hover:bg-rose-50">
+                <Button icon={<CloseCircleOutlined />} onClick={() => setActionType('REJECT')} className="h-11 rounded-xl font-bold text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm">
                   ไม่อนุมัติ (Reject)
                 </Button>
-                <Button type="primary" icon={<SafetyOutlined />} onClick={() => setActionType('APPROVE')} className="h-10 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 px-6 shadow-md">
+                <Button type="primary" icon={<SafetyOutlined />} onClick={() => setActionType('APPROVE')} className="h-11 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 px-8 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-105">
                   ตรวจสอบและอนุมัติ
                 </Button>
               </>
