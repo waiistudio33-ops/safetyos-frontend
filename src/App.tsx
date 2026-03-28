@@ -50,7 +50,7 @@ import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
 
 // 🟢 [แก้ไข] บังคับให้วิ่งไปหา Backend ในเครื่องก่อนเพื่อทดสอบ
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
