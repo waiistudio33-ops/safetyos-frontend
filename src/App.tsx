@@ -83,10 +83,18 @@ const getStatusDisplayModern = (status: string) => {
 const getPermitTypeDisplayModern = (type: string) => {
   const baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-sm backdrop-blur-md border";
   switch (type) {
-    case 'HOT_WORK': return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><FireOutlined /> Hot Work</span>;
-    case 'CONFINED_SPACE': return <span className={`${baseClasses} bg-purple-50/80 text-purple-700 border-purple-200/50`}><BuildOutlined /> Confined Space</span>;
-    case 'ELECTRICAL': return <span className={`${baseClasses} bg-yellow-50/80 text-yellow-700 border-yellow-200/50`}><ThunderboltOutlined /> Electrical</span>;
-    default: return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><ToolOutlined /> Cold Work</span>;
+    case 'HOT_WORK': 
+      return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><FireOutlined /> Hot Work</span>;
+    case 'CONFINED_SPACE': 
+      return <span className={`${baseClasses} bg-purple-50/80 text-purple-700 border-purple-200/50`}><BuildOutlined /> Confined Space</span>;
+    case 'WORKING_AT_HEIGHT': 
+      return <span className={`${baseClasses} bg-sky-50/80 text-sky-700 border-sky-200/50`}><EnvironmentOutlined /> Work at Height</span>;
+    case 'ELECTRICAL': 
+      return <span className={`${baseClasses} bg-yellow-50/80 text-yellow-700 border-yellow-200/50`}><ThunderboltOutlined /> Electrical</span>;
+    case 'EXCAVATION': 
+      return <span className={`${baseClasses} bg-amber-50/80 text-amber-900 border-amber-200/50`}><ToolOutlined /> Excavation</span>;
+    default: 
+      return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><ToolOutlined /> Cold Work</span>;
   }
 };
 

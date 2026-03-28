@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag, Divider } from 'antd';
 import { 
   FileTextOutlined, EnvironmentOutlined, UserOutlined, 
@@ -33,7 +33,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [extendForm] = Form.useForm();
 
-  // ✨ UI Tip: Pulse animation restricted to tiny indicators (No animation fatigue)
   const getStatusDisplayModern = (status: string) => { 
     switch(status) { 
       case 'PENDING_AREA_OWNER': return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>; 
@@ -47,13 +46,23 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
     } 
   };
 
-  const getPermitTypeDisplayModern = (type: string) => { 
-    switch(type) { 
-      case 'HOT_WORK': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><FireOutlined /> Hot Work</span>; 
-      case 'CONFINED_SPACE': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><BuildOutlined /> Confined Space</span>; 
-      case 'ELECTRICAL': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><ThunderboltOutlined /> Electrical</span>; 
-      default: return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform"><ToolOutlined /> Cold Work</span>; 
-    } 
+  // 🟢 แก้ไขป้ายกำกับให้ตรงปก
+  const getPermitTypeDisplayModern = (type: string) => {
+    const baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform";
+    switch (type) {
+      case 'HOT_WORK': 
+        return <span className={`${baseClasses} bg-orange-50 text-orange-700 border border-orange-200`}><FireOutlined /> Hot Work</span>;
+      case 'CONFINED_SPACE': 
+        return <span className={`${baseClasses} bg-purple-50 text-purple-700 border border-purple-200`}><BuildOutlined /> Confined Space</span>;
+      case 'WORKING_AT_HEIGHT': 
+        return <span className={`${baseClasses} bg-sky-50 text-sky-700 border border-sky-200`}><EnvironmentOutlined /> Work at Height</span>;
+      case 'ELECTRICAL': 
+        return <span className={`${baseClasses} bg-yellow-50 text-yellow-700 border border-yellow-200`}><ThunderboltOutlined /> Electrical</span>;
+      case 'EXCAVATION': 
+        return <span className={`${baseClasses} bg-amber-50 text-amber-900 border border-amber-200`}><ToolOutlined /> Excavation</span>;
+      default: 
+        return <span className={`${baseClasses} bg-indigo-50 text-indigo-700 border border-indigo-200`}><ToolOutlined /> Cold Work</span>;
+    }
   };
 
   const handleOpenGasModal = (record: any) => {
@@ -160,7 +169,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             </div>
             
             {record?.attachment_url && (
-              // ✨ UI Tip: Micro-interaction with active:scale for tactile feedback
               <button onClick={() => onPreviewFile(record.attachment_url)} className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]">
                 <FileTextOutlined /> ดูเอกสาร JSA
               </button>
@@ -188,7 +196,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         const requiresGasTest = record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE';
 
         return (
-          // ✨ UI Tip: Add subtle stagger fade-in for actions
           <div className="flex flex-col gap-2 w-full pr-2 pb-2 animate-fade-in-up">
             <button onClick={() => onViewDetails(record)} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-xs font-extrabold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all duration-200 ease-out active:scale-[0.98] shadow-sm">
               <FilePdfOutlined /> Print / เอกสารเต็ม
@@ -276,7 +283,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             expandedRowRender: (record) => {
               if (!record) return null; 
               return (
-              // ✨ UI Tip: smooth slide-down effect when row expands
               <div className="p-6 md:p-8 bg-[#f8fafc] rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner animate-[slideDown_0.3s_ease-out_forwards] origin-top">
                  <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-3">
                    <InfoCircleOutlined className="text-blue-500" /> ข้อมูลใบอนุญาตเชิงลึก (Deep Details)

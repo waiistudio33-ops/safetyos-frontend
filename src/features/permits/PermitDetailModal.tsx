@@ -101,6 +101,18 @@ export default function PermitDetailModal({
     );
   };
 
+  // 🟢 Helper function สำหรับหน้าพิมพ์
+  const getPdfPermitTitle = (type: string) => {
+    switch (type) {
+      case 'HOT_WORK': return 'HOT WORK PERMIT (ใบอนุญาตทำงานความร้อน)';
+      case 'CONFINED_SPACE': return 'CONFINED SPACE PERMIT (ใบอนุญาตเข้าที่อับอากาศ)';
+      case 'WORKING_AT_HEIGHT': return 'WORK AT HEIGHT PERMIT (ใบอนุญาตทำงานบนที่สูง)';
+      case 'ELECTRICAL': return 'ELECTRICAL WORK PERMIT (ใบอนุญาตทำงานไฟฟ้า)';
+      case 'EXCAVATION': return 'EXCAVATION PERMIT (ใบอนุญาตงานขุดเจาะ)';
+      default: return 'WORK PERMIT (ใบอนุญาตทำงาน)';
+    }
+  };
+
   return (
     <Modal
       title={null}
@@ -172,7 +184,8 @@ export default function PermitDetailModal({
         <div ref={documentRef} className="p-4 md:p-8 bg-white print-container">
           
           <div className="hidden print:block text-center mb-6 border-b-2 border-slate-800 pb-4">
-            <h1 className="text-2xl font-black text-slate-800 m-0 uppercase tracking-widest">WORK PERMIT (ใบอนุญาตทำงาน)</h1>
+            {/* 🟢 เปลี่ยน Title PDF ให้ตรงกับประเภทงานจริง */}
+            <h1 className="text-2xl font-black text-slate-800 m-0 uppercase tracking-widest">{getPdfPermitTitle(permit.permit_type)}</h1>
             <p className="text-sm font-bold text-slate-500 mt-1 mb-0">เลขที่อ้างอิง: {permit.permit_number}</p>
           </div>
 
@@ -183,7 +196,6 @@ export default function PermitDetailModal({
               <h3 className="m-0 font-black text-slate-800 text-lg">ข้อมูลผู้ขออนุญาตและโครงการ</h3>
             </div>
             
-            {/* 🟢 อัปเกรดเป็น Tailwind Grid 100% แก้ปัญหาตัวหนังสือแนวตั้ง */}
             <div className="bg-blue-50/30 border border-blue-100 rounded-xl overflow-hidden shadow-sm print:border-slate-300">
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-blue-100 print:divide-slate-300">
                 <div className="p-4 md:p-5">

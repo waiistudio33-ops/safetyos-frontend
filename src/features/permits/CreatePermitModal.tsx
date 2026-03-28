@@ -42,18 +42,15 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
     }
   }, [open, form]);
 
-  // 🟢 [แก้บัค!] สอนให้ปุ่ม Next ตรวจข้อสอบเฉพาะหน้าปัจจุบัน
   const next = async () => {
     try {
       if (currentStep === 0) {
-        // ตรวจเฉพาะฟิลด์ของหน้า 1
         await form.validateFields([
           'title', 'permit_type', 'location_detail', 'timeRange', 
           'contractor_company', 'applicant_phone', 'contractor_supervisor', 
           'project_manager', 'workers'
         ]);
       } else if (currentStep === 1) {
-        // ตรวจเฉพาะฟิลด์ของหน้า 2
         await form.validateFields([
           'work_sub_type', 'gas_tester_name', 'standby_person_name', 'height_level', 
           'safety_measures', 'ppe_required', 'supervisor_name', 'rescuer_name', 
@@ -80,7 +77,6 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
 
   const handleFinish = async () => {
     try {
-      // หน้าสุดท้ายบังคับแนบไฟล์
       if (fileList.length === 0) {
         message.error('กรุณาแนบเอกสาร JSA หรือเอกสารที่เกี่ยวข้องก่อนดำเนินการ');
         return;
@@ -220,7 +216,8 @@ export default function CreatePermitModal({ open, onCancel, onSubmit, isSubmitti
                     <Select size="large" onChange={setSelectedPermitType} placeholder="เลือกประเภทงาน" popupClassName="font-medium">
                       <Select.Option value="HOT_WORK"><div className="flex items-center gap-2 font-bold text-slate-800"><FireOutlined className="text-orange-500"/> Hot Work (ความร้อน)</div></Select.Option>
                       <Select.Option value="CONFINED_SPACE"><div className="flex items-center gap-2 font-bold text-slate-800"><BuildOutlined className="text-purple-500"/> Confined Space (อับอากาศ)</div></Select.Option>
-                      <Select.Option value="WORKING_AT_HEIGHT"><div className="flex items-center gap-2 font-bold text-slate-800"><EnvironmentOutlined className="text-sky-500"/> Work at Height (ที่สูง)</div></Select.Option>
+                      {/* 🟢 แก้ไข value ให้เป็น WORKING_AT_HEIGHT ให้ตรงกับหลังบ้าน */}
+                      <Select.Option value="WORKING_AT_HEIGHT"><div className="flex items-center gap-2 font-bold text-slate-800"><EnvironmentOutlined className="text-sky-500"/> ทำงานบนที่สูง (Work at Height)</div></Select.Option>
                       <Select.Option value="ELECTRICAL"><div className="flex items-center gap-2 font-bold text-slate-800"><ThunderboltOutlined className="text-yellow-500"/> Electrical (งานไฟฟ้า)</div></Select.Option>
                       <Select.Option value="COLD_WORK"><div className="flex items-center gap-2 font-bold text-slate-800"><ToolOutlined className="text-blue-500"/> Cold Work (ทั่วไป)</div></Select.Option>
                     </Select>
