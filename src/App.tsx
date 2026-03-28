@@ -4,31 +4,32 @@ import dayjs from 'dayjs';
 import liff from '@line/liff';
 import { useReactToPrint } from 'react-to-print';
 
-// --- Ant Design Components ---
-import {
-  Layout, Menu, Typography, Avatar, ConfigProvider, Space, Button, 
-  Drawer, Grid, Spin, Tabs, message, Modal
-} from 'antd';
+// 🟢 ตั้งค่า Axios ให้แนบ Token ไปใน Header เสมอ
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('safetyos_token');
+  if (token && token !== 'undefined') {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
-// --- Ant Design Icons ---
+// --- Ant Design Components & Icons ---
+import { Layout, Menu, Typography, Avatar, ConfigProvider, Space, Button, Drawer, Grid, Spin, Tabs, message, Modal } from 'antd';
 import {
-  DashboardOutlined, SafetyCertificateOutlined,
-  UserOutlined, FileTextOutlined,
-  BuildOutlined, EnvironmentOutlined,
-  IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined,
-  EyeOutlined, LogoutOutlined, CheckCircleOutlined,
-  MenuOutlined, ClockCircleOutlined,
+  DashboardOutlined, SafetyCertificateOutlined, UserOutlined, FileTextOutlined,
+  BuildOutlined, EnvironmentOutlined, IdcardOutlined, AlertOutlined, ReadOutlined, QrcodeOutlined,
+  EyeOutlined, LogoutOutlined, CheckCircleOutlined, MenuOutlined, ClockCircleOutlined,
   ToolOutlined, ScanOutlined, FormOutlined, FileAddOutlined, SafetyOutlined, 
   CloseOutlined, LockOutlined, StopOutlined, FireOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 
-// --- Extracted Features & Common Components ---
+// --- Local Components ---
 import WelcomeEmptyState from './components/common/WelcomeEmptyState';
 import LoginScreen from './features/auth/LoginScreen';
 import CreatePermitModal from './features/permits/CreatePermitModal';
 import PermitDetailModal from './features/permits/PermitDetailModal';
-
-// --- Other Local Components ---
 import QRScanner from './components/QRScanner';
 import UserProfile from './components/UserProfile';
 import WorkPermitQueue from "./components/WorkPermitQueue";
@@ -43,27 +44,28 @@ import ELearning from './components/ELearning';
 import EquipmentInspection from './components/EquipmentInspection';
 import Dashboard from './components/Dashboard';
 
-// --- Utils & Config ---
+// --- Custom Hooks ---
 import { supabase } from './supabase';
+import { useAuth } from './hooks/useAuth';
+import { usePermits } from './hooks/usePermits';
+import { useBbs } from './hooks/useBbs';
+import { useConfinedSpace } from './hooks/useConfinedSpace';
+
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
-
-// 🟢 [แก้ไข] บังคับให้วิ่งไปหา Backend ในเครื่องก่อนเพื่อทดสอบ
-const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('th');
 dayjs.tz.setDefault('Asia/Bangkok');
 
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
+
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
-// ==========================================
-// 🛠️ Shared Formatters
-// ==========================================
 const getStatusDisplayModern = (status: string) => {
   const baseClasses = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold shadow-sm whitespace-nowrap backdrop-blur-md border";
   switch (status) {
@@ -88,42 +90,21 @@ const getPermitTypeDisplayModern = (type: string) => {
   }
 };
 
-// ==========================================
-// 🚀 Main Application
-// ==========================================
 export default function App() {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const isTablet = screens.md && !screens.lg;
 
-  // Global States
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [lineProfile, setLineProfile] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  // Menu & Navigation States
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('DASHBOARD');
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
-
-  // Data States
-  const [realPermits, setRealPermits] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [bbsRecords, setBbsRecords] = useState<any[]>([]);
-  const [activeConfinedPermits, setActiveConfinedPermits] = useState<any[]>([]);
-  const [selectedConfinedPermit, setSelectedConfinedPermit] = useState<string | null>(null);
-  const [confinedEntries, setConfinedEntries] = useState<any[]>([]);
-  const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
-
-  // UI Action States
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittingBbs, setIsSubmittingBbs] = useState(false);
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
-  // Modals & Drawers States
+  const { isAuthenticated, isAuthChecking, isLoggingIn, lineProfile, currentUser, handleLogin, handleLineLoginSubmit, handleSSOLogin, handleLogout } = useAuth();
+  const { permits, loading: permitsLoading, isSubmitting: isSubmittingPermit, fetchPermits, createPermit, updatePermitStatus } = usePermits(currentUser);
+  const { bbsRecords, isSubmittingBbs, fetchBbs, handleCreateBbs } = useBbs(currentUser);
+  const { activeConfinedPermits, selectedConfinedPermit, confinedEntries, setSelectedConfinedPermit, fetchConfinedSpaceData, fetchEntries, handleCheckIn, handleCheckOut, handleEvacuateAll } = useConfinedSpace(currentUser);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -132,71 +113,10 @@ export default function App() {
   const [selectedPermitDetail, setSelectedPermitDetail] = useState<any>(null);
   const [isEmergency, setIsEmergency] = useState(false);
   const [emergencyMessage, setEmergencyMsg] = useState('');
+  const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
 
   const documentRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    contentRef: documentRef,
-    content: () => documentRef.current,
-    documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
-    onBeforeGetContent: () => {
-      return new Promise((resolve) => {
-        if (liff.isInClient()) {
-          message.warning('⚠️ LINE ไม่รองรับการเซฟ PDF ให้กด "จุด 3 จุดมุมขวาบน" แล้วเลือก "เปิดในเบราว์เซอร์"', 10);
-        }
-        setTimeout(() => { resolve(); }, 800);
-      });
-    },
-    onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
-  });
-
-  // URL Parsing
-  useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const targetPage = queryParams.get('page');
-    if (targetPage && ['DASHBOARD', 'PROFILE', 'E_PASSPORT', 'E_PERMIT', 'BBS', 'CONFINED_SPACE', 'CERTIFICATE', 'INCIDENT', 'E_LEARNING', 'EQUIPMENT'].includes(targetPage)) {
-      setActiveMenu(targetPage);
-    }
-    const path = window.location.pathname;
-    if (path.startsWith('/verify/')) setVerifyUserId(path.split('/verify/')[2]);
-  }, []);
-
-  // Initialization & LINE LIFF
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        let profile = null;
-        await liff.init({ liffId: '2009277207-jNY8QghJ' });
-
-        if (liff.isLoggedIn()) {
-          profile = await liff.getProfile();
-          setLineProfile(profile);
-        }
-        const savedUserStr = localStorage.getItem('safetyos_user');
-
-        if (profile) {
-          try {
-            const res = await axios.post(`${API_URL}/login/line`, {
-              line_id: profile.userId, picture_url: profile.pictureUrl, display_name: profile.displayName
-            });
-            localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-            setCurrentUser(res.data.user);
-            setIsAuthenticated(true);
-          } catch (e) {
-            if (savedUserStr) { try { setCurrentUser(JSON.parse(savedUserStr)); setIsAuthenticated(true); } catch (err) {} }
-          }
-        } else if (savedUserStr) {
-          try { setCurrentUser(JSON.parse(savedUserStr)); setIsAuthenticated(true); }
-          catch (e) { localStorage.removeItem('safetyos_user'); }
-        }
-      } catch (err) {
-        console.log("LIFF Init Failed", err);
-      } finally { setIsAuthChecking(false); }
-    };
-    initializeApp();
-  }, []);
-
-  // Supabase Channels
   useEffect(() => {
     const safetyChannel = supabase.channel('safety-alert-channel');
     safetyChannel
@@ -204,199 +124,49 @@ export default function App() {
       .on('broadcast', { event: 'CONFINED_SPACE_UPDATE' }, (payload) => { if (payload.payload.permit_id) fetchEntries(payload.payload.permit_id); })
       .subscribe();
     return () => { supabase.removeChannel(safetyChannel); };
-  }, []);
+  }, [fetchEntries]);
 
-  // Data Fetchers
-  const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (error) {} };
-  const fetchPermits = async () => { setLoading(true); try { const response = await axios.get(`${API_URL}/permits`); setRealPermits(response.data); } catch (error) {} finally { setLoading(false); } };
-  const fetchBbs = async () => { try { const res = await axios.get(`${API_URL}/bbs`); setBbsRecords(res.data); } catch (error) {} };
-  const fetchConfinedSpaceData = async () => { 
-    try { 
-      const res = await axios.get(`${API_URL}/confined-space/active-permits`); 
-      setActiveConfinedPermits(res.data); 
-      if (res.data.length > 0 && !selectedConfinedPermit) { setSelectedConfinedPermit(res.data[0].id); fetchEntries(res.data[0].id); } 
-    } catch (error) {} 
-  };
-  const fetchEntries = async (permitId: string) => { try { const res = await axios.get(`${API_URL}/confined-space/${permitId}/entries`); setConfinedEntries(res.data); } catch (error) {} };
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (activeMenu === 'DASHBOARD' || activeMenu === 'E_PERMIT') fetchPermits();
+    if (activeMenu === 'BBS') fetchBbs();
+    if (activeMenu === 'CONFINED_SPACE') fetchConfinedSpaceData();
+  }, [isAuthenticated, activeMenu, fetchPermits, fetchBbs, fetchConfinedSpaceData]);
 
-  // Data Refresh Triggers
-  useEffect(() => { fetchUsers(); }, []);
-  useEffect(() => { if (isAuthenticated && (activeMenu === 'DASHBOARD' || activeMenu === 'E_PERMIT')) fetchPermits(); }, [isAuthenticated, activeMenu]);
-  useEffect(() => { if (isAuthenticated && activeMenu === 'BBS') fetchBbs(); }, [isAuthenticated, activeMenu]);
-  useEffect(() => { if (isAuthenticated && activeMenu === 'CONFINED_SPACE') fetchConfinedSpaceData(); }, [isAuthenticated, activeMenu]);
   useEffect(() => {
     if (activeMenu === 'CONFINED_SPACE' && selectedConfinedPermit) {
-      fetchEntries(selectedConfinedPermit);
       const interval = setInterval(() => { fetchEntries(selectedConfinedPermit); }, 60000);
       return () => clearInterval(interval);
     }
-  }, [activeMenu, selectedConfinedPermit]);
+  }, [activeMenu, selectedConfinedPermit, fetchEntries]);
 
-  // Event Handlers
-  const handleLogin = async (values: any) => {
-    setIsLoggingIn(true);
-    try {
-      const payload = { ...values, line_id: lineProfile?.userId || null, picture_url: lineProfile?.pictureUrl || null };
-      const response = await axios.post(`${API_URL}/login`, payload);
-      localStorage.setItem('safetyos_user', JSON.stringify(response.data.user));
-      setCurrentUser(response.data.user);
-      setIsAuthenticated(true);
-      message.success(`ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
-    } catch (error: any) { message.error(error.response?.data?.error || 'ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง'); } 
-    finally { setIsLoggingIn(false); }
-  };
-
-  const handleLineLoginSubmit = async () => {
-    if (liff.isInClient() && lineProfile) {
-      setIsLoggingIn(true);
-      try {
-        const res = await axios.post(`${API_URL}/login/line`, { line_id: lineProfile.userId, picture_url: lineProfile.pictureUrl, display_name: lineProfile.displayName });
-        localStorage.setItem('safetyos_user', JSON.stringify(res.data.user));
-        setCurrentUser(res.data.user);
-        setIsAuthenticated(true);
-        message.success(res.data.isNew ? `ลงทะเบียนระบบเรียบร้อยแล้ว` : `เข้าสู่ระบบสำเร็จ`);
-      } catch (error: any) { message.error('การเข้าสู่ระบบล้มเหลว'); } finally { setIsLoggingIn(false); }
-    } else { liff.login(); }
-  };
-
-  const handleSSOLogin = () => { Modal.info({ title: 'Microsoft Entra ID (SSO)', content: 'ระบบกำลังนำท่านไปยังหน้าต่างเข้าสู่ระบบขององค์กร (SCG Microsoft 365)', okText: 'ดำเนินการต่อ', centered: true }); };
-  const handleLogout = () => { localStorage.removeItem('safetyos_user'); setIsAuthenticated(false); setCurrentUser(null); if (liff.isLoggedIn()) liff.logout(); message.info('ออกจากระบบเรียบร้อย'); };
-
-  const handleCreateBbs = async (values: any) => {
-    setIsSubmittingBbs(true);
-    try {
-      let fileUrl = null;
-      if (values.photos && values.photos.length > 0) {
-        const file = values.photos[0]?.originFileObj;
-        if(file) {
-          const uniqueName = `bbs-${Date.now()}-${file.name.split('.').pop()}`;
-          const { error } = await supabase.storage.from('permits').upload(uniqueName, file);
-          if (!error) { const { data } = supabase.storage.from('permits').getPublicUrl(uniqueName); fileUrl = data.publicUrl; }
-        }
-      }
-      const formattedValues = { ...values, date: values.date ? values.date.toISOString() : new Date().toISOString(), observer_id: currentUser.id, image_url: fileUrl };
-      await axios.post(`${API_URL}/bbs`, formattedValues);
-      message.success('บันทึกข้อมูล BBS สำเร็จ!'); fetchBbs(); setActiveBbsTab('history');
-    } catch (error: any) { message.error(`บันทึกไม่สำเร็จ`); } finally { setIsSubmittingBbs(false); }
-  };
-
-  const handleCheckIn = async (values: any) => { try { await axios.post(`${API_URL}/confined-space/in`, { ...values, permit_id: selectedConfinedPermit }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
-  const handleCheckOut = async (entryId: string) => { try { await axios.put(`${API_URL}/confined-space/out/${entryId}`); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); } catch (error) {} };
-  const handleEvacuateAll = async () => { try { await axios.post(`${API_URL}/confined-space/evacuate`, { permit_id: selectedConfinedPermit, triggered_by: currentUser.full_name }); fetchEntries(selectedConfinedPermit!); await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'EMERGENCY_EVACUATE', payload: { message: `สั่งอพยพโดย: ${currentUser.full_name}` } }); } catch (error) {} };
-
-  const handlePreviewFile = (url: string) => { setPreviewUrl(url); setIsPreviewOpen(true); };
+  const handlePrint = useReactToPrint({
+    contentRef: documentRef,
+    content: () => documentRef.current,
+    documentTitle: `WorkPermit_${selectedPermitDetail?.permit_number || 'Export'}`,
+    onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
+  });
 
   const handleViewDetails = async (record: any) => {
     if (!record) return;
-    setSelectedPermitDetail(record || {});
+    setSelectedPermitDetail(record);
     setIsDetailModalOpen(true);
-    setGasLogsDetail([]);
+    setGasLogsDetail([]); 
+    
     if (record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE') {
-      try { if (record?.id) { const res = await axios.get(`${API_URL}/permits/${record.id}/gas-logs`); setGasLogsDetail(Array.isArray(res.data) ? res.data : []); } } 
-      catch (error) { setGasLogsDetail([]); }
-    }
-  };
-
-  // =======================================================
-  // 🟢 [แก้ไข] แพ็คข้อมูลใหม่ทั้งหมดส่งให้ Backend อย่างครบถ้วน
-  // =======================================================
-  const handleCreatePermit = async (values: any, uploadedFiles: any[]) => {
-    try {
-      if (!currentUser) return;
-      setIsSubmitting(true);
-
-      let fileUrl = null, fileNameToSave = null;
-      if (uploadedFiles.length > 0) {
-        const file = uploadedFiles[0]?.originFileObj;
-        if(file) {
-          const uniqueName = `${Date.now()}.${file.name.split('.').pop()}`;
-          const { error } = await supabase.storage.from('permits').upload(uniqueName, file);
-          if (error) throw error;
-          const { data } = supabase.storage.from('permits').getPublicUrl(uniqueName);
-          fileUrl = data.publicUrl; fileNameToSave = file.name;
-        }
+      try { 
+        if (record?.id) { 
+          const res = await axios.get(`${API_URL}/permits/${record.id}/gas-logs`); 
+          setGasLogsDetail(Array.isArray(res.data) ? res.data : []); 
+        } 
+      } catch (error) { 
+        setGasLogsDetail([]); 
       }
-
-      // ดึงเวลาที่แปลงแล้วจาก Modal (เพราะ Modal จัดการ Timezone ให้แล้ว)
-      let startTime = values.start_time || new Date().toISOString();
-      let endTime = values.end_time || new Date(Date.now() + 2 * 3600000).toISOString();
-
-      // 📦 Payload ฉบับสมบูรณ์ (ครบทุกฟิลด์ที่ส่งจาก Modal)
-      const payload = {
-        // ข้อมูลหลัก
-        title: values.title,
-        description: values.description,
-        permit_type: values.permit_type,
-        location_detail: values.location_detail,
-        start_time: startTime,
-        end_time: endTime,
-        applicant_id: currentUser.id,
-        
-        // เอกสารแนบ
-        attachment_url: fileUrl,
-        attachment_name: fileNameToSave,
-        
-        // ข้อมูลทีมงาน / ผู้รับเหมา
-        applicant_phone: values.applicant_phone || null,
-        contractor_company: values.contractor_company || null,
-        contractor_supervisor: values.contractor_supervisor || null,
-        project_manager: values.project_manager || null,
-        workers: values.workers || [],
-
-        // มาตรการเฉพาะงาน (JSON Checklists)
-        work_sub_type: values.work_sub_type || [],
-        safety_measures: values.safety_measures || [],
-        ppe_required: values.ppe_required || [],
-        
-        // ผู้ดูแลงานอับอากาศ / ความร้อน
-        supervisor_name: values.supervisor_name || null,
-        gas_tester_name: values.gas_tester_name || null,
-        standby_person_name: values.standby_person_name || null,
-        rescuer_name: values.rescuer_name || null,
-        communication_method: values.communication_method || null,
-        height_level: values.height_level || null,
-        rescue_plan_url: values.rescue_plan_url || null,
-        is_med_cert_verified: values.is_med_cert_verified || false,
-
-        // ระบบ LOTO
-        is_loto_required: values.is_loto_required || false,
-        loto_isolation_point: values.loto_isolation_point || null,
-        loto_energy_type: values.loto_energy_type || null,
-        loto_lock_number: values.loto_lock_number || null,
-      };
-
-      await axios.post(`${API_URL}/permits`, payload);
-      message.success('ส่งคำขอสร้าง Permit สำเร็จ');
-      setIsModalOpen(false);
-      fetchPermits();
-      
-    } catch (error: any) {
-      console.error("Submit Exception:", error);
-      message.error('ระบบขัดข้อง ไม่สามารถส่งคำขอได้');
-      throw error; 
-    } finally {
-      setIsSubmitting(false);
     }
-  };
-
-  const handleUpdateStatus = async (permitId: string, currentStatus: string, action: 'APPROVE' | 'REJECT' | 'CLOSE' | 'REVOKE') => {
-    try {
-      let nextStatus = action === 'REJECT' ? 'REJECTED' : action === 'CLOSE' ? 'CLOSED' : action === 'REVOKE' ? 'REVOKED' : (currentStatus === 'PENDING_AREA_OWNER' ? 'PENDING_SAFETY' : 'APPROVED');
-      await axios.put(`${API_URL}/permits/${permitId}`, { status: nextStatus, approver_id: currentUser.id });
-      fetchPermits(); message.success(`ดำเนินการ ${action} สำเร็จ`);
-    } catch (error) {}
-  };
-
-  const handleOpenScannerClick = async () => {
-    if (liff.isInClient() && liff.scanCodeV2) { try { const result = await liff.scanCodeV2(); if (result?.value?.includes('/verify/')) setVerifyUserId(result.value.split('/verify/')[1]); } catch (error) { setIsScannerOpen(true); } } 
-    else setIsScannerOpen(true);
   };
 
   const getDisplayAvatar = () => lineProfile?.pictureUrl || currentUser?.profile_url || null;
 
-  // ==========================================
-  // 🎨 RENDER SECTION
-  // ==========================================
   if (isAuthChecking) {
     return <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' } }}><div className="h-screen w-full flex items-center justify-center bg-slate-50"><Spin size="large" /></div></ConfigProvider>;
   }
@@ -432,15 +202,12 @@ export default function App() {
     <ConfigProvider theme={{ token: { colorPrimary: '#2563eb', borderRadius: 12, fontFamily: "var(--font-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)" } }}>
       <div className="min-h-screen bg-slate-50 relative overflow-x-hidden">
         
-        {/* Global Background Ambient Glow */}
         <div className="absolute top-0 left-0 w-full h-[600px] pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-[-20%] left-[10%] w-[50%] h-[80%] bg-blue-200/40 rounded-full blur-[140px] mix-blend-multiply"></div>
           <div className="absolute top-[10%] right-[10%] w-[40%] h-[60%] bg-emerald-100/40 rounded-full blur-[120px] mix-blend-multiply"></div>
         </div>
 
         <Layout style={{ background: 'transparent' }}>
-          
-          {/* SIDER */}
           {!isMobile && (
             <Sider width={280} style={{ background: 'transparent', position: 'fixed', left: 0, height: '100vh', zIndex: 100, padding: '20px 0 20px 20px' }} theme="light">
               <div className="bg-white/70 backdrop-blur-2xl h-full rounded-[2rem] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.03)] flex flex-col overflow-hidden">
@@ -461,18 +228,16 @@ export default function App() {
 
           <Layout style={{ marginLeft: isMobile ? 0 : 300, background: 'transparent', transition: 'all 0.3s ease-out', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             
-            {/* HEADER */}
             <Header className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_24px_rgba(0,0,0,0.02)] z-50 flex items-center justify-between" style={{ margin: isMobile ? '0' : '20px 24px 0 0', padding: isMobile ? '0 16px' : '0 24px', height: '76px', borderRadius: isMobile ? '0' : '24px', position: 'sticky', top: isMobile ? 0 : 20 }}>
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 {isMobile && <Button type="text" icon={<MenuOutlined className="text-xl" />} onClick={() => setMobileMenuOpen(true)} className="flex-shrink-0" />}
                 <div className="min-w-0 flex flex-col justify-center h-full">
                   <h1 className="text-lg md:text-2xl font-black text-slate-800 m-0 truncate tracking-tight capitalize">{activeMenu.replace('_', ' ')}</h1>
-                  {!isMobile && !isTablet && <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mt-0.5 flex items-center gap-1.5"><EnvironmentOutlined className="text-blue-500" /> Map Ta Phut Terminal</Text>}
                 </div>
               </div>
 
               <Space size={isMobile ? 10 : 16} align="center" className="flex-shrink-0">
-                <Button type="default" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={handleOpenScannerClick} className="font-bold border-white bg-white/60 hover:bg-white text-slate-700 shadow-sm" />
+                <Button type="default" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={() => setIsScannerOpen(true)} className="font-bold border-white bg-white/60 hover:bg-white text-slate-700 shadow-sm" />
                 {!isMobile && <div className="w-px h-8 bg-slate-200/50 mx-2"></div>}
                 
                 <div onClick={() => setActiveMenu('PROFILE')} className="bg-white/60 hover:bg-white backdrop-blur-md transition-colors duration-300 ease-out rounded-full border border-white shadow-sm p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]">
@@ -494,7 +259,6 @@ export default function App() {
               </Space>
             </Header>
 
-            {/* CONTENT */}
             <Content className="flex-1 relative z-10" style={{ padding: isMobile ? '16px' : '24px 24px 32px 0' }}>
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
@@ -502,18 +266,12 @@ export default function App() {
                 
                 {activeMenu === 'E_PERMIT' && (
                   <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden p-2 md:p-6 min-h-[60vh] flex flex-col">
-                    {!loading && realPermits.length === 0 ? (
+                    {!permitsLoading && permits.length === 0 ? (
                       <div className="flex-1 flex items-center justify-center">
-                        <WelcomeEmptyState 
-                          title="เริ่มต้นสร้างคำขอทำงานใบแรก"
-                          description="ระบบ E-Permit พร้อมใช้งานแล้ว คุณสามารถสร้างคำขออนุญาตทำงาน (PTW) พร้อมแนบเอกสาร JSA เพื่อให้เจ้าหน้าที่ตรวจสอบและอนุมัติได้ทันที"
-                          buttonText="สร้างคำขอทำงาน (E-Permit)"
-                          icon={<FileTextOutlined />}
-                          onAction={() => setIsModalOpen(true)}
-                        />
+                        <WelcomeEmptyState title="เริ่มต้นสร้างคำขอทำงานใบแรก" description="ระบบ E-Permit พร้อมใช้งานแล้ว" buttonText="สร้างคำขอทำงาน" icon={<FileTextOutlined />} onAction={() => setIsModalOpen(true)} />
                       </div>
                     ) : (
-                      <WorkPermitQueue permits={realPermits} loading={loading} currentUser={currentUser} onPreviewFile={handlePreviewFile} onViewDetails={handleViewDetails} onUpdateStatus={handleUpdateStatus} />
+                      <WorkPermitQueue permits={permits} loading={permitsLoading} currentUser={currentUser} onPreviewFile={(url) => { setPreviewUrl(url); setIsPreviewOpen(true); }} onViewDetails={handleViewDetails} onUpdateStatus={updatePermitStatus} />
                     )}
                   </div>
                 )}
@@ -523,37 +281,13 @@ export default function App() {
                 {activeMenu === 'BBS' && (
                   <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
                     <Tabs activeKey={activeBbsTab} onChange={setActiveBbsTab} centered size="large" items={[
-                      { 
-                        key: 'form', 
-                        label: <span className="font-bold px-4"><FormOutlined /> สร้างรายงาน BBS</span>, 
-                        children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={handleCreateBbs} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> 
-                      }, 
-                      { 
-                        key: 'history', 
-                        label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, 
-                        children: (
-                          <div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">
-                            {bbsRecords.length === 0 ? (
-                              <div className="flex-1 flex items-center justify-center">
-                                <WelcomeEmptyState 
-                                  title="ยังไม่มีประวัติการรายงาน BBS"
-                                  description="การสังเกตการณ์ความปลอดภัย (BBS) ช่วยลดอุบัติเหตุในพื้นที่ทำงาน เริ่มต้นสร้างรายงานฉบับแรกของคุณเพื่อความปลอดภัยของทุกคน"
-                                  buttonText="สร้างรายงาน BBS"
-                                  icon={<EyeOutlined />}
-                                  onAction={() => setActiveBbsTab('form')}
-                                />
-                              </div>
-                            ) : (
-                              <BBSHistory records={bbsRecords} />
-                            )}
-                          </div>
-                        ) 
-                      }
+                      { key: 'form', label: <span className="font-bold px-4"><FormOutlined /> สร้างรายงาน BBS</span>, children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={(vals) => handleCreateBbs(vals, () => setActiveBbsTab('history'))} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> }, 
+                      { key: 'history', label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, children: (<div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">{bbsRecords.length === 0 ? (<div className="flex-1 flex items-center justify-center"><WelcomeEmptyState title="ยังไม่มีประวัติ" description="เริ่มต้นรายงานความปลอดภัย" buttonText="สร้างรายงาน BBS" icon={<EyeOutlined />} onAction={() => setActiveBbsTab('form')} /></div>) : (<BBSHistory records={bbsRecords} />)}</div>) }
                     ]} />
                   </div>
                 )}
                 
-                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 1)', borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }} />}
+                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }} />}
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
@@ -562,38 +296,15 @@ export default function App() {
             </Content>
           </Layout>
 
-          {/* EXTRACTED: PERMIT DETAIL MODAL */}
-          <PermitDetailModal 
-            open={isDetailModalOpen}
-            onCancel={() => setIsDetailModalOpen(false)}
-            permit={selectedPermitDetail}
-            gasLogs={gasLogsDetail}
-            documentRef={documentRef}
-            onPrint={handlePrint}
-            getStatusDisplay={getStatusDisplayModern}
-            getPermitTypeDisplay={getPermitTypeDisplayModern}
-          />
-
-          {/* EXTRACTED: CREATE PERMIT MODAL */}
-          <CreatePermitModal 
-            open={isModalOpen}
-            onCancel={() => setIsModalOpen(false)}
-            onSubmit={handleCreatePermit}
-            isSubmitting={isSubmitting}
-          />
-
-          {/* Preview Image/PDF Modal */}
+          <PermitDetailModal open={isDetailModalOpen} onCancel={() => setIsDetailModalOpen(false)} permit={selectedPermitDetail} gasLogs={gasLogsDetail} documentRef={documentRef} onPrint={handlePrint} getStatusDisplay={getStatusDisplayModern} getPermitTypeDisplay={getPermitTypeDisplayModern} onUpdateStatus={updatePermitStatus} currentUser={currentUser} />
+          
+          <CreatePermitModal open={isModalOpen} onCancel={() => setIsModalOpen(false)} onSubmit={async (values, files) => { const success = await createPermit(values, files); if (success) setIsModalOpen(false); }} isSubmitting={isSubmittingPermit} />
+          
           <Modal title={<span className="font-black text-slate-800">เอกสารแนบ</span>} open={isPreviewOpen} destroyOnClose={true} onCancel={() => setIsPreviewOpen(false)} width={850} footer={null} centered>
-            <div className="h-[75vh] bg-slate-50/80 backdrop-blur-xl rounded-2xl overflow-hidden mt-4 border border-slate-200">
-              <img src={previewUrl} className="w-full h-full object-contain" alt="Preview" />
-            </div>
+            <div className="h-[75vh] bg-slate-50/80 backdrop-blur-xl rounded-2xl overflow-hidden mt-4 border border-slate-200"><img src={previewUrl} className="w-full h-full object-contain" alt="Preview" /></div>
           </Modal>
 
-          {/* Scanner */}
-          {isScannerOpen && (
-             <QRScanner visible={isScannerOpen} onClose={() => setIsScannerOpen(false)} />
-          )}
-
+          {isScannerOpen && <QRScanner visible={isScannerOpen} onClose={() => setIsScannerOpen(false)} />}
         </Layout>
       </div>
     </ConfigProvider>

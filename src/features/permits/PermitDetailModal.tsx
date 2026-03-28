@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Modal, Descriptions, Tag, Button, Divider, Space, Typography, Checkbox, Form, Input, DatePicker, message, Row, Col } from 'antd';
+import { Modal, Tag, Button, Divider, Space, Typography, Checkbox, Form, Input, DatePicker, message, Row, Col } from 'antd';
 import { 
   PrinterOutlined, CheckCircleOutlined, CloseCircleOutlined, 
   SafetyOutlined, ClockCircleOutlined, LockOutlined, EnvironmentOutlined,
-  TeamOutlined, WarningOutlined, FileTextOutlined, IdcardOutlined
+  TeamOutlined, WarningOutlined, FileTextOutlined, IdcardOutlined, DashboardOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -34,7 +34,6 @@ export default function PermitDetailModal({
 
   if (!permit) return null;
 
-  // ตรวจสอบสิทธิ์การกดปุ่ม
   const isApplicant = currentUser?.id === permit.applicant_id;
   const isSafetyOrOwner = ['SAFETY_ENGINEER', 'AREA_OWNER'].includes(currentUser?.role);
   const canApprove = isSafetyOrOwner && permit.status.includes('PENDING');
@@ -75,14 +74,12 @@ export default function PermitDetailModal({
     onCancel();
   };
 
-  // Helper: เรนเดอร์ JSON Array ให้ดูแพง ไม่รก
   const renderJsonList = (data: any, color: string = 'blue') => {
     if (!data || !Array.isArray(data) || data.length === 0) return <Text type="secondary" className="italic text-sm">ไม่ได้ระบุ</Text>;
     return (
       <div className="flex flex-wrap gap-2 mt-1">
         {data.map((item: string, index: number) => {
           let translated = item;
-          // แปลงค่าภาษาอังกฤษเป็นไทยให้สวยๆ
           const dictionary: Record<string, string> = {
             'GRINDING': 'เจียร / ตัด', 'ARC_WELDING': 'เชื่อมไฟฟ้า', 'GAS_WELDING': 'เชื่อมแก๊ส', 'DRILLING': 'เจาะ / ขุด',
             'HARD_HAT': 'หมวกนิรภัย', 'SAFETY_SHOES': 'รองเท้านิรภัย', 'WELDING_MASK': 'หน้ากากเชื่อม', 'WELDING_GLOVES': 'ถุงมือหนัง',
@@ -95,7 +92,7 @@ export default function PermitDetailModal({
           else translated = item.replace(/_/g, ' ');
 
           return (
-            <Tag key={index} color={color} className="rounded-md font-bold m-0 border border-opacity-30 shadow-sm text-[12px] px-2.5 py-0.5">
+            <Tag key={index} color={color} className="rounded-md font-bold m-0 border border-opacity-30 shadow-sm text-[12px] px-3 py-1 whitespace-normal print-tag">
               {translated}
             </Tag>
           );
@@ -109,14 +106,47 @@ export default function PermitDetailModal({
       title={null}
       open={open}
       onCancel={handleCloseModal}
-      width={900}
+      width={950}
       footer={null}
       centered
       destroyOnClose
       styles={{ body: { padding: 0, overflow: 'hidden', borderRadius: '1.5rem' } }}
     >
+      <style>{`
+        .print-tag {
+          white-space: normal !important;
+          word-break: keep-all !important;
+        }
+        @media print {
+          @page { size: A4 portrait; margin: 12mm; }
+          body * { visibility: hidden; }
+          .print-container, .print-container * {
+            visibility: visible;
+          }
+          .print-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            box-shadow: none !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-section {
+            page-break-inside: avoid;
+            margin-bottom: 20px !important;
+          }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
       {/* 🟢 Header Section */}
-      <div className="bg-slate-800 p-6 md:p-8 text-white rounded-t-[24px] relative overflow-hidden">
+      <div className="bg-slate-800 p-6 md:p-8 text-white rounded-t-[24px] relative overflow-hidden no-print">
         <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[80px]"></div>
         <div className="absolute bottom-[-20%] left-[-10%] w-[200px] h-[200px] bg-emerald-500/10 rounded-full blur-[60px]"></div>
         
@@ -127,7 +157,7 @@ export default function PermitDetailModal({
               {getStatusDisplay(permit.status)}
             </div>
             <Title level={3} className="!text-white m-0 !font-black tracking-tight leading-tight">{permit.title}</Title>
-            <Text className="text-slate-300 font-medium text-sm mt-1.5 block flex items-center gap-2">
+            <Text className="text-slate-300 font-medium text-sm mt-1.5 flex items-center gap-2">
               <FileTextOutlined /> เลขที่: <span className="text-white font-bold">{permit.permit_number}</span>
             </Text>
           </div>
@@ -137,46 +167,78 @@ export default function PermitDetailModal({
         </div>
       </div>
 
-      {/* 📃 Content Section (พื้นที่ที่จะปรินต์ลง PDF) */}
-      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar bg-slate-50">
-        <div ref={documentRef} className="p-6 md:p-8 bg-white print-container">
+      {/* 📃 Content Section */}
+      <div className="max-h-[70vh] overflow-y-auto custom-scrollbar bg-slate-50">
+        <div ref={documentRef} className="p-4 md:p-8 bg-white print-container">
           
+          <div className="hidden print:block text-center mb-6 border-b-2 border-slate-800 pb-4">
+            <h1 className="text-2xl font-black text-slate-800 m-0 uppercase tracking-widest">WORK PERMIT (ใบอนุญาตทำงาน)</h1>
+            <p className="text-sm font-bold text-slate-500 mt-1 mb-0">เลขที่อ้างอิง: {permit.permit_number}</p>
+          </div>
+
           {/* ส่วนที่ 1: ข้อมูลผู้ขออนุญาต & โครงการ */}
-          <div className="mb-6">
+          <div className="mb-6 print-section">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-lg">1</div>
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-lg print:border print:border-blue-500">1</div>
               <h3 className="m-0 font-black text-slate-800 text-lg">ข้อมูลผู้ขออนุญาตและโครงการ</h3>
             </div>
-            <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="bg-blue-50/30 rounded-xl overflow-hidden font-medium border border-blue-100" labelStyle={{ width: '35%', backgroundColor: 'rgba(239, 246, 255, 0.5)', fontWeight: 'bold', color: '#1e293b' }} contentStyle={{ backgroundColor: '#ffffff' }}>
-              <Descriptions.Item label={<><IdcardOutlined className="text-blue-500 mr-2"/>ผู้ขออนุญาต</>}>{permit.applicant?.full_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="เบอร์โทรติดต่อ">{permit.applicant_phone || '-'}</Descriptions.Item>
-              <Descriptions.Item label="บริษัทผู้รับเหมา">{permit.contractor_company || permit.applicant?.department || '-'}</Descriptions.Item>
-              <Descriptions.Item label="ผู้จัดการโครงการ">{permit.project_manager || '-'}</Descriptions.Item>
-              <Descriptions.Item label={<><EnvironmentOutlined className="text-rose-500 mr-2"/>สถานที่ปฏิบัติงาน</>} span={2}>
-                <span className="font-bold text-slate-800">{permit.location_detail}</span>
-              </Descriptions.Item>
-              <Descriptions.Item label={<><ClockCircleOutlined className="text-amber-500 mr-2"/>ระยะเวลา</>} span={2}>
-                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
-                  {dayjs(permit.start_time).format('DD/MM/BBBB HH:mm')} น. &nbsp;—&nbsp; {dayjs(permit.end_time).format('DD/MM/BBBB HH:mm')} น.
-                </span>
-              </Descriptions.Item>
-              <Descriptions.Item label="รายละเอียดงาน" span={2}>{permit.description || '-'}</Descriptions.Item>
-            </Descriptions>
+            
+            {/* 🟢 อัปเกรดเป็น Tailwind Grid 100% แก้ปัญหาตัวหนังสือแนวตั้ง */}
+            <div className="bg-blue-50/30 border border-blue-100 rounded-xl overflow-hidden shadow-sm print:border-slate-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-blue-100 print:divide-slate-300">
+                <div className="p-4 md:p-5">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้ขออนุญาต</Text>
+                  <div className="text-sm font-black text-slate-800">{permit.applicant?.full_name || '-'}</div>
+                </div>
+                <div className="p-4 md:p-5 bg-white">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">เบอร์โทรติดต่อ</Text>
+                  <div className="text-sm font-black text-slate-800">{permit.applicant_phone || '-'}</div>
+                </div>
+              </div>
+              <Divider className="m-0 border-blue-100 print:border-slate-300" />
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-blue-100 print:divide-slate-300">
+                <div className="p-4 md:p-5 bg-white">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">บริษัทผู้รับเหมา</Text>
+                  <div className="text-sm font-black text-slate-800">{permit.contractor_company || permit.applicant?.department || '-'}</div>
+                </div>
+                <div className="p-4 md:p-5">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้จัดการโครงการ</Text>
+                  <div className="text-sm font-black text-slate-800">{permit.project_manager || '-'}</div>
+                </div>
+              </div>
+              <Divider className="m-0 border-blue-100 print:border-slate-300" />
+              <div className="p-4 md:p-5">
+                <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1"><EnvironmentOutlined className="text-rose-500 mr-1"/> สถานที่ปฏิบัติงาน</Text>
+                <div className="text-sm md:text-base font-black text-slate-800">{permit.location_detail}</div>
+              </div>
+              <Divider className="m-0 border-blue-100 print:border-slate-300" />
+              <div className="p-4 md:p-5 bg-white">
+                <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1"><ClockCircleOutlined className="text-amber-500 mr-1"/> ระยะเวลาปฏิบัติงาน</Text>
+                <div className="text-sm font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg inline-block print:bg-transparent print:p-0">
+                  {dayjs(permit.start_time).format('DD/MM/YYYY HH:mm')} น. &nbsp;—&nbsp; {dayjs(permit.end_time).format('DD/MM/YYYY HH:mm')} น.
+                </div>
+              </div>
+              <Divider className="m-0 border-blue-100 print:border-slate-300" />
+              <div className="p-4 md:p-5">
+                <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">รายละเอียดงาน</Text>
+                <div className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{permit.description || '-'}</div>
+              </div>
+            </div>
           </div>
 
           {/* ส่วนที่ 2: รายชื่อผู้ปฏิบัติงาน */}
           {permit.workers && permit.workers.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-6 print-section">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-lg">2</div>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-lg print:border print:border-emerald-500">2</div>
                 <h3 className="m-0 font-black text-slate-800 text-lg">รายชื่อผู้ปฏิบัติงาน <span className="text-slate-500 font-medium text-sm">({permit.workers.length} คน)</span></h3>
               </div>
-              <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4">
+              <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-4 md:p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {permit.workers.map((w: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-emerald-100 shadow-sm">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">{i+1}</div>
-                      <span className="font-bold text-slate-700 text-sm truncate">{w.worker_name}</span>
+                    <div key={i} className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-emerald-100 shadow-sm print:shadow-none print:border-slate-300">
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold print:border print:border-emerald-400">{i+1}</div>
+                      <span className="font-bold text-slate-700 text-sm truncate print:whitespace-normal">{w.worker_name}</span>
                     </div>
                   ))}
                 </div>
@@ -185,62 +247,112 @@ export default function PermitDetailModal({
           )}
 
           {/* ส่วนที่ 3: มาตรการเฉพาะงาน (Hazard Details) */}
-          <div className="mb-6">
+          <div className="mb-6 print-section">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-black text-lg">3</div>
+              <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-black text-lg print:border print:border-rose-500">3</div>
               <h3 className="m-0 font-black text-slate-800 text-lg">มาตรการเฉพาะงาน (Hazard Details)</h3>
             </div>
             
-            <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="bg-rose-50/30 rounded-xl overflow-hidden font-medium border border-rose-100" labelStyle={{ width: '35%', backgroundColor: 'rgba(255, 241, 242, 0.5)', fontWeight: 'bold', color: '#1e293b' }} contentStyle={{ backgroundColor: '#ffffff' }}>
-              
-              {/* Dynamic Fields ตามประเภทงาน */}
-              {permit.contractor_supervisor && <Descriptions.Item label="หัวหน้างาน (ควบคุมหน้างาน)">{permit.contractor_supervisor}</Descriptions.Item>}
-              {permit.supervisor_name && <Descriptions.Item label="ผู้ควบคุมงานอับอากาศ">{permit.supervisor_name}</Descriptions.Item>}
-              {permit.gas_tester_name && <Descriptions.Item label="ผู้ตรวจวัดสภาพอากาศ">{permit.gas_tester_name}</Descriptions.Item>}
-              {permit.standby_person_name && <Descriptions.Item label="ผู้เฝ้าระวัง (Standby)">{permit.standby_person_name}</Descriptions.Item>}
-              {permit.rescuer_name && <Descriptions.Item label="ผู้ช่วยเหลือ (Rescuer)">{permit.rescuer_name}</Descriptions.Item>}
-              {permit.communication_method && <Descriptions.Item label="ช่องทางสื่อสารฉุกเฉิน">{permit.communication_method}</Descriptions.Item>}
-              {permit.height_level && <Descriptions.Item label="ระดับความสูง">{permit.height_level} เมตร</Descriptions.Item>}
-              
-              {permit.is_med_cert_verified !== undefined && permit.permit_type === 'CONFINED_SPACE' && (
-                <Descriptions.Item label="การตรวจสุขภาพ (Fit to Work)">
-                  {permit.is_med_cert_verified ? <Tag color="success" className="font-bold border-emerald-300"><CheckCircleOutlined /> ผ่านการตรวจแล้ว</Tag> : <Tag color="error">ยังไม่ตรวจ</Tag>}
-                </Descriptions.Item>
-              )}
-              
-              {/* แสดง JSON Checklists */}
+            <div className="bg-rose-50/30 border border-rose-100 rounded-xl overflow-hidden shadow-sm print:border-slate-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-rose-100 print:divide-slate-300">
+                {permit.contractor_supervisor && (
+                  <div className="p-4 md:p-5 bg-white">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">หัวหน้างาน</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.contractor_supervisor}</div>
+                  </div>
+                )}
+                {permit.supervisor_name && (
+                  <div className="p-4 md:p-5 bg-white">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้ควบคุมอับอากาศ</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.supervisor_name}</div>
+                  </div>
+                )}
+                {permit.gas_tester_name && (
+                  <div className="p-4 md:p-5">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้ตรวจวัดก๊าซ</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.gas_tester_name}</div>
+                  </div>
+                )}
+                {permit.standby_person_name && (
+                  <div className="p-4 md:p-5">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้เฝ้าระวัง</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.standby_person_name}</div>
+                  </div>
+                )}
+                {permit.rescuer_name && (
+                  <div className="p-4 md:p-5 bg-white">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ผู้ช่วยเหลือ</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.rescuer_name}</div>
+                  </div>
+                )}
+                {permit.communication_method && (
+                  <div className="p-4 md:p-5 bg-white">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">สื่อสารฉุกเฉิน</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.communication_method}</div>
+                  </div>
+                )}
+                {permit.height_level && (
+                  <div className="p-4 md:p-5">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">ระดับความสูง</Text>
+                    <div className="text-sm font-black text-slate-800">{permit.height_level} เมตร</div>
+                  </div>
+                )}
+                {permit.is_med_cert_verified !== undefined && permit.permit_type === 'CONFINED_SPACE' && (
+                  <div className="p-4 md:p-5">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-1">การตรวจสุขภาพ</Text>
+                    <div className="text-sm font-black text-slate-800">
+                      {permit.is_med_cert_verified ? <Tag color="success" className="font-bold border-emerald-300 print:text-emerald-700 print:bg-transparent print:border-none print:p-0"><CheckCircleOutlined /> ผ่านการตรวจแล้ว (Fit to Work)</Tag> : <Tag color="error">ยังไม่ตรวจ</Tag>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Checklists (ใช้พื้นที่เต็มแถว) */}
+              <Divider className="m-0 border-rose-100 print:border-slate-300" />
               {['HOT_WORK'].includes(permit.permit_type) && (
-                <Descriptions.Item label="ลักษณะงานย่อย" span={2}>{renderJsonList(permit.work_sub_type, 'orange')}</Descriptions.Item>
+                <div className="p-4 md:p-5 bg-white">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-2">ลักษณะงานย่อย</Text>
+                  {renderJsonList(permit.work_sub_type, 'orange')}
+                </div>
               )}
               {['WORKING_AT_HEIGHT'].includes(permit.permit_type) && (
-                <Descriptions.Item label="มาตรการความปลอดภัยที่เตรียมไว้" span={2}>{renderJsonList(permit.safety_measures, 'blue')}</Descriptions.Item>
+                <div className="p-4 md:p-5 bg-white">
+                  <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-2">มาตรการที่เตรียมไว้</Text>
+                  {renderJsonList(permit.safety_measures, 'blue')}
+                </div>
               )}
               {permit.permit_type !== 'COLD_WORK' && (
-                <Descriptions.Item label="PPE เฉพาะทางที่บังคับใช้" span={2}>{renderJsonList(permit.ppe_required, 'purple')}</Descriptions.Item>
+                <>
+                  <Divider className="m-0 border-rose-100 print:border-slate-300" />
+                  <div className="p-4 md:p-5">
+                    <Text type="secondary" className="text-[11px] font-bold uppercase tracking-widest block mb-2">PPE ที่บังคับใช้</Text>
+                    {renderJsonList(permit.ppe_required, 'purple')}
+                  </div>
+                </>
               )}
-            </Descriptions>
+            </div>
           </div>
 
           {/* ส่วนที่ 4: เอกสารแนบ LOTO และ ประวัติก๊าซ */}
           {permit.is_loto_required && (
-            <div className="mb-6">
+            <div className="mb-6 print-section">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-black text-sm"><LockOutlined /></div>
+                <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-black text-sm print:border print:border-purple-500"><LockOutlined /></div>
                 <h4 className="m-0 font-black text-slate-800 text-base">การตัดแยกพลังงาน (LOTO)</h4>
               </div>
-              <div className="bg-gradient-to-r from-purple-50 to-white border border-purple-200 rounded-xl p-4 shadow-sm">
-                <Row gutter={[16, 12]}>
+              <div className="bg-gradient-to-r from-purple-50 to-white border border-purple-200 rounded-xl p-5 shadow-sm print:bg-white print:shadow-none print:border-slate-300">
+                <Row gutter={[16, 16]}>
                   <Col xs={24} sm={8}>
-                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">จุดตัดแยก (Isolation Point)</Text><br/>
-                    <Text strong className="text-sm">{permit.loto_records?.[0]?.isolation_point || '-'}</Text>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70 print:text-slate-500 block mb-1">จุดตัดแยก (Isolation Point)</Text>
+                    <Text strong className="text-sm bg-white px-3 py-1 rounded-md border border-purple-100 print:border-none print:p-0">{permit.loto_records?.[0]?.isolation_point || '-'}</Text>
                   </Col>
                   <Col xs={24} sm={8}>
-                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">ประเภทพลังงาน</Text><br/>
-                    <Text strong className="text-sm">{permit.loto_records?.[0]?.energy_type || '-'}</Text>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70 print:text-slate-500 block mb-1">ประเภทพลังงาน</Text>
+                    <Text strong className="text-sm bg-white px-3 py-1 rounded-md border border-purple-100 print:border-none print:p-0">{permit.loto_records?.[0]?.energy_type || '-'}</Text>
                   </Col>
                   <Col xs={24} sm={8}>
-                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70">หมายเลขแม่กุญแจ (Lock No.)</Text><br/>
-                    <Text strong className="text-sm">{permit.loto_records?.[0]?.lock_number || '-'}</Text>
+                    <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest text-purple-600/70 print:text-slate-500 block mb-1">หมายเลขแม่กุญแจ (Lock No.)</Text>
+                    <Text strong className="text-sm bg-white px-3 py-1 rounded-md border border-purple-100 print:border-none print:p-0">{permit.loto_records?.[0]?.lock_number || '-'}</Text>
                   </Col>
                 </Row>
               </div>
@@ -248,20 +360,20 @@ export default function PermitDetailModal({
           )}
 
           {gasLogs && gasLogs.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-6 print-section">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-sm"><DashboardOutlined /></div>
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-sm print:border print:border-emerald-500"><DashboardOutlined /></div>
                 <h4 className="m-0 font-black text-slate-800 text-base">ประวัติวัดสภาพอากาศ (Gas Tests)</h4>
               </div>
-              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4">
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 print:bg-white print:border-slate-300">
                 {gasLogs.map((log: any, idx: number) => (
-                  <div key={idx} className="flex flex-wrap items-center justify-between border-b border-emerald-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-3">
-                    <Text className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><ClockCircleOutlined className="text-emerald-500" /> {dayjs(log.recorded_at).format('DD/MM/BBBB HH:mm')}</Text>
+                  <div key={idx} className="flex flex-wrap items-center justify-between border-b border-emerald-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-3 print:border-slate-300">
+                    <Text className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><ClockCircleOutlined className="text-emerald-500" /> {dayjs(log.recorded_at).format('DD/MM/YYYY HH:mm')}</Text>
                     <Space size="small" wrap>
-                      <Tag color={log.o2_level >= 19.5 && log.o2_level <= 23.5 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">O2: {log.o2_level}%</Tag>
-                      <Tag color={log.lel_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">LEL: {log.lel_level}%</Tag>
-                      <Tag color={log.co_level < 25 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">CO: {log.co_level || 0}</Tag>
-                      <Tag color={log.h2s_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm">H2S: {log.h2s_level || 0}</Tag>
+                      <Tag color={log.o2_level >= 19.5 && log.o2_level <= 23.5 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm print:border-slate-400 print:text-slate-800">O2: {log.o2_level}%</Tag>
+                      <Tag color={log.lel_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm print:border-slate-400 print:text-slate-800">LEL: {log.lel_level}%</Tag>
+                      <Tag color={log.co_level < 25 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm print:border-slate-400 print:text-slate-800">CO: {log.co_level || 0}</Tag>
+                      <Tag color={log.h2s_level < 10 ? 'success' : 'error'} className="m-0 font-bold border-transparent shadow-sm print:border-slate-400 print:text-slate-800">H2S: {log.h2s_level || 0}</Tag>
                     </Space>
                   </div>
                 ))}
@@ -269,16 +381,15 @@ export default function PermitDetailModal({
             </div>
           )}
 
-          {/* ส่วนที่ 5: ประวัติการต่อเวลา (ถ้ามี) */}
           {permit.extensions && permit.extensions.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-6 print-section">
               <Divider orientation="left" className="m-0 mb-4 border-slate-200"><span className="font-black text-indigo-700 text-lg">ประวัติการขอต่อเวลา (Extensions)</span></Divider>
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 print:bg-white print:border-slate-300">
                 {permit.extensions.map((ext: any, idx: number) => (
-                  <div key={idx} className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-indigo-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-2">
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-indigo-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 gap-2 print:border-slate-300">
                     <div>
-                      <Text className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1">ครั้งที่ {idx + 1} | วันที่ขอ: {dayjs(ext.request_date).format('DD/MM/BB')}</Text>
-                      <Text strong className="text-indigo-900 text-sm block">ขยายเวลาสิ้นสุดถึง: <span className="bg-indigo-100 px-2 py-0.5 rounded text-indigo-700">{dayjs(ext.new_end_time).format('DD/MM/BBBB HH:mm น.')}</span></Text>
+                      <Text className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1 print:text-slate-500">ครั้งที่ {idx + 1} | วันที่ขอ: {dayjs(ext.request_date).format('DD/MM/YYYY')}</Text>
+                      <Text strong className="text-indigo-900 text-sm block print:text-slate-800">ขยายเวลาสิ้นสุดถึง: <span className="bg-indigo-100 px-2 py-0.5 rounded text-indigo-700 print:bg-transparent print:px-0">{dayjs(ext.new_end_time).format('DD/MM/YYYY HH:mm น.')}</span></Text>
                       <Text type="secondary" className="text-xs mt-1 block">เหตุผล: {ext.action_details}</Text>
                     </div>
                   </div>
@@ -287,11 +398,10 @@ export default function PermitDetailModal({
             </div>
           )}
           
-          {/* ข้อมูลเอกสารแนบ JSA */}
           {permit.attached_file && (
-             <div className="mt-6 p-4 border border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-white flex items-center justify-between shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => window.open(permit.attached_file, '_blank')}>
+             <div className="no-print mt-6 p-4 border border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-white flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm hover:shadow-md transition-all cursor-pointer gap-4" onClick={() => window.open(permit.attached_file, '_blank')}>
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                     <FileTextOutlined className="text-xl text-blue-600" />
                   </div>
                   <div>
@@ -299,16 +409,16 @@ export default function PermitDetailModal({
                     <Text type="secondary" className="text-[11px] font-bold">คลิกที่นี่เพื่อเปิดดูเอกสารฉบับเต็ม</Text>
                   </div>
                 </div>
-                <Button type="link" className="font-bold text-blue-600 px-0">ดูเอกสาร</Button>
+                <Button type="link" className="font-bold text-blue-600 px-0 w-full sm:w-auto text-left sm:text-right">เปิดดูเอกสาร</Button>
              </div>
           )}
 
         </div>
       </div>
 
-      {/* ⚡ Action Form (ซ่อน/โชว์ตามปุ่มที่กด) */}
+      {/* ⚡ Action Form */}
       {actionType !== 'NONE' && (
-        <div className="bg-slate-100 p-6 border-t border-slate-200 animate-fade-in shadow-[inset_0_4px_10px_rgba(0,0,0,0.02)]">
+        <div className="bg-slate-100 p-6 border-t border-slate-200 animate-fade-in shadow-[inset_0_4px_10px_rgba(0,0,0,0.02)] no-print">
           <Form form={form} layout="vertical">
             
             {actionType === 'EXTEND' && (
@@ -338,7 +448,7 @@ export default function PermitDetailModal({
             
             <div className="flex justify-end gap-3 mt-6">
               <Button onClick={() => setActionType('NONE')} className="rounded-xl font-bold h-11 px-6 text-slate-500 hover:bg-slate-200 border-transparent bg-slate-200/50">ยกเลิก</Button>
-              <Button type="primary" onClick={handleActionSubmit} loading={isSubmitting} className={`rounded-xl font-black h-11 px-8 ${actionType === 'REJECT' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'} shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-transform hover:scale-105`}>
+              <Button type="primary" onClick={handleActionSubmit} loading={isSubmitting} className={`rounded-xl font-black h-11 px-8 w-full sm:w-auto ${actionType === 'REJECT' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'} shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-transform hover:scale-105`}>
                 ยืนยันการทำรายการ
               </Button>
             </div>
@@ -346,31 +456,28 @@ export default function PermitDetailModal({
         </div>
       )}
 
-      {/* 🕹️ Footer Action Buttons */}
       {actionType === 'NONE' && (
-        <div className="bg-white p-5 md:px-8 border-t border-slate-100 rounded-b-[24px] flex flex-wrap items-center justify-between gap-4">
-          <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Ref: {permit.id.substring(0,8)}</Text>
+        <div className="bg-white p-5 md:px-8 border-t border-slate-100 rounded-b-[24px] flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+          <Text type="secondary" className="text-[10px] font-black uppercase tracking-widest bg-slate-100 px-2 py-1 rounded w-full sm:w-auto text-center sm:text-left">Ref: {permit.id.substring(0,8)}</Text>
           
-          <Space wrap className="justify-end w-full sm:w-auto">
-            {/* ฝั่งผู้รับเหมา: ขอต่ออายุ หรือ ขอปิดงาน */}
+          <Space wrap className="justify-center sm:justify-end w-full sm:w-auto">
             {canExtendOrClose && (
               <>
-                <Button icon={<ClockCircleOutlined />} onClick={() => setActionType('EXTEND')} className="h-11 rounded-xl font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm">
-                  ขอต่อเวลา (Extend)
+                <Button icon={<ClockCircleOutlined />} onClick={() => setActionType('EXTEND')} className="h-11 rounded-xl font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm w-full sm:w-auto">
+                  ขอต่อเวลา
                 </Button>
-                <Button icon={<LockOutlined />} onClick={() => setActionType('CLOSE')} className="h-11 rounded-xl font-black text-slate-700 border-slate-300 hover:bg-slate-100 shadow-sm transition-all hover:border-slate-400">
-                  ขอปิดใบอนุญาต (Close)
+                <Button icon={<LockOutlined />} onClick={() => setActionType('CLOSE')} className="h-11 rounded-xl font-black text-slate-700 border-slate-300 hover:bg-slate-100 shadow-sm transition-all hover:border-slate-400 w-full sm:w-auto">
+                  ขอปิดใบอนุญาต
                 </Button>
               </>
             )}
 
-            {/* ฝั่ง Safety/Owner: อนุมัติ หรือ ไม่อนุมัติ */}
             {canApprove && (
               <>
-                <Button icon={<CloseCircleOutlined />} onClick={() => setActionType('REJECT')} className="h-11 rounded-xl font-bold text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm">
+                <Button icon={<CloseCircleOutlined />} onClick={() => setActionType('REJECT')} className="h-11 rounded-xl font-bold text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm w-full sm:w-auto">
                   ไม่อนุมัติ (Reject)
                 </Button>
-                <Button type="primary" icon={<SafetyOutlined />} onClick={() => setActionType('APPROVE')} className="h-11 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 px-8 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-105">
+                <Button type="primary" icon={<SafetyOutlined />} onClick={() => setActionType('APPROVE')} className="h-11 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 px-8 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-105 w-full sm:w-auto">
                   ตรวจสอบและอนุมัติ
                 </Button>
               </>
