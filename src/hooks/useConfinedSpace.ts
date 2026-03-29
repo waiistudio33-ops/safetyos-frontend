@@ -27,12 +27,21 @@ export function useConfinedSpace(currentUser: any) {
     } catch (error) {} 
   }, [selectedConfinedPermit, fetchEntries]);
 
-  const handleCheckIn = async (values: any) => { 
-    try { 
-      await axios.post(`${API_URL}/confined-space/in`, { ...values, permit_id: selectedConfinedPermit }); 
-      fetchEntries(selectedConfinedPermit!); 
-      await supabase.channel('safety-alert-channel').send({ type: 'broadcast', event: 'CONFINED_SPACE_UPDATE', payload: { permit_id: selectedConfinedPermit } }); 
-    } catch (error) {} 
+  const handleCheckIn = async (workerName: string, role: string = 'ENTRANT') => { // 🟢 เพิ่มรับค่า role
+    if (!selectedConfinedPermit) return;
+    try {
+      await axios.post(`${API_URL}/confined-space/in`, {
+        permit_id: selectedConfinedPermit,
+        worker_name: workerName,
+        time_in: new Date().toISOString(),
+        status: 'INSIDE',
+        role: role // 🟢 ส่ง role ไปด้วย!
+      });
+      message.success(`บันทึก ${workerName} เข้าสู่พื้นที่แล้ว`);
+      fetchEntries(selectedConfinedPermit);
+    } catch (error) {
+      message.error('เช็คอินไม่สำเร็จ');
+    }
   };
   
   const handleCheckOut = async (entryId: string) => { 

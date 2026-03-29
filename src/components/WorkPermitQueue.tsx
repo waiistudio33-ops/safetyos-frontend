@@ -303,18 +303,18 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             },
             showSizeChanger: true, 
             pageSizeOptions: ['10', '20', '50'],
-            showTotal: (total, range) => <span className="font-bold text-slate-500">แสดงผล {range[0]}-{range[1]} จาก <span className="text-blue-600">{total}</span> รายการ</span>,
+            showTotal: (total, range) => <span className="font-bold text-slate-500 text-xs sm:text-sm">แสดงผล {range[0]}-{range[1]} จากทั้งหมด <span className="text-blue-600">{total}</span> รายการ</span>,
             className: "modern-pagination px-4 pb-4" 
           }} 
-          size="middle" 
-          scroll={{ x: 1100 }} 
+          size="small" // 🟢 เปลี่ยนจาก middle เป็น small ให้พอดีจอมือถือมากขึ้น 
+          scroll={{ x: 1000 }} // 🟢 ลดความกว้างแนวนอนที่บังคับ scroll
           rowKey="id"
           className="modern-expanded-table"
           expandable={{
             expandedRowRender: (record) => {
               if (!record) return null; 
               return (
-              <div className="p-6 md:p-8 bg-[#f8fafc] rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner animate-[slideDown_0.3s_ease-out_forwards] origin-top">
+              <div className="p-4 md:p-8 bg-[#f8fafc] rounded-2xl md:rounded-[2rem] border border-slate-200/60 m-1 md:m-4 shadow-inner animate-[slideDown_0.3s_ease-out_forwards] origin-top">
                  <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-3">
                    <InfoCircleOutlined className="text-blue-500" /> ข้อมูลใบอนุญาตเชิงลึก (Deep Details)
                  </h4>
@@ -582,25 +582,38 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         @media (max-width: 640px) {
           .modern-pagination.ant-pagination {
             display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            gap: 16px !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            gap: 12px !important;
+            padding: 16px 8px !important;
           }
+          
+          /* ดันข้อความแสดงผลขึ้นไปไว้บนสุด แล้วจัดให้อยู่ตรงกลาง */
           .modern-pagination .ant-pagination-total-text {
-            margin: 0 !important;
-            order: -1 !important; /* ดันข้อความ "แสดงผล..." ขึ้นไปอยู่บนสุด */
+            width: 100% !important;
+            text-align: center !important;
+            margin-right: 0 !important;
+            margin-bottom: 4px !important;
+            order: -1 !important;
             background: #f8fafc;
-            padding: 8px 16px;
+            padding: 8px;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            width: 100%;
-            text-align: center;
           }
+          
+          /* จัดปุ่มหมายเลขหน้าและปุ่มลูกศรให้อยู่ตรงกลาง */
+          .modern-pagination .ant-pagination-prev,
+          .modern-pagination .ant-pagination-next,
+          .modern-pagination .ant-pagination-item {
+            margin: 0 4px !important;
+          }
+          
+          /* ดันปุ่ม Dropdown (10 / page) ลงไปอยู่ล่างสุด */
           .modern-pagination .ant-pagination-options {
-            margin: 0 !important;
-            width: 100%;
-            display: flex;
-            justify-content: center;
+            width: 100% !important;
+            text-align: center !important;
+            margin-left: 0 !important;
+            margin-top: 4px !important;
           }
         }
       `}</style>
