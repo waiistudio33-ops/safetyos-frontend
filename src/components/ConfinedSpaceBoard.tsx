@@ -1,288 +1,228 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Form, Input, Select, Popconfirm, Badge, Avatar, Button } from 'antd'; // 🟢 คืนค่า Button กลับมาแล้วครับ
-import { 
-  AlertOutlined, UserOutlined, LoginOutlined, SafetyCertificateOutlined, 
-  EyeOutlined, WarningOutlined, FieldTimeOutlined, CheckCircleOutlined,
-  LogoutOutlined, EnvironmentOutlined, BuildOutlined
-} from '@ant-design/icons';
+import { Select, Button, Row, Col, Badge, Avatar, Popconfirm, Empty, Tag } from 'antd';
+import { SafetyOutlined, WarningOutlined, UserOutlined, LoginOutlined, LogoutOutlined, AlertOutlined, ClockCircleOutlined, BuildOutlined, DashboardOutlined, FieldTimeOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-export default function ConfinedSpaceBoard({ 
-  activePermits, selectedPermit, onSelectPermit, entries, onCheckIn, onCheckOut, onEvacuate, currentUser, isMobile, glassPanel 
-}: any) {
+export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSelectPermit, entries, onCheckIn, onCheckOut, onEvacuate, currentUser, isMobile, glassPanel }: any) {
   
-  const [form] = Form.useForm();
-  
-  const [currentTime, setCurrentTime] = useState(dayjs());
-
+  // 🟢 1. สร้างนาฬิกาให้กระดานอัปเดตตัวเองทุกๆ 1 นาที
+  const [now, setNow] = useState(dayjs());
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(dayjs());
-    }, 60000);
+    const timer = setInterval(() => setNow(dayjs()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleFinish = (values: any) => {
-    onCheckIn(values);
-    form.resetFields();
-  };
+  const currentPermitData = activePermits.find((p: any) => p.id === selectedPermit);
+  const activeInside = entries.filter((e: any) => e.status === 'INSIDE');
+  const allWorkers = currentPermitData?.workers || [];
+
+  // 🟢 2. คำนวณเวลาการวัดก๊าซล่าสุด
+  const lastGasTest = currentPermitData?.gas_logs?.[0];
+  const minutesSinceTest = lastGasTest ? now.diff(dayjs(lastGasTest.recorded_at), 'minute') : 0;
+  const isGasTestOverdue = !lastGasTest || minutesSinceTest >= 60; // 🚨 ถ้าเกิน 60 นาที = ต้องวัดใหม่!
 
   return (
-    <Row gutter={[16, 16]}>
-      {/* 🟢 คอลัมน์ซ้าย: เลือกรายการ Permit */}
-      <Col xs={24} lg={8}> 
-        <Card 
-          title={
-            <div className="flex items-center gap-2">
-              <EnvironmentOutlined className="text-blue-500" />
-              <b className="text-slate-800 text-base md:text-lg">เลือกพื้นที่ปฏิบัติงาน</b>
-            </div>
-          } 
-          bordered={false} 
-          style={glassPanel} 
-          className="h-full shadow-sm rounded-2xl overflow-hidden"
-          styles={{ body: { padding: '12px' } }}
-        >
-          {activePermits.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 opacity-60">
-              <BuildOutlined className="text-4xl text-slate-300 mb-2" />
-              <span className="text-slate-500 font-medium">ไม่มีงานที่อับอากาศขณะนี้</span>
+    <div style={glassPanel} className="p-4 md:p-8 min-h-[65vh] flex flex-col relative overflow-hidden">
+      {/* Background Graphic */}
+      <div className="absolute top-[-10%] right-[-5%] w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-4 relative z-10">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-800 m-0 flex items-center gap-3">
+            <div className="bg-purple-100 text-purple-600 p-2 rounded-xl shadow-inner"><BuildOutlined /></div>
+            Confined Space Board
+          </h2>
+          <p className="text-slate-500 font-medium text-xs md:text-sm mt-1 mb-0">กระดานควบคุมยอดผู้ปฏิบัติงานในที่อับอากาศ</p>
+        </div>
+
+        {activePermits.length > 0 && (
+          <div className="w-full sm:w-[300px]">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">เลือกใบอนุญาต (Active Permits)</span>
+            <Select
+              size="large"
+              className="w-full font-bold shadow-sm"
+              value={selectedPermit}
+              onChange={onSelectPermit}
+              options={activePermits.map((p: any) => ({
+                label: `${p.permit_number} - ${p.location_detail}`,
+                value: p.id
+              }))}
+            />
+          </div>
+        )}
+      </div>
+
+      {!selectedPermit || activePermits.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center relative z-10">
+          <Empty 
+            image={<BuildOutlined style={{ fontSize: 64, color: '#cbd5e1' }} />}
+            description={<span className="text-slate-400 font-bold">ไม่มีงานอับอากาศที่กำลังดำเนินการอยู่</span>}
+          />
+        </div>
+      ) : (
+        <div className="relative z-10">
+          
+          {/* 🚨 3. แบนเนอร์เตือนวัดก๊าซ (Periodic Test Alert) */}
+          {isGasTestOverdue ? (
+            <div className="bg-rose-500 text-white p-4 rounded-2xl mb-6 flex items-center justify-between shadow-lg animate-pulse">
+              <div className="flex items-center gap-3">
+                <WarningOutlined className="text-3xl" />
+                <div>
+                  <div className="font-black text-base">เลยกำหนดเวลาตรวจวัดสภาพอากาศ!</div>
+                  <div className="text-xs font-medium mt-0.5">กรุณาทำการตรวจก๊าซ (Periodic Test) ที่หน้า E-Permit ทันที ระบบได้ล็อกการนำคนเข้าพื้นที่แล้ว</div>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {activePermits.map((p: any) => {
-                const isSelected = selectedPermit === p.id;
-                return (
-                  <div 
-                    key={p.id} 
-                    onClick={() => onSelectPermit(p.id)}
-                    className={`
-                      relative cursor-pointer rounded-2xl p-4 transition-all duration-300 ease-in-out border-2 active:scale-[0.98]
-                      ${isSelected 
-                        ? 'bg-blue-50 border-blue-500 shadow-md shadow-blue-500/20' 
-                        : 'bg-white border-slate-100 hover:border-blue-300 hover:bg-slate-50 hover:shadow-sm'
-                      }
-                    `}
-                  >
-                    {/* จุดสีน้ำเงินกระพริบ แสดงสถานะว่ากำลังดูรายการนี้อยู่ */}
-                    {isSelected && (
-                      <div className="absolute top-4 right-4 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-1 pr-6">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg flex items-center justify-center ${isSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                          <BuildOutlined className="text-sm" />
-                        </div>
-                        <span className={`font-mono font-extrabold text-sm md:text-base ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>
-                          {p.permit_number}
-                        </span>
-                      </div>
-                      <div className={`text-xs md:text-sm font-medium leading-relaxed mt-1 line-clamp-2 ${isSelected ? 'text-blue-600' : 'text-slate-500'}`}>
-                        <EnvironmentOutlined className="mr-1 opacity-70" />
-                        {p.location_detail}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="bg-cyan-50 border border-cyan-200 text-cyan-700 p-3 rounded-2xl mb-6 flex items-center gap-3 shadow-sm">
+              <DashboardOutlined className="text-2xl" />
+              <div>
+                <div className="font-black text-sm">สถานะอากาศปลอดภัย</div>
+                <div className="text-xs font-bold mt-0.5">ตรวจวัดครั้งล่าสุดเมื่อ: {minutesSinceTest} นาทีที่แล้ว (อัปเดตโดย {lastGasTest?.inspector_name})</div>
+              </div>
             </div>
           )}
-        </Card>
-      </Col>
 
-      {/* 🟢 คอลัมน์ขวา: บอร์ดเช็คชื่อ */}
-      <Col xs={24} lg={16}> 
-        <Card 
-          title={
-            <div className="flex justify-between items-center flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <SafetyCertificateOutlined className="text-emerald-500 text-xl" />
-                <b className="text-slate-800 text-base md:text-lg">บอร์ดควบคุมคนเข้า-ออก (Access Board)</b>
-              </div>
-              {selectedPermit && (
-                <Popconfirm 
-                  title={<span className="font-bold text-red-600">ยืนยันการสั่งอพยพฉุกเฉิน?</span>}
-                  description="ระบบจะส่งแจ้งเตือนและบันทึกเวลาอพยพทันที"
-                  onConfirm={onEvacuate} 
-                  okText="ยืนยัน อพยพ!" 
-                  okButtonProps={{ danger: true, className: "font-bold rounded-lg" }} 
-                  cancelText="ยกเลิก"
-                  cancelButtonProps={{ className: "rounded-lg" }}
-                >
-                  <button className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl font-bold text-xs md:text-sm shadow-lg shadow-red-500/30 animate-pulse transition-colors">
-                    <AlertOutlined /> อพยพฉุกเฉิน
-                  </button>
-                </Popconfirm>
-              )}
-            </div>
-          } 
-          bordered={false} 
-          style={glassPanel} 
-          className="min-h-[500px] shadow-sm rounded-2xl"
-          styles={{ body: { padding: isMobile ? '16px' : '24px' } }}
-        >
-          {selectedPermit ? (
-            <>
-              {/* ฟอร์มลงทะเบียนเข้าพื้นที่ */}
-              <div className="bg-slate-50 p-4 md:p-5 rounded-2xl border border-slate-200 mb-6">
-                <div className="text-slate-700 font-bold mb-3 flex items-center gap-2 text-sm">
-                  <LoginOutlined className="text-blue-500" /> ลงทะเบียนเข้าพื้นที่
+          <Row gutter={[24, 24]}>
+            {/* ซ้าย: รอสแตนด์บาย */}
+            <Col xs={24} lg={12}>
+              <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white shadow-sm h-full">
+                <h3 className="font-black text-slate-700 text-lg flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                  <UserOutlined className="text-blue-500" /> รอสแตนด์บายด้านนอก 
+                  <Tag color="blue" className="ml-auto rounded-full px-3">{allWorkers.length - activeInside.length} คน</Tag>
+                </h3>
+                
+                <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+                  {allWorkers.length === 0 && <span className="text-slate-400 text-sm font-medium">ไม่มีรายชื่อผู้ปฏิบัติงานในใบอนุญาตนี้</span>}
+                  
+                  {allWorkers.map((worker: any) => {
+                    const isInside = activeInside.find((e: any) => e.worker_name === worker.worker_name);
+                    if (isInside) return null; 
+
+                    return (
+                      <div key={worker.id} className={`border p-3 rounded-2xl flex items-center justify-between transition-colors ${isGasTestOverdue ? 'bg-slate-100 border-slate-200 opacity-60' : 'bg-slate-50 border-slate-200 hover:border-blue-300'}`}>
+                        <div className="flex items-center gap-3">
+                          <Avatar icon={<UserOutlined />} className="bg-slate-200 text-slate-500" />
+                          <span className={`font-bold ${isGasTestOverdue ? 'text-slate-500' : 'text-slate-700'}`}>{worker.worker_name}</span>
+                        </div>
+                        
+                        {/* 🚨 ล็อกปุ่มถ้าวัดก๊าซหมดอายุ! */}
+                        <Button 
+                          type="primary" 
+                          icon={isGasTestOverdue ? <WarningOutlined /> : <LoginOutlined />} 
+                          onClick={() => onCheckIn(worker.worker_name)}
+                          disabled={isGasTestOverdue}
+                          className={`font-bold rounded-xl shadow-sm ${isGasTestOverdue ? '!bg-slate-300 !text-slate-500 border-none' : 'bg-blue-600 hover:bg-blue-700 shadow-[0_4px_12px_rgba(37,99,235,0.2)]'}`}
+                        >
+                          {isGasTestOverdue ? 'รอผลก๊าซ' : 'เข้าพื้นที่'}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <Form form={form} layout={isMobile ? "vertical" : "inline"} onFinish={handleFinish} className="flex flex-wrap gap-3">
-                  <Form.Item name="worker_name" rules={[{ required: true, message: 'กรุณากรอกชื่อ' }]} className={`m-0 ${isMobile ? 'w-full' : 'flex-1'}`}>
-                    <Input size="large" placeholder="ชื่อ-นามสกุล ผู้ปฏิบัติงาน" prefix={<UserOutlined className="text-slate-400 mr-1" />} className="rounded-xl" />
-                  </Form.Item>
-                  <Form.Item name="role" rules={[{ required: true, message: 'กรุณาเลือกหน้าที่' }]} className={`m-0 ${isMobile ? 'w-full' : 'w-[180px]'}`}>
-                    <Select size="large" placeholder="-- เลือกหน้าที่ --" className="w-full">
-                      <Select.Option value="ENTRANT">👷 ผู้ปฏิบัติงาน (Entrant)</Select.Option>
-                      <Select.Option value="STANDBY">👁️ ผู้เฝ้าระวัง (Standby)</Select.Option>
-                    </Select>
-                  </Form.Item>
-                  <Form.Item className="m-0 w-full md:w-auto mt-2 md:mt-0">
-                    <Button size="large" type="primary" htmlType="submit" block={isMobile} className="bg-blue-600 hover:bg-blue-700 rounded-xl font-bold shadow-md shadow-blue-500/20 border-none h-10 px-6">
-                      เพิ่มรายชื่อ
-                    </Button>
-                  </Form.Item>
-                </Form>
               </div>
+            </Col>
 
-              {/* เส้นแบ่งสถานะ */}
-              <div className="flex items-center gap-4 mb-4">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">สถานะปัจจุบัน (Real-time)</span>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              
-              <Row gutter={[16, 16]}>
-                {/* 👁️ โซนผู้เฝ้าระวัง */}
-                <Col span={24}>
-                  <div className="bg-white border-2 border-blue-200 rounded-2xl overflow-hidden">
-                    <div className="bg-blue-50/80 px-4 py-2 border-b border-blue-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-blue-800 font-bold text-sm">
-                        <EyeOutlined className="text-blue-500 text-lg" /> ผู้เฝ้าระวังปากบ่อ (Standby Person)
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      {entries.filter((e: any) => e.status === 'INSIDE' && e.role === 'STANDBY').length === 0 ? (
-                        <div className="text-center py-2">
-                          <span className="text-amber-500 font-bold text-xs bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 flex items-center justify-center gap-1 w-fit mx-auto">
-                            <WarningOutlined /> ไม่มีผู้เฝ้าระวัง (ไม่อนุญาตให้เริ่มงาน)
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2 flex-wrap">
-                          {entries.filter((e: any) => e.status === 'INSIDE' && e.role === 'STANDBY').map((e: any) => (
-                            <div key={e.id} className="bg-white border border-blue-200 shadow-sm rounded-xl pl-1.5 pr-1 py-1 flex items-center gap-2">
-                              <Avatar size="small" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
-                              <span className="font-bold text-slate-700 text-sm pb-0.5">{e.worker_name}</span>
-                              <button onClick={() => onCheckOut(e.id)} className="bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ml-1">
-                                ลงชื่อออก
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Col>
-
+            {/* ขวา: โซนปฏิบัติงาน และ ประวัติการออก */}
+            <Col xs={24} lg={12}>
+              <div className="flex flex-col gap-6 h-full">
+                
                 {/* 👷 โซนคนอยู่ในบ่อ */}
-                <Col xs={24} sm={12}>
-                  <div className="bg-white border-2 border-amber-200 rounded-2xl overflow-hidden h-full">
-                    <div className="bg-amber-50/80 px-4 py-2 border-b border-amber-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
-                        <WarningOutlined className="text-amber-500 text-lg" /> กำลังปฏิบัติงาน (Entrants)
-                      </div>
-                      <Badge count={entries.filter((e: any) => e.status === 'INSIDE' && e.role === 'ENTRANT').length} showZero color="#f59e0b" />
-                    </div>
-                    <div className="p-3 bg-slate-50/50 min-h-[150px]">
-                      {entries.filter((e: any) => e.status === 'INSIDE' && e.role === 'ENTRANT').length === 0 ? (
-                        <div className="text-center py-6 text-slate-400 font-medium text-sm">ไม่มีผู้ปฏิบัติงานด้านใน</div>
-                      ) : (
-                        <div className="flex flex-col gap-2.5">
-                          {entries.filter((e: any) => e.status === 'INSIDE' && e.role === 'ENTRANT').map((e: any) => {
-                            const minsInside = currentTime.diff(dayjs(e.time_in), 'minute');
-                            const isWarning = minsInside >= 60; // แจ้งเตือนถ้าอยู่เกิน 1 ชม.
-                            
-                            return (
-                              <div key={e.id} className={`relative overflow-hidden rounded-xl border p-3 flex justify-between items-center shadow-sm transition-all ${isWarning ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'}`}>
-                                {/* แถบสีด้านซ้าย */}
-                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isWarning ? 'bg-red-500' : 'bg-amber-400'}`}></div>
-                                
-                                <div className="pl-3">
-                                  <div className="font-bold text-slate-800 text-sm leading-tight">{e.worker_name}</div>
-                                  <div className="text-[10px] font-semibold text-slate-500 mt-1">
-                                    เข้า: <span className="text-slate-700">{dayjs(e.time_in).format('HH:mm')}</span>
-                                  </div>
-                                </div>
+                <div className="bg-rose-50/50 backdrop-blur-md rounded-3xl p-5 border border-rose-100 shadow-[inset_0_4px_20px_rgba(225,29,72,0.02)] relative overflow-hidden flex-1">
+                  <div className="flex justify-between items-center mb-4 border-b border-rose-200/50 pb-3 relative z-10">
+                    <h3 className="font-black text-rose-700 text-lg flex items-center gap-2 m-0">
+                      <WarningOutlined className="animate-pulse" /> กำลังปฏิบัติงานด้านใน
+                      <Badge count={activeInside.length} showZero color="#e11d48" className="ml-2" />
+                    </h3>
+                    
+                    {activeInside.length > 0 && (
+                      <Popconfirm title="ยืนยันการสั่งอพยพ?" description="กดปุ่มนี้เมื่อเกิดเหตุฉุกเฉินเท่านั้น ระบบจะบันทึกว่าทุกคนออกมาแล้ว" onConfirm={onEvacuate} okText="สั่งอพยพ!" okButtonProps={{ danger: true }} cancelText="ยกเลิก">
+                        <Button danger type="primary" icon={<AlertOutlined />} className="font-black rounded-xl shadow-[0_4px_12px_rgba(225,29,72,0.3)] animate-bounce">
+                          อพยพฉุกเฉิน
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </div>
 
-                                <div className="flex flex-col items-end gap-1">
-                                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold border ${isWarning ? 'bg-red-100 text-red-700 border-red-200 animate-pulse' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
-                                    <FieldTimeOutlined /> {minsInside} นาที
-                                  </div>
-                                  <button onClick={() => onCheckOut(e.id)} className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors shadow-md mt-0.5">
-                                    นำตัวขึ้น (Out)
-                                  </button>
+                  <div className="flex flex-col gap-3 max-h-[35vh] overflow-y-auto custom-scrollbar pr-2 relative z-10">
+                    {activeInside.length === 0 ? (
+                      <div className="text-center py-8 opacity-60">
+                        <SafetyOutlined className="text-4xl text-emerald-500 mb-2" />
+                        <p className="font-bold text-slate-500 m-0">พื้นที่ปลอดภัย ไม่มีคนอยู่ด้านใน</p>
+                      </div>
+                    ) : (
+                      activeInside.map((e: any) => {
+                        const minsInside = now.diff(dayjs(e.time_in), 'minute');
+                        const isWarning = minsInside >= 60; // แจ้งเตือนถ้าคนคนนี้แช่เกิน 1 ชม.
+                        
+                        return (
+                          <div key={e.id} className={`relative overflow-hidden rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-all ${isWarning ? 'bg-red-50 border-red-300' : 'bg-white border-rose-200'}`}>
+                            {/* แถบสีด้านซ้าย */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isWarning ? 'bg-red-500' : 'bg-amber-400'}`}></div>
+                            
+                            <div className="flex items-center gap-3 pl-2">
+                              <Avatar icon={<UserOutlined />} className="bg-rose-100 text-rose-600 border border-rose-200" />
+                              <div>
+                                <div className="font-black text-slate-800 text-sm leading-tight">{e.worker_name}</div>
+                                <div className="text-[10px] font-bold text-rose-500 flex items-center gap-1 mt-0.5">
+                                  <ClockCircleOutlined /> เข้าเมื่อ: {dayjs(e.time_in).format('HH:mm')}
                                 </div>
                               </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
+                            </div>
+
+                            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between gap-2">
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold border ${isWarning ? 'bg-red-100 text-red-700 border-red-200 animate-pulse' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                                <FieldTimeOutlined /> {minsInside} นาที
+                              </div>
+                              <Button 
+                                onClick={() => onCheckOut(e.id)}
+                                icon={<LogoutOutlined />} 
+                                className="font-bold rounded-lg border-slate-300 text-slate-600 hover:text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50 text-xs py-1 h-auto"
+                              >
+                                นำตัวออก (Check-out)
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
-                </Col>
+                </div>
 
                 {/* ✅ โซนคนออกแล้ว */}
-                <Col xs={24} sm={12}>
-                  <div className="bg-white border-2 border-emerald-200 rounded-2xl overflow-hidden h-full">
-                    <div className="bg-emerald-50/80 px-4 py-2 border-b border-emerald-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
-                        <CheckCircleOutlined className="text-emerald-500 text-lg" /> ออกแล้ว (Logged Out)
-                      </div>
-                    </div>
-                    <div className="p-3 bg-slate-50/50 min-h-[150px] max-h-[350px] overflow-y-auto custom-scrollbar">
-                      {entries.filter((e: any) => e.status === 'OUTSIDE').length === 0 ? (
-                        <div className="text-center py-6 text-slate-400 font-medium text-sm">ยังไม่มีประวัติการออก</div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {entries.filter((e: any) => e.status === 'OUTSIDE').map((e: any) => (
-                            <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-2.5 flex justify-between items-center shadow-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-[10px]">
-                                  <LogoutOutlined />
-                                </div>
-                                <span className="font-bold text-slate-600 text-[13px]">{e.worker_name}</span>
-                              </div>
-                              <div className="text-right leading-tight">
-                                <div className="text-[10px] text-slate-400 font-medium">เวลาออก</div>
-                                <div className="text-xs font-bold text-emerald-600">{dayjs(e.time_out).format('HH:mm')}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                <div className="bg-emerald-50/50 backdrop-blur-md rounded-3xl p-5 border border-emerald-100 shadow-sm flex-1">
+                  <div className="flex items-center justify-between mb-4 border-b border-emerald-200/50 pb-3">
+                    <h3 className="font-black text-emerald-700 text-base flex items-center gap-2 m-0">
+                      <CheckCircleOutlined className="text-emerald-500 text-lg" /> ประวัติการออก (Logged Out)
+                    </h3>
                   </div>
-                </Col>
-              </Row>
-            </>
-          ) : (
-            // 🚫 กรณีที่ยังไม่ได้เลือก Permit 
-            <div className="flex flex-col items-center justify-center h-[400px] text-center px-4">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4 border-4 border-white shadow-sm">
-                <SafetyCertificateOutlined className="text-3xl text-blue-300" />
+                  <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                    {entries.filter((e: any) => e.status === 'OUTSIDE').length === 0 ? (
+                      <div className="text-center py-4 text-slate-400 font-medium text-sm">ยังไม่มีผู้ปฏิบัติงานออกมา</div>
+                    ) : (
+                      entries.filter((e: any) => e.status === 'OUTSIDE').map((e: any) => (
+                        <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-2.5 flex justify-between items-center shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-[10px]">
+                              <LogoutOutlined />
+                            </div>
+                            <span className="font-bold text-slate-600 text-xs">{e.worker_name}</span>
+                          </div>
+                          <div className="text-right leading-tight">
+                            <div className="text-[9px] text-slate-400 font-medium">เวลาออก</div>
+                            <div className="text-xs font-bold text-emerald-600">{dayjs(e.time_out).format('HH:mm')}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
               </div>
-              <h3 className="text-lg font-bold text-slate-700 m-0">กรุณาเลือกพื้นที่ปฏิบัติงาน</h3>
-              <p className="text-sm text-slate-500 mt-2 max-w-xs">คลิกเลือกรายการ Permit จากเมนูด้านซ้ายมือ เพื่อเปิดบอร์ดควบคุมการเข้า-ออกพื้นที่อับอากาศ</p>
-            </div>
-          )}
-        </Card>
-      </Col>
-    </Row>
+            </Col>
+          </Row>
+        </div>
+      )}
+    </div>
   );
 }
