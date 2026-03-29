@@ -34,7 +34,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [extendForm] = Form.useForm();
 
-  // 🟢 State สำหรับ Toolbox Talk Modal
   const [isToolboxModalOpen, setIsToolboxModalOpen] = useState(false);
   const [selectedToolboxPermit, setSelectedToolboxPermit] = useState<any>(null);
   const [toolboxFileList, setToolboxFileList] = useState<any[]>([]);
@@ -69,7 +68,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const handleOpenGasModal = (record: any) => { setSelectedGasPermit(record); gasForm.resetFields(); setIsGasModalOpen(true); };
   const handleOpenExtendModal = (record: any) => { setSelectedExtendPermit(record); extendForm.resetFields(); setIsExtendModalOpen(true); };
   
-  // 🟢 เปิด Modal ถ่ายรูป
   const handleOpenToolboxModal = (record: any) => { 
     setSelectedToolboxPermit(record); 
     toolboxForm.resetFields(); 
@@ -112,7 +110,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
     finally { setIsSubmittingExtend(false); }
   };
 
-  // 🟢 ยืนยันการอัปโหลดรูป Toolbox Talk
   const handleSubmitToolbox = async (values: any) => {
     if (toolboxFileList.length === 0) {
       return message.error('กรุณาแนบภาพถ่ายหน้างานขณะทำ Toolbox Talk');
@@ -244,7 +241,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             {isApproved && (
               <div className="flex flex-col gap-2 w-full mt-1 border-t border-slate-100 pt-3">
                 
-                {/* 📸 ปุ่มถ่ายรูป Toolbox Talk โผล่มาหลังอนุมัติ */}
                 {isApplicant && !hasToolboxPic && (
                   <button onClick={() => handleOpenToolboxModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-50 hover:bg-blue-500 text-blue-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-blue-200 shadow-[0_4px_12px_rgba(59,130,246,0.15)]">
                     <CameraOutlined /> ถ่ายรูปประชุมเริ่มงาน
@@ -307,8 +303,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             },
             showSizeChanger: true, 
             pageSizeOptions: ['10', '20', '50'],
-            showTotal: (total, range) => `แสดงผล ${range[0]}-${range[1]} จากทั้งหมด ${total} รายการ`,
-            className: "px-4 pb-4" 
+            showTotal: (total, range) => <span className="font-bold text-slate-500">แสดงผล {range[0]}-{range[1]} จาก <span className="text-blue-600">{total}</span> รายการ</span>,
+            className: "modern-pagination px-4 pb-4" 
           }} 
           size="middle" 
           scroll={{ x: 1100 }} 
@@ -414,7 +410,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
           <Form form={toolboxForm} layout="vertical" onFinish={handleSubmitToolbox} requiredMark={false} className="anatomy-form">
             <div className="bg-white p-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
-              {/* 🟢 อัปเดต Upload ให้รองรับกล้องมือถือได้ง่ายขึ้น */}
               <Form.Item label={<span className="font-black text-slate-800 text-[13px] uppercase tracking-widest">อัปโหลดรูปภาพทีมงาน (PPE ครบ) <span className="text-red-500">*</span></span>} className="mb-0">
                 <Upload 
                   accept="image/*" 
@@ -471,6 +466,16 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         
         <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
           <Form form={gasForm} layout="vertical" onFinish={handleSubmitGasLog} requiredMark={false} className="anatomy-form">
+            <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 flex items-start gap-4">
+              <div className="bg-orange-50 text-orange-500 p-3 rounded-2xl mt-1 shadow-inner"><NotificationOutlined className="text-xl" /></div>
+              <div className="flex-1">
+                <Form.Item name="safety_talk" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('ต้องทำการ Safety Talk ก่อนเริ่มงาน')) }]} className="m-0 mb-1">
+                  <Checkbox className="font-black text-slate-800 text-sm md:text-base">ยืนยันการทำ Safety Talk</Checkbox>
+                </Form.Item>
+                <p className="text-xs text-slate-500 mt-1 mb-0 pl-7 font-medium leading-relaxed">ได้ทำการชี้แจงอันตราย ขั้นตอนการทำงานให้เข้าใจตรงกันแล้ว</p>
+              </div>
+            </div>
+
             <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-8">
               <h4 className="font-black text-slate-800 text-base mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <DashboardOutlined className="text-blue-500 text-xl" /> ค่ามาตรฐานก๊าซ
@@ -571,6 +576,32 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         .toolbox-uploader .ant-upload.ant-upload-select-picture-card:hover {
           border-color: #3b82f6 !important;
           background: #eff6ff !important;
+        }
+
+        /* 🟢 CSS สำหรับปรับ RWD Pagination ให้สวยและไม่เบียดบนมือถือ */
+        @media (max-width: 640px) {
+          .modern-pagination.ant-pagination {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 16px !important;
+          }
+          .modern-pagination .ant-pagination-total-text {
+            margin: 0 !important;
+            order: -1 !important; /* ดันข้อความ "แสดงผล..." ขึ้นไปอยู่บนสุด */
+            background: #f8fafc;
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            width: 100%;
+            text-align: center;
+          }
+          .modern-pagination .ant-pagination-options {
+            margin: 0 !important;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+          }
         }
       `}</style>
     </>
