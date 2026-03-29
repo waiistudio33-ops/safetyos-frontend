@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag, Divider } from 'antd';
+import { Table, Avatar, Popconfirm, Modal, Form, InputNumber, Checkbox, message, Button, Input, Row, Col, Tag, Divider, Upload } from 'antd';
 import { 
   FileTextOutlined, EnvironmentOutlined, UserOutlined, 
   EyeOutlined, CheckOutlined, CloseOutlined, CheckCircleOutlined, 
   FireOutlined, BuildOutlined, ThunderboltOutlined, ToolOutlined,
   StopOutlined, LockOutlined, ClockCircleOutlined, DashboardOutlined,
   NotificationOutlined, SaveOutlined, WarningOutlined, InfoCircleOutlined,
-  FilePdfOutlined, KeyOutlined, MedicineBoxOutlined, ProfileOutlined
+  FilePdfOutlined, KeyOutlined, MedicineBoxOutlined, ProfileOutlined,
+  CameraOutlined, UploadOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import axios from 'axios';
@@ -20,7 +21,7 @@ dayjs.extend(timezone);
 dayjs.locale('th');
 dayjs.tz.setDefault('Asia/Bangkok');
 
-export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus }: any) {
+export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus, pagination, onChangePage, uploadToolboxPhoto }: any) {
   
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [selectedGasPermit, setSelectedGasPermit] = useState<any>(null);
@@ -32,6 +33,13 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const [selectedExtendPermit, setSelectedExtendPermit] = useState<any>(null);
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [extendForm] = Form.useForm();
+
+  // 🟢 State สำหรับ Toolbox Talk Modal
+  const [isToolboxModalOpen, setIsToolboxModalOpen] = useState(false);
+  const [selectedToolboxPermit, setSelectedToolboxPermit] = useState<any>(null);
+  const [toolboxFileList, setToolboxFileList] = useState<any[]>([]);
+  const [isSubmittingToolbox, setIsSubmittingToolbox] = useState(false);
+  const [toolboxForm] = Form.useForm();
 
   const getStatusDisplayModern = (status: string) => { 
     switch(status) { 
@@ -46,79 +54,80 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
     } 
   };
 
-  // 🟢 แก้ไขป้ายกำกับให้ตรงปก
   const getPermitTypeDisplayModern = (type: string) => {
     const baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-sm hover:scale-[1.02] transition-transform";
     switch (type) {
-      case 'HOT_WORK': 
-        return <span className={`${baseClasses} bg-orange-50 text-orange-700 border border-orange-200`}><FireOutlined /> Hot Work</span>;
-      case 'CONFINED_SPACE': 
-        return <span className={`${baseClasses} bg-purple-50 text-purple-700 border border-purple-200`}><BuildOutlined /> Confined Space</span>;
-      case 'WORKING_AT_HEIGHT': 
-        return <span className={`${baseClasses} bg-sky-50 text-sky-700 border border-sky-200`}><EnvironmentOutlined /> Work at Height</span>;
-      case 'ELECTRICAL': 
-        return <span className={`${baseClasses} bg-yellow-50 text-yellow-700 border border-yellow-200`}><ThunderboltOutlined /> Electrical</span>;
-      case 'EXCAVATION': 
-        return <span className={`${baseClasses} bg-amber-50 text-amber-900 border border-amber-200`}><ToolOutlined /> Excavation</span>;
-      default: 
-        return <span className={`${baseClasses} bg-indigo-50 text-indigo-700 border border-indigo-200`}><ToolOutlined /> Cold Work</span>;
+      case 'HOT_WORK': return <span className={`${baseClasses} bg-orange-50 text-orange-700 border border-orange-200`}><FireOutlined /> Hot Work</span>;
+      case 'CONFINED_SPACE': return <span className={`${baseClasses} bg-purple-50 text-purple-700 border border-purple-200`}><BuildOutlined /> Confined Space</span>;
+      case 'WORKING_AT_HEIGHT': return <span className={`${baseClasses} bg-sky-50 text-sky-700 border border-sky-200`}><EnvironmentOutlined /> Work at Height</span>;
+      case 'ELECTRICAL': return <span className={`${baseClasses} bg-yellow-50 text-yellow-700 border border-yellow-200`}><ThunderboltOutlined /> Electrical</span>;
+      case 'EXCAVATION': return <span className={`${baseClasses} bg-amber-50 text-amber-900 border border-amber-200`}><ToolOutlined /> Excavation</span>;
+      default: return <span className={`${baseClasses} bg-indigo-50 text-indigo-700 border border-indigo-200`}><ToolOutlined /> Cold Work</span>;
     }
   };
 
-  const handleOpenGasModal = (record: any) => {
-    setSelectedGasPermit(record);
-    gasForm.resetFields();
-    setIsGasModalOpen(true);
-  };
-
-  const handleOpenExtendModal = (record: any) => { 
-    setSelectedExtendPermit(record); 
-    extendForm.resetFields(); 
-    setIsExtendModalOpen(true); 
+  const handleOpenGasModal = (record: any) => { setSelectedGasPermit(record); gasForm.resetFields(); setIsGasModalOpen(true); };
+  const handleOpenExtendModal = (record: any) => { setSelectedExtendPermit(record); extendForm.resetFields(); setIsExtendModalOpen(true); };
+  
+  // 🟢 เปิด Modal ถ่ายรูป
+  const handleOpenToolboxModal = (record: any) => { 
+    setSelectedToolboxPermit(record); 
+    toolboxForm.resetFields(); 
+    setToolboxFileList([]);
+    setIsToolboxModalOpen(true); 
   };
 
   const handleSubmitGasLog = async (values: any) => {
     setIsSubmittingGas(true);
     try {
-      const payload = {
-        permit_id: selectedGasPermit.id,
-        tester_id: currentUser?.id,
-        o2_level: values.o2,
-        lel_level: values.lel,
-        co_level: values.co,
-        h2s_level: values.h2s,
-        safety_talk_done: values.safety_talk
-      };
-      
-      await axios.post('https://safetyos-backend.onrender.com/gas-logs', payload);
-      message.success('บันทึกผลตรวจวัดก๊าซ และ Safety Talk สำเร็จ!');
+      const payload = { permit_id: selectedGasPermit.id, tester_id: currentUser?.id, o2_level: values.o2, lel_level: values.lel, co_level: values.co, h2s_level: values.h2s, safety_talk_done: values.safety_talk };
+      const response = await axios.post('https://safetyos-backend.onrender.com/gas-logs', payload);
       setIsGasModalOpen(false);
       setCompletedGasTests(prev => [...prev, selectedGasPermit.id]);
-    } catch (error) {
-      console.error(error);
-      message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
-    } finally {
-      setIsSubmittingGas(false);
-    }
+
+      if (response.data.isDangerous) {
+        Modal.error({
+          title: <span className="text-2xl font-black text-rose-600">🚨 สั่งอพยพฉุกเฉิน!</span>,
+          content: (<div className="mt-4 text-base font-bold text-slate-700">ตรวจพบค่าก๊าซอันตรายเกินมาตรฐาน!<br/>ระบบได้ <span className="text-rose-600 font-black">"ระงับใบอนุญาตทำงาน"</span> และสั่งอพยพผู้ปฏิบัติงานทั้งหมดออกจากพื้นที่โดยอัตโนมัติแล้ว!</div>),
+          centered: true, okText: 'รับทราบ', okButtonProps: { danger: true, size: 'large' }
+        });
+        setTimeout(() => window.location.reload(), 2000); 
+      } else {
+        message.success('บันทึกผลตรวจวัดก๊าซ และ Safety Talk สำเร็จ!');
+        setTimeout(() => window.location.reload(), 1000); 
+      }
+    } catch (error) { message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'); } 
+    finally { setIsSubmittingGas(false); }
   };
 
   const handleSubmitExtend = async (values: any) => {
     setIsSubmittingExtend(true);
     try {
-      const payload = { 
-        new_end_time: dayjs(values.new_end_time).toISOString(), 
-        reason: values.reason, 
-        requested_by: currentUser?.full_name || 'ไม่ระบุชื่อ'
-      };
+      const payload = { new_end_time: dayjs(values.new_end_time).toISOString(), reason: values.reason, requested_by: currentUser?.full_name || 'ไม่ระบุชื่อ' };
       await axios.put(`https://safetyos-backend.onrender.com/permits/${selectedExtendPermit.id}/extend`, payload);
       message.success('ขอขยายเวลาสำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่ จป. แล้ว');
       setIsExtendModalOpen(false);
       setTimeout(() => window.location.reload(), 1000); 
-    } catch (error) { 
-      message.error('ระบบขัดข้อง ไม่สามารถขยายเวลาได้'); 
-    } finally { 
-      setIsSubmittingExtend(false); 
+    } catch (error) { message.error('ระบบขัดข้อง ไม่สามารถขยายเวลาได้'); } 
+    finally { setIsSubmittingExtend(false); }
+  };
+
+  // 🟢 ยืนยันการอัปโหลดรูป Toolbox Talk
+  const handleSubmitToolbox = async (values: any) => {
+    if (toolboxFileList.length === 0) {
+      return message.error('กรุณาแนบภาพถ่ายหน้างานขณะทำ Toolbox Talk');
     }
+    setIsSubmittingToolbox(true);
+    const file = toolboxFileList[0].originFileObj;
+    if (uploadToolboxPhoto) {
+      const success = await uploadToolboxPhoto(selectedToolboxPermit.id, file);
+      if (success) {
+        setIsToolboxModalOpen(false);
+      }
+    } else {
+      message.error('ไม่พบฟังก์ชันอัปโหลด (ระบบขัดข้อง)');
+    }
+    setIsSubmittingToolbox(false);
   };
 
   const columns: ColumnsType<any> = [
@@ -194,6 +203,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         const isOwnerOrSafety = currentUser?.role === 'SAFETY_ENGINEER' || currentUser?.role === 'AREA_OWNER';
         const isApplicant = currentUser?.role === 'CONTRACTOR'; 
         const requiresGasTest = record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE';
+        const hasGasLog = (record.gas_logs && record.gas_logs.length > 0) || completedGasTests.includes(record.id);
+        const hasToolboxPic = record.attachments?.some((a: any) => a.file_type === 'TOOLBOX_TALK' || a.file_name === 'Toolbox Talk Evidence');
 
         return (
           <div className="flex flex-col gap-2 w-full pr-2 pb-2 animate-fade-in-up">
@@ -201,11 +212,29 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
               <FilePdfOutlined /> Print / เอกสารเต็ม
             </button>
 
+            {isOwnerOrSafety && requiresGasTest && !hasGasLog && !['CLOSED', 'REVOKED', 'EXPIRED'].includes(record?.status) && (
+              <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-cyan-200 shadow-[0_4px_12px_rgba(6,182,212,0.15)] mb-1">
+                <DashboardOutlined /> ตรวจก๊าซหน้างาน (Pre-entry)
+              </button>
+            )}
+            
+            {requiresGasTest && hasGasLog && !['CLOSED', 'REVOKED', 'EXPIRED'].includes(record?.status) && (
+               <div className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-extrabold border border-emerald-200 shadow-sm cursor-default mb-1">
+                 <CheckCircleOutlined /> ตรวจก๊าซเรียบร้อย
+               </div>
+            )}
+
             {(isAreaOwnerTurn || isSafetyTurn) && ( 
               <div className="flex gap-2 w-full">
-                <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:bg-emerald-600 transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.96]">
-                  <CheckOutlined /> อนุมัติ
-                </button>
+                {requiresGasTest && !hasGasLog ? (
+                  <button disabled className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-slate-100 text-slate-400 rounded-xl text-[11px] font-extrabold cursor-not-allowed border border-slate-200">
+                    <LockOutlined /> รอผลก๊าซ
+                  </button>
+                ) : (
+                  <button onClick={() => onUpdateStatus(record.id, record.status, 'APPROVE')} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:bg-emerald-600 transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.96]">
+                    <CheckOutlined /> อนุมัติ
+                  </button>
+                )}
                 <button onClick={() => onUpdateStatus(record.id, record.status, 'REJECT')} className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-white text-rose-500 rounded-xl border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-300 shadow-sm transition-all duration-200 ease-out active:scale-[0.92]" title="ไม่อนุมัติ">
                   <CloseOutlined className="text-sm" />
                 </button>
@@ -214,23 +243,18 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             
             {isApproved && (
               <div className="flex flex-col gap-2 w-full mt-1 border-t border-slate-100 pt-3">
-                {(() => {
-                  if (!isOwnerOrSafety || !requiresGasTest) return null;
-                  const hasGasLog = (record.gas_logs && record.gas_logs.length > 0) || completedGasTests.includes(record.id);
-                  if (hasGasLog) {
-                    return (
-                      <div className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-extrabold border border-emerald-200 shadow-sm cursor-default">
-                        <CheckCircleOutlined className="animate-pulse" /> ตรวจก๊าซเรียบร้อยแล้ว
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-cyan-200 shadow-sm">
-                        <DashboardOutlined /> ตรวจก๊าซหน้างาน
-                      </button>
-                    );
-                  }
-                })()}
+                
+                {/* 📸 ปุ่มถ่ายรูป Toolbox Talk โผล่มาหลังอนุมัติ */}
+                {isApplicant && !hasToolboxPic && (
+                  <button onClick={() => handleOpenToolboxModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-50 hover:bg-blue-500 text-blue-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-blue-200 shadow-[0_4px_12px_rgba(59,130,246,0.15)]">
+                    <CameraOutlined /> ถ่ายรูปประชุมเริ่มงาน
+                  </button>
+                )}
+                {isApplicant && hasToolboxPic && (
+                  <div className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-extrabold border border-emerald-200 shadow-sm cursor-default">
+                    <CheckCircleOutlined /> ส่งหลักฐานประชุมแล้ว
+                  </div>
+                )}
 
                 {isApplicant && (
                   <button onClick={() => handleOpenExtendModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-purple-50 hover:bg-purple-500 text-purple-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-purple-200 shadow-sm">
@@ -274,7 +298,18 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
           columns={columns} 
           dataSource={permits} 
           loading={loading} 
-          pagination={{ pageSize: 8, className: "px-4 pb-4" }} 
+          pagination={{ 
+            current: pagination?.current || 1,
+            pageSize: pagination?.pageSize || 10,
+            total: pagination?.total || 0,
+            onChange: (page, pageSize) => {
+              if (onChangePage) onChangePage(page, pageSize);
+            },
+            showSizeChanger: true, 
+            pageSizeOptions: ['10', '20', '50'],
+            showTotal: (total, range) => `แสดงผล ${range[0]}-${range[1]} จากทั้งหมด ${total} รายการ`,
+            className: "px-4 pb-4" 
+          }} 
           size="middle" 
           scroll={{ x: 1100 }} 
           rowKey="id"
@@ -287,7 +322,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                  <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-3">
                    <InfoCircleOutlined className="text-blue-500" /> ข้อมูลใบอนุญาตเชิงลึก (Deep Details)
                  </h4>
-                 
                  <Row gutter={[32, 24]}>
                     <Col xs={24} md={12}>
                        <div className="flex flex-col gap-5">
@@ -297,7 +331,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                               {record?.description || 'ไม่มีการระบุมาตรการเพิ่มเติม'}
                             </div>
                           </div>
-
                           {record?.is_loto_required && (
                             <div className="bg-red-50 p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 text-lg shrink-0 shadow-sm"><KeyOutlined /></div>
@@ -318,7 +351,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                           )}
                        </div>
                     </Col>
-                    
                     <Col xs={24} md={12}>
                        <div className="flex flex-col gap-4">
                           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300">
@@ -336,7 +368,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
                                <span className="text-sm font-extrabold text-slate-800">{record?.standby_person_name || '-'}</span>
                              </div>
                           </div>
-
                           {record?.permit_type === 'CONFINED_SPACE' && (
                             <>
                               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300">
@@ -369,6 +400,62 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         />
       </div>
 
+      {/* 📸 หน้าต่าง Toolbox Talk */}
+      <Modal title={null} open={isToolboxModalOpen} onCancel={() => setIsToolboxModalOpen(false)} footer={null} width={550} centered styles={{ body: { padding: 0 } }} destroyOnClose className="custom-modern-modal">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-t-[2.5rem] text-white shadow-sm relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-20"><CameraOutlined style={{ fontSize: '120px' }} /></div>
+          <h2 className="text-2xl md:text-3xl font-black m-0 flex items-center gap-3 text-white relative z-10 tracking-tight">
+            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shadow-inner"><CameraOutlined /></div>ถ่ายภาพเริ่มงาน
+          </h2>
+          <p className="text-blue-100 text-sm mt-3 opacity-90 mb-0 relative z-10 font-medium">
+            Permit No: <span className="font-mono font-bold bg-black/20 px-3 py-1 rounded-lg tracking-wider ml-1">{selectedToolboxPermit?.permit_number}</span>
+          </p>
+        </div>
+        <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
+          <Form form={toolboxForm} layout="vertical" onFinish={handleSubmitToolbox} requiredMark={false} className="anatomy-form">
+            <div className="bg-white p-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
+              {/* 🟢 อัปเดต Upload ให้รองรับกล้องมือถือได้ง่ายขึ้น */}
+              <Form.Item label={<span className="font-black text-slate-800 text-[13px] uppercase tracking-widest">อัปโหลดรูปภาพทีมงาน (PPE ครบ) <span className="text-red-500">*</span></span>} className="mb-0">
+                <Upload 
+                  accept="image/*" 
+                  capture="environment" 
+                  beforeUpload={() => false} 
+                  maxCount={1} 
+                  fileList={toolboxFileList} 
+                  onChange={({ fileList }) => setToolboxFileList(fileList)} 
+                  listType="picture-card" 
+                  className="toolbox-uploader"
+                >
+                  {toolboxFileList.length < 1 && (
+                    <div className="text-slate-400 font-bold flex flex-col items-center gap-2">
+                      <CameraOutlined className="text-3xl" /> แตะเพื่อถ่ายภาพ
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+            </div>
+            
+            <div className="bg-white p-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
+              <h4 className="font-black text-slate-800 text-sm mb-4 border-b border-slate-100 pb-3">✅ ยืนยันความพร้อมหน้างาน</h4>
+              <Form.Item name="check1" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('กดยืนยันด้วยครับ') }]} className="mb-3">
+                <Checkbox className="font-bold text-slate-700 text-sm">สมาชิกมาครบถ้วน สภาพร่างกายพร้อมทำงาน</Checkbox>
+              </Form.Item>
+              <Form.Item name="check2" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('กดยืนยันด้วยครับ') }]} className="mb-3">
+                <Checkbox className="font-bold text-slate-700 text-sm">ตรวจสอบการสวมใส่ PPE ถูกต้องทุกคน</Checkbox>
+              </Form.Item>
+              <Form.Item name="check3" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('กดยืนยันด้วยครับ') }]} className="m-0">
+                <Checkbox className="font-bold text-slate-700 text-sm">อุปกรณ์ช่วยเหลือฉุกเฉินและเครื่องมือพร้อมใช้งาน</Checkbox>
+              </Form.Item>
+            </div>
+
+            <div className="flex gap-4">
+              <Button size="large" onClick={() => setIsToolboxModalOpen(false)} className="flex-1 rounded-2xl h-14 font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-500 border-none transition-transform active:scale-[0.98]">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmittingToolbox} icon={<SaveOutlined />} className="flex-[2] rounded-2xl h-14 font-black bg-blue-600 hover:bg-blue-700 border-none shadow-[0_8px_24px_rgba(37,99,235,0.3)] transition-transform hover:scale-[1.02] active:scale-[0.98]">บันทึกข้อมูลเริ่มงาน</Button>
+            </div>
+          </Form>
+        </div>
+      </Modal>
+
       {/* 🟢 หน้าต่างตรวจวัดก๊าซ */}
       <Modal title={null} open={isGasModalOpen} onCancel={() => setIsGasModalOpen(false)} footer={null} width={600} centered styles={{ body: { padding: 0 } }} destroyOnClose className="custom-modern-modal">
         <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-8 rounded-t-[2.5rem] text-white shadow-sm relative overflow-hidden">
@@ -384,16 +471,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         
         <div className="p-6 md:p-8 bg-[#f8fafc] rounded-b-[2.5rem]">
           <Form form={gasForm} layout="vertical" onFinish={handleSubmitGasLog} requiredMark={false} className="anatomy-form">
-            <div className="bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 flex items-start gap-4">
-              <div className="bg-orange-50 text-orange-500 p-3 rounded-2xl mt-1 shadow-inner"><NotificationOutlined className="text-xl" /></div>
-              <div className="flex-1">
-                <Form.Item name="safety_talk" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('ต้องทำการ Safety Talk ก่อนเริ่มงาน')) }]} className="m-0 mb-1">
-                  <Checkbox className="font-black text-slate-800 text-sm md:text-base">ยืนยันการทำ Safety Talk</Checkbox>
-                </Form.Item>
-                <p className="text-xs text-slate-500 mt-1 mb-0 pl-7 font-medium leading-relaxed">ได้ทำการชี้แจงอันตราย ขั้นตอนการทำงานให้เข้าใจตรงกันแล้ว</p>
-              </div>
-            </div>
-
             <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-8">
               <h4 className="font-black text-slate-800 text-base mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <DashboardOutlined className="text-blue-500 text-xl" /> ค่ามาตรฐานก๊าซ
@@ -482,6 +559,19 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
         .anatomy-form .ant-form-item-label > label { height: auto !important; padding-bottom: 0 !important; }
         .anatomy-form .ant-input-number-input { font-weight: 800; }
         .anatomy-form .ant-input-number-handler-wrap { display: none !important; }
+        
+        .toolbox-uploader .ant-upload.ant-upload-select-picture-card {
+          width: 100% !important;
+          height: 180px !important;
+          border-radius: 1rem !important;
+          background: #f8fafc !important;
+          border: 2px dashed #cbd5e1 !important;
+          transition: all 0.3s ease !important;
+        }
+        .toolbox-uploader .ant-upload.ant-upload-select-picture-card:hover {
+          border-color: #3b82f6 !important;
+          background: #eff6ff !important;
+        }
       `}</style>
     </>
   );

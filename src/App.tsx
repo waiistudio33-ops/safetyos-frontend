@@ -66,38 +66,6 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
-const getStatusDisplayModern = (status: string) => {
-  const baseClasses = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold shadow-sm whitespace-nowrap backdrop-blur-md border";
-  switch (status) {
-    case 'PENDING_AREA_OWNER': return <span className={`${baseClasses} bg-amber-50/80 text-amber-700 border-amber-200/50`}><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>;
-    case 'PENDING_SAFETY': return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>;
-    case 'APPROVED': return <span className={`${baseClasses} bg-emerald-50/80 text-emerald-700 border-emerald-200/50`}><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>;
-    case 'REJECTED': return <span className={`${baseClasses} bg-rose-50/80 text-rose-700 border-rose-200/50`}><CloseOutlined /> ไม่อนุมัติ</span>;
-    case 'CLOSED': return <span className={`${baseClasses} bg-slate-100/80 text-slate-600 border-slate-200/50`}><LockOutlined /> ปิดงานแล้ว</span>;
-    case 'REVOKED': return <span className={`${baseClasses} bg-rose-600/90 text-white border-rose-500`}><StopOutlined /> ระงับงานฉุกเฉิน</span>;
-    case 'EXPIRED': return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><ClockCircleOutlined /> ใบอนุญาตหมดอายุ</span>;
-    default: return <span className={`${baseClasses} bg-slate-50/80 text-slate-600 border-slate-200/50`}>{status || 'PENDING'}</span>;
-  }
-};
-
-const getPermitTypeDisplayModern = (type: string) => {
-  const baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-sm backdrop-blur-md border";
-  switch (type) {
-    case 'HOT_WORK': 
-      return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><FireOutlined /> Hot Work</span>;
-    case 'CONFINED_SPACE': 
-      return <span className={`${baseClasses} bg-purple-50/80 text-purple-700 border-purple-200/50`}><BuildOutlined /> Confined Space</span>;
-    case 'WORKING_AT_HEIGHT': 
-      return <span className={`${baseClasses} bg-sky-50/80 text-sky-700 border-sky-200/50`}><EnvironmentOutlined /> Work at Height</span>;
-    case 'ELECTRICAL': 
-      return <span className={`${baseClasses} bg-yellow-50/80 text-yellow-700 border-yellow-200/50`}><ThunderboltOutlined /> Electrical</span>;
-    case 'EXCAVATION': 
-      return <span className={`${baseClasses} bg-amber-50/80 text-amber-900 border-amber-200/50`}><ToolOutlined /> Excavation</span>;
-    default: 
-      return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><ToolOutlined /> Cold Work</span>;
-  }
-};
-
 export default function App() {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -109,7 +77,10 @@ export default function App() {
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
   const { isAuthenticated, isAuthChecking, isLoggingIn, lineProfile, currentUser, handleLogin, handleLineLoginSubmit, handleSSOLogin, handleLogout } = useAuth();
-  const { permits, loading: permitsLoading, isSubmitting: isSubmittingPermit, fetchPermits, createPermit, updatePermitStatus } = usePermits(currentUser);
+  
+  // 🟢 ดึง uploadToolboxPhoto ออกมาจาก Hook
+  const { permits, loading: permitsLoading, isSubmitting: isSubmittingPermit, fetchPermits, createPermit, updatePermitStatus, total, currentPage, pageSize, uploadToolboxPhoto } = usePermits(currentUser);
+  
   const { bbsRecords, isSubmittingBbs, fetchBbs, handleCreateBbs } = useBbs(currentUser);
   const { activeConfinedPermits, selectedConfinedPermit, confinedEntries, setSelectedConfinedPermit, fetchConfinedSpaceData, fetchEntries, handleCheckIn, handleCheckOut, handleEvacuateAll } = useConfinedSpace(currentUser);
 
@@ -136,7 +107,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (activeMenu === 'DASHBOARD' || activeMenu === 'E_PERMIT') fetchPermits();
+    if (activeMenu === 'DASHBOARD' || activeMenu === 'E_PERMIT') fetchPermits(1, 10); 
     if (activeMenu === 'BBS') fetchBbs();
     if (activeMenu === 'CONFINED_SPACE') fetchConfinedSpaceData();
   }, [isAuthenticated, activeMenu, fetchPermits, fetchBbs, fetchConfinedSpaceData]);
@@ -155,12 +126,37 @@ export default function App() {
     onAfterPrint: () => message.success('เตรียมไฟล์ PDF เรียบร้อย')
   });
 
+  const getStatusDisplayModern = (status: string) => {
+    const baseClasses = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-extrabold shadow-sm whitespace-nowrap backdrop-blur-md border";
+    switch (status) {
+      case 'PENDING_AREA_OWNER': return <span className={`${baseClasses} bg-amber-50/80 text-amber-700 border-amber-200/50`}><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>รอเจ้าของพื้นที่</span>;
+      case 'PENDING_SAFETY': return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>รอ จป. อนุมัติ</span>;
+      case 'APPROVED': return <span className={`${baseClasses} bg-emerald-50/80 text-emerald-700 border-emerald-200/50`}><CheckCircleOutlined className="animate-pulse" /> กำลังปฏิบัติงาน</span>;
+      case 'REJECTED': return <span className={`${baseClasses} bg-rose-50/80 text-rose-700 border-rose-200/50`}><CloseOutlined /> ไม่อนุมัติ</span>;
+      case 'CLOSED': return <span className={`${baseClasses} bg-slate-100/80 text-slate-600 border-slate-200/50`}><LockOutlined /> ปิดงานแล้ว</span>;
+      case 'REVOKED': return <span className={`${baseClasses} bg-rose-600/90 text-white border-rose-500`}><StopOutlined /> ระงับงานฉุกเฉิน</span>;
+      case 'EXPIRED': return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><ClockCircleOutlined /> ใบอนุญาตหมดอายุ</span>;
+      default: return <span className={`${baseClasses} bg-slate-50/80 text-slate-600 border-slate-200/50`}>{status || 'PENDING'}</span>;
+    }
+  };
+
+  const getPermitTypeDisplayModern = (type: string) => {
+    const baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-sm backdrop-blur-md border";
+    switch (type) {
+      case 'HOT_WORK': return <span className={`${baseClasses} bg-orange-50/80 text-orange-700 border-orange-200/50`}><FireOutlined /> Hot Work</span>;
+      case 'CONFINED_SPACE': return <span className={`${baseClasses} bg-purple-50/80 text-purple-700 border-purple-200/50`}><BuildOutlined /> Confined Space</span>;
+      case 'WORKING_AT_HEIGHT': return <span className={`${baseClasses} bg-sky-50/80 text-sky-700 border-sky-200/50`}><EnvironmentOutlined /> Work at Height</span>;
+      case 'ELECTRICAL': return <span className={`${baseClasses} bg-yellow-50/80 text-yellow-700 border-yellow-200/50`}><ThunderboltOutlined /> Electrical</span>;
+      case 'EXCAVATION': return <span className={`${baseClasses} bg-amber-50/80 text-amber-900 border-amber-200/50`}><ToolOutlined /> Excavation</span>;
+      default: return <span className={`${baseClasses} bg-blue-50/80 text-blue-700 border-blue-200/50`}><ToolOutlined /> Cold Work</span>;
+    }
+  };
+
   const handleViewDetails = async (record: any) => {
     if (!record) return;
     setSelectedPermitDetail(record);
     setIsDetailModalOpen(true);
     setGasLogsDetail([]); 
-    
     if (record?.permit_type === 'HOT_WORK' || record?.permit_type === 'CONFINED_SPACE') {
       try { 
         if (record?.id) { 
@@ -274,12 +270,22 @@ export default function App() {
                 
                 {activeMenu === 'E_PERMIT' && (
                   <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden p-2 md:p-6 min-h-[60vh] flex flex-col">
-                    {!permitsLoading && permits.length === 0 ? (
+                    {!permitsLoading && (!permits || permits.length === 0) ? (
                       <div className="flex-1 flex items-center justify-center">
                         <WelcomeEmptyState title="เริ่มต้นสร้างคำขอทำงานใบแรก" description="ระบบ E-Permit พร้อมใช้งานแล้ว" buttonText="สร้างคำขอทำงาน" icon={<FileTextOutlined />} onAction={() => setIsModalOpen(true)} />
                       </div>
                     ) : (
-                      <WorkPermitQueue permits={permits} loading={permitsLoading} currentUser={currentUser} onPreviewFile={(url) => { setPreviewUrl(url); setIsPreviewOpen(true); }} onViewDetails={handleViewDetails} onUpdateStatus={updatePermitStatus} />
+                      <WorkPermitQueue 
+                        permits={permits || []} 
+                        loading={permitsLoading} 
+                        currentUser={currentUser} 
+                        onPreviewFile={(url: string) => { setPreviewUrl(url); setIsPreviewOpen(true); }} 
+                        onViewDetails={handleViewDetails} 
+                        onUpdateStatus={updatePermitStatus}
+                        pagination={{ current: currentPage, pageSize: pageSize, total: total }}
+                        onChangePage={(page: number, limit: number) => fetchPermits(page, limit)}
+                        uploadToolboxPhoto={uploadToolboxPhoto} // 🟢 ส่งฟังก์ชันเข้าตารางตรงนี้!
+                      />
                     )}
                   </div>
                 )}
@@ -290,7 +296,7 @@ export default function App() {
                   <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
                     <Tabs activeKey={activeBbsTab} onChange={setActiveBbsTab} centered size="large" items={[
                       { key: 'form', label: <span className="font-bold px-4"><FormOutlined /> สร้างรายงาน BBS</span>, children: <div className="p-4 md:p-8 pt-0"><BBSObservationForm onSubmit={(vals) => handleCreateBbs(vals, () => setActiveBbsTab('history'))} onCancel={() => setActiveMenu('DASHBOARD')} isSubmitting={isSubmittingBbs} /></div> }, 
-                      { key: 'history', label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, children: (<div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">{bbsRecords.length === 0 ? (<div className="flex-1 flex items-center justify-center"><WelcomeEmptyState title="ยังไม่มีประวัติ" description="เริ่มต้นรายงานความปลอดภัย" buttonText="สร้างรายงาน BBS" icon={<EyeOutlined />} onAction={() => setActiveBbsTab('form')} /></div>) : (<BBSHistory records={bbsRecords} />)}</div>) }
+                      { key: 'history', label: <span className="font-bold px-4"><EyeOutlined /> ประวัติรายงาน</span>, children: (<div className="p-4 md:p-8 pt-0 min-h-[50vh] flex flex-col">{(!bbsRecords || bbsRecords.length === 0) ? (<div className="flex-1 flex items-center justify-center"><WelcomeEmptyState title="ยังไม่มีประวัติ" description="เริ่มต้นรายงานความปลอดภัย" buttonText="สร้างรายงาน BBS" icon={<EyeOutlined />} onAction={() => setActiveBbsTab('form')} /></div>) : (<BBSHistory records={bbsRecords} />)}</div>) }
                     ]} />
                   </div>
                 )}
