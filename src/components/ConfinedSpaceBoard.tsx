@@ -6,7 +6,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
-export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSelectPermit, entries, onCheckIn, onCheckOut, onEvacuate, currentUser, isMobile, glassPanel }: any) {
+export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSelectPermit, entries, onCheckIn, onCheckOut, onEvacuate, currentUser, isMobile, glassPanel, onRefresh }: any) {
   
   const [now, setNow] = useState(dayjs());
   useEffect(() => {
@@ -32,8 +32,15 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
       const payload = { permit_id: selectedPermit, tester_id: currentUser?.id, o2_level: values.o2, lel_level: values.lel, co_level: values.co, h2s_level: values.h2s, safety_talk_done: true };
       await axios.post(`${API_URL}/gas-logs`, payload);
       setIsGasModalOpen(false);
-      setTimeout(() => window.location.reload(), 1000); // Reload data
-    } catch (error) { } 
+      // 🟢 โชว์ข้อความสำเร็จ
+      message.success('อัปเดตผลตรวจสภาพอากาศเรียบร้อย!');
+      // 🟢 เรียกใช้งาน onRefresh เพื่อดึงข้อมูลมาอัปเดตหน้าจอเงียบๆ (ไม่ต้อง Reload หน้า)
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) { 
+      message.error('ไม่สามารถอัปเดตผลก๊าซได้');
+    } 
     finally { setIsSubmittingGas(false); }
   };
 
@@ -78,7 +85,6 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
         ) : (
           <div className="relative z-10 flex-1 flex flex-col">
             
-            {/* 🚨 แบนเนอร์เตือนวัดก๊าซ */}
             {isGasTestOverdue ? (
               <div className="bg-rose-500 text-white p-3 sm:p-4 rounded-2xl mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-lg animate-pulse gap-2 sm:gap-0">
                 <div className="flex items-center gap-3">
@@ -109,7 +115,6 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
               </div>
             )}
 
-            {/* 🎛️ Live Gas Dashboard */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               <div className={`p-4 rounded-2xl border ${!lastGasTest ? 'bg-slate-50 border-slate-200' : 'bg-white border-blue-200'} shadow-sm text-center flex flex-col items-center justify-center`}>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">O₂ (19.5 - 23.5%)</span>
@@ -130,7 +135,6 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
             </div>
 
             <Row gutter={[24, 24]}>
-              {/* ซ้าย: รอสแตนด์บาย */}
               <Col xs={24} lg={12}>
                 <div className="bg-white/80 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-white shadow-sm h-full">
                   <h3 className="font-black text-slate-700 text-base sm:text-lg flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
@@ -157,12 +161,11 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
                             </div>
                           </div>
                           
-                          {/* 🚨 ผู้เฝ้าระวังไม่ต้องเข้าท่อ, ถ้าก๊าซหมดอายุ กดเข้าไม่ได้ */}
                           {!isStandby && (
                             <Button 
                               type="primary" 
                               icon={isGasTestOverdue ? <WarningOutlined /> : <LoginOutlined />} 
-                              onClick={() => onCheckIn(worker.worker_name, 'ENTRANT')} // 🟢 ใส่ 'ENTRANT' เข้าไปแบบนี้!
+                              onClick={() => onCheckIn(worker.worker_name, 'ENTRANT')}
                               disabled={isGasTestOverdue}
                               className={`font-bold rounded-xl shadow-sm ${isGasTestOverdue ? '!bg-slate-300 !text-slate-500 border-none' : 'bg-blue-600 hover:bg-blue-700 shadow-[0_4px_12px_rgba(37,99,235,0.2)]'}`}
                             >
@@ -176,11 +179,9 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
                 </div>
               </Col>
 
-              {/* ขวา: โซนปฏิบัติงาน และ ประวัติการออก */}
               <Col xs={24} lg={12}>
                 <div className="flex flex-col gap-4 sm:gap-6 h-full">
                   
-                  {/* 👷 โซนคนอยู่ในบ่อ */}
                   <div className="bg-rose-50/50 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-[inset_0_4px_20px_rgba(225,29,72,0.02)] relative overflow-hidden flex-1">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 border-b border-rose-200/50 pb-3 gap-3 sm:gap-0 relative z-10">
                       <h3 className="font-black text-rose-700 text-base sm:text-lg flex items-center gap-2 m-0">
@@ -217,7 +218,7 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
                                 <div>
                                   <div className="font-black text-slate-800 text-sm leading-tight">{e.worker_name}</div>
                                   <div className="text-[10px] font-bold text-rose-500 flex items-center gap-1 mt-0.5">
-                                    <ClockCircleOutlined /> เข้าเมื่อ: {dayjs(e.time_in).format('HH:mm')}
+                                    <ClockCircleOutlined /> เข้า: {dayjs(e.time_in).format('DD/MM/YY HH:mm')} น.
                                   </div>
                                 </div>
                               </div>
@@ -237,31 +238,43 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
                     </div>
                   </div>
 
-                  {/* ✅ โซนคนออกแล้ว */}
+                  {/* 🟢 อัปเกรด: โซนคนออกแล้ว แสดงวันและเวลาชัดเจน */}
                   <div className="bg-emerald-50/50 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-emerald-100 shadow-sm flex-1">
                     <div className="flex items-center justify-between mb-4 border-b border-emerald-200/50 pb-3">
                       <h3 className="font-black text-emerald-700 text-base flex items-center gap-2 m-0">
-                        <CheckCircleOutlined className="text-emerald-500 text-lg" /> ประวัติการออก (Logged Out)
+                        <CheckCircleOutlined className="text-emerald-500 text-lg" /> ประวัติการเข้า-ออก
                       </h3>
                     </div>
-                    <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2 pb-2">
+                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2 pb-2">
                       {entries.filter((e: any) => e.status === 'OUTSIDE').length === 0 ? (
                         <div className="text-center py-4 text-slate-400 font-medium text-sm">ยังไม่มีผู้ปฏิบัติงานออกมา</div>
                       ) : (
-                        entries.filter((e: any) => e.status === 'OUTSIDE').map((e: any) => (
-                          <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-2.5 flex justify-between items-center shadow-sm">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-[10px] shrink-0">
-                                <LogoutOutlined />
+                        entries.filter((e: any) => e.status === 'OUTSIDE').map((e: any) => {
+                          const totalMins = dayjs(e.time_out).diff(dayjs(e.time_in), 'minute');
+                          
+                          return (
+                            <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm gap-2 sm:gap-0">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-xs shrink-0 border border-emerald-200">
+                                  <LogoutOutlined />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-700 text-sm truncate max-w-[180px] sm:max-w-[220px]">{e.worker_name}</span>
+                                  {/* 🟢 แสดงเวลาเข้า-ออก แบบชัดๆ */}
+                                  <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5">
+                                    <span className="text-blue-500">เข้า: {dayjs(e.time_in).format('DD/MM HH:mm')}</span> 
+                                    <span className="mx-0.5 text-slate-300">|</span> 
+                                    <span className="text-emerald-500">ออก: {dayjs(e.time_out).format('DD/MM HH:mm')}</span>
+                                  </div>
+                                </div>
                               </div>
-                              <span className="font-bold text-slate-600 text-xs truncate max-w-[120px] sm:max-w-[180px]">{e.worker_name}</span>
+                              <div className="text-right leading-tight bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 w-full sm:w-auto flex justify-between sm:block">
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">เวลารวม</div>
+                                <div className="text-xs font-black text-slate-600">{totalMins} นาที</div>
+                              </div>
                             </div>
-                            <div className="text-right leading-tight shrink-0">
-                              <div className="text-[9px] text-slate-400 font-medium">เวลาออก</div>
-                              <div className="text-[11px] sm:text-xs font-bold text-emerald-600">{dayjs(e.time_out).format('HH:mm')}</div>
-                            </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -273,7 +286,7 @@ export default function ConfinedSpaceBoard({ activePermits, selectedPermit, onSe
         )}
       </div>
 
-      {/* 🟢 Modal ตรวจวัดก๊าซ */}
+      {/* Modal ตรวจวัดก๊าซ */}
       <Modal title={null} open={isGasModalOpen} onCancel={() => setIsGasModalOpen(false)} footer={null} width={600} centered styles={{ body: { padding: 0 } }} destroyOnClose className="custom-modern-modal">
         <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-8 rounded-t-[2.5rem] text-white shadow-sm relative overflow-hidden">
           <div className="absolute -right-4 -top-4 opacity-20"><DashboardOutlined style={{ fontSize: '120px' }} /></div>

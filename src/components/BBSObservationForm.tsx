@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Select, Button, Upload, DatePicker, Typography, Divider } from 'antd';
+import { Form, Input, Select, Button, Upload, DatePicker, Typography } from 'antd';
 import { 
   CameraOutlined, 
   EnvironmentOutlined, 
@@ -7,7 +7,22 @@ import {
   ThunderboltOutlined,
   SendOutlined,
   InfoCircleOutlined,
-  PictureOutlined
+  PictureOutlined,
+  IdcardOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  SafetyOutlined,
+  ToolOutlined,
+  SyncOutlined,
+  FileProtectOutlined,
+  LikeOutlined,
+  MessageOutlined,
+  ExclamationCircleOutlined,
+  StopOutlined,
+  ClockCircleOutlined,
+  QuestionCircleOutlined,
+  UserOutlined 
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -17,7 +32,7 @@ const { TextArea } = Input;
 export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }: any) {
   const [form] = Form.useForm();
   
-  // 🟢 State สำหรับควบคุมปุ่มต่างๆ แบบ Custom (ให้เด้งสวยๆ)
+  // 🟢 State สำหรับควบคุมปุ่มต่างๆ แบบ Custom
   const [behaviorType, setBehaviorType] = useState('SAFE');
   const [observedGroup, setObservedGroup] = useState('EMPLOYEE');
 
@@ -70,16 +85,15 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
             </Form.Item>
             
             <Form.Item name="location" label={<span className="font-bold text-slate-700 text-xs md:text-sm">พื้นที่ที่พบเห็น <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาระบุพื้นที่' }]}>
-              <Input placeholder="ระบุโซน / แผนก / ตึก" className="rounded-xl h-12 md:h-14 text-sm md:text-base border-slate-200 hover:border-blue-400 focus:border-blue-500" />
+              <Input placeholder="ระบุโซน / แผนก / ตึก" className="rounded-xl h-12 md:h-14 text-sm md:text-base border-slate-200 hover:border-blue-400 focus:border-blue-500" prefix={<EnvironmentOutlined className="text-slate-400 mr-2" />} />
             </Form.Item>
 
-            {/* 🌟 อัปเกรดปุ่ม กลุ่มผู้ถูกสังเกต ให้เป็นสไตล์ iOS Segmented Control */}
+            {/* 🌟 Segmented Control: พนักงาน vs ผู้รับเหมา */}
             <Form.Item name="observed_group" hidden><Input /></Form.Item>
             <div className="md:col-span-2 mt-2 mb-2">
               <div className="font-bold text-slate-700 text-xs md:text-sm mb-2">กลุ่มผู้ถูกสังเกต</div>
               <div className="bg-slate-100 p-1.5 md:p-2 rounded-2xl flex w-full shadow-inner relative">
                 
-                {/* ปุ่มพนักงาน */}
                 <div 
                   onClick={() => handleGroupToggle('EMPLOYEE')}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-all duration-300 z-10 select-none
@@ -87,10 +101,9 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
                       ? 'bg-white text-blue-600 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-[1.02]' 
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                 >
-                  <span className="text-lg md:text-xl">👨‍🔧</span> พนักงานบริษัท
+                  <IdcardOutlined className="text-lg md:text-xl" /> พนักงานบริษัท
                 </div>
                 
-                {/* ปุ่มผู้รับเหมา */}
                 <div 
                   onClick={() => handleGroupToggle('CONTRACTOR')}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-all duration-300 z-10 select-none
@@ -98,7 +111,7 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
                       ? 'bg-white text-orange-600 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-[1.02]' 
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                 >
-                  <span className="text-lg md:text-xl">👷</span> ผู้รับเหมา
+                  <TeamOutlined className="text-lg md:text-xl" /> ผู้รับเหมา
                 </div>
 
               </div>
@@ -128,7 +141,9 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
                     ? 'bg-gradient-to-b from-emerald-50 to-emerald-100/50 border-emerald-400 shadow-[0_8px_20px_rgba(16,185,129,0.2)] scale-[1.02]' 
                     : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 opacity-70'}`}
              >
-                <div className="text-4xl md:text-5xl drop-shadow-sm transition-transform duration-300 group-hover:scale-110">✅</div>
+                <div className={`text-4xl md:text-5xl drop-shadow-sm transition-transform duration-300 group-hover:scale-110 ${behaviorType === 'SAFE' ? 'text-emerald-500' : 'text-slate-300'}`}>
+                  <CheckCircleOutlined />
+                </div>
                 <div className={`font-black text-sm md:text-lg mt-2 ${behaviorType === 'SAFE' ? 'text-emerald-700' : 'text-slate-500'}`}>พฤติกรรมปลอดภัย (Safe)</div>
              </div>
              
@@ -139,7 +154,9 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
                     ? 'bg-gradient-to-b from-rose-50 to-rose-100/50 border-rose-400 shadow-[0_8px_20px_rgba(225,29,72,0.2)] scale-[1.02]' 
                     : 'bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50/30 opacity-70'}`}
              >
-                <div className="text-4xl md:text-5xl drop-shadow-sm transition-transform duration-300 group-hover:scale-110">⚠️</div>
+                <div className={`text-4xl md:text-5xl drop-shadow-sm transition-transform duration-300 group-hover:scale-110 ${behaviorType === 'UNSAFE' ? 'text-rose-500' : 'text-slate-300'}`}>
+                  <WarningOutlined />
+                </div>
                 <div className={`font-black text-sm md:text-lg mt-2 ${behaviorType === 'UNSAFE' ? 'text-rose-700' : 'text-slate-500'}`}>พฤติกรรมเสี่ยง (At-Risk)</div>
              </div>
           </div>
@@ -147,21 +164,21 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
             <Form.Item name="category" label={<span className="font-bold text-slate-700 text-xs md:text-sm">หมวดหมู่งาน <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาเลือกหมวดหมู่' }]}>
               <Select size="large" placeholder="เลือกหมวดหมู่งาน" className="h-12 md:h-14">
-                <Select.Option value="PPE"><div className="flex items-center gap-2">🛡️ <span>อุปกรณ์ป้องกันภัย (PPE)</span></div></Select.Option>
-                <Select.Option value="TOOLS"><div className="flex items-center gap-2">🔧 <span>เครื่องมือ/อุปกรณ์ (Tools)</span></div></Select.Option>
-                <Select.Option value="POSTURE"><div className="flex items-center gap-2">🏃 <span>ท่าทางการทำงาน (Posture)</span></div></Select.Option>
-                <Select.Option value="HOUSEKEEPING"><div className="flex items-center gap-2">🧹 <span>ความสะอาด (Housekeeping)</span></div></Select.Option>
-                <Select.Option value="LINE_OF_FIRE"><div className="flex items-center gap-2">🎯 <span>แนวรัศมีอันตราย (Line of Fire)</span></div></Select.Option>
-                <Select.Option value="PROCEDURE"><div className="flex items-center gap-2">📜 <span>ขั้นตอนการทำงาน (Procedure)</span></div></Select.Option>
+                <Select.Option value="PPE"><div className="flex items-center gap-2"><SafetyOutlined className="text-blue-500" /> <span>อุปกรณ์ป้องกันภัย (PPE)</span></div></Select.Option>
+                <Select.Option value="TOOLS"><div className="flex items-center gap-2"><ToolOutlined className="text-slate-500" /> <span>เครื่องมือ/อุปกรณ์ (Tools)</span></div></Select.Option>
+                <Select.Option value="POSTURE"><div className="flex items-center gap-2"><UserOutlined className="text-orange-500" /> <span>ท่าทางการทำงาน (Posture)</span></div></Select.Option>
+                <Select.Option value="HOUSEKEEPING"><div className="flex items-center gap-2"><SyncOutlined className="text-emerald-500" /> <span>ความสะอาด (Housekeeping)</span></div></Select.Option>
+                <Select.Option value="LINE_OF_FIRE"><div className="flex items-center gap-2"><ExclamationCircleOutlined className="text-rose-500" /> <span>แนวรัศมีอันตราย (Line of Fire)</span></div></Select.Option>
+                <Select.Option value="PROCEDURE"><div className="flex items-center gap-2"><FileProtectOutlined className="text-purple-500" /> <span>ขั้นตอนการทำงาน (Procedure)</span></div></Select.Option>
               </Select>
             </Form.Item>
 
             <Form.Item name="action_taken" label={<span className="font-bold text-slate-700 text-xs md:text-sm">การตอบสนองของคุณ <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'กรุณาเลือกการดำเนินการ' }]}>
               <Select size="large" placeholder="เลือกการตอบสนอง" className="h-12 md:h-14">
-                <Select.Option value="PRAISED"><div className="flex items-center gap-2">👏 <span className="text-emerald-600 font-bold">กล่าวชื่นชม (Praised)</span></div></Select.Option>
-                <Select.Option value="CORRECTED"><div className="flex items-center gap-2">🗣️ <span className="text-blue-600 font-bold">แนะนำ/แก้ไขทันที (Corrected)</span></div></Select.Option>
-                <Select.Option value="VERBAL_WARNING"><div className="flex items-center gap-2">⚠️ <span className="text-orange-500 font-bold">ตักเตือน (Verbal Warning)</span></div></Select.Option>
-                <Select.Option value="STOP_WORK"><div className="flex items-center gap-2">🛑 <span className="text-rose-600 font-bold">สั่งหยุดงาน (Stop Work)</span></div></Select.Option>
+                <Select.Option value="PRAISED"><div className="flex items-center gap-2"><LikeOutlined className="text-emerald-500" /> <span className="text-emerald-600 font-bold">กล่าวชื่นชม (Praised)</span></div></Select.Option>
+                <Select.Option value="CORRECTED"><div className="flex items-center gap-2"><MessageOutlined className="text-blue-500" /> <span className="text-blue-600 font-bold">แนะนำ/แก้ไขทันที (Corrected)</span></div></Select.Option>
+                <Select.Option value="VERBAL_WARNING"><div className="flex items-center gap-2"><WarningOutlined className="text-orange-500" /> <span className="text-orange-500 font-bold">ตักเตือน (Verbal Warning)</span></div></Select.Option>
+                <Select.Option value="STOP_WORK"><div className="flex items-center gap-2"><StopOutlined className="text-rose-500" /> <span className="text-rose-600 font-bold">สั่งหยุดงาน (Stop Work)</span></div></Select.Option>
               </Select>
             </Form.Item>
           </div>
@@ -170,7 +187,7 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
             <TextArea rows={3} placeholder="อธิบายพฤติกรรมที่พบอย่างชัดเจน..." className="rounded-xl p-4 text-sm md:text-base border-slate-200 hover:border-blue-400 focus:border-blue-500 bg-slate-50/50 focus:bg-white transition-colors" />
           </Form.Item>
 
-          {/* ⚡ ส่วนวิเคราะห์สาเหตุ */}
+          {/* ⚡ ส่วนวิเคราะห์สาเหตุ (โชว์เฉพาะ UNSAFE) */}
           {behaviorType === 'UNSAFE' && (
             <div className="bg-gradient-to-br from-rose-50 to-orange-50/30 p-5 md:p-6 rounded-[1.5rem] border border-rose-200 mt-6 animate-fade-in relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
@@ -182,10 +199,10 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
               <div className="pl-2">
                 <Form.Item name="root_cause" label={<span className="font-bold text-slate-700 text-xs md:text-sm">อะไรคือสาเหตุที่ทำให้เกิดความเสี่ยง?</span>} rules={[{ required: behaviorType === 'UNSAFE', message: 'กรุณาระบุสาเหตุ' }]}>
                   <Select size="large" placeholder="เลือกสาเหตุหลัก" className="h-12 md:h-14">
-                    <Select.Option value="RUSH"><div className="flex items-center gap-2">⏳ <span>รีบเร่ง / ต้องการประหยัดเวลา</span></div></Select.Option>
-                    <Select.Option value="UNAWARE"><div className="flex items-center gap-2">🤷 <span>ไม่รู้ / ไม่ตระหนักถึงอันตราย</span></div></Select.Option>
-                    <Select.Option value="EQUIPMENT"><div className="flex items-center gap-2">🛠️ <span>อุปกรณ์ไม่พร้อม / ไม่เหมาะสม</span></div></Select.Option>
-                    <Select.Option value="HABIT"><div className="flex items-center gap-2">🔁 <span>ความเคยชิน / ทำเป็นประจำ</span></div></Select.Option>
+                    <Select.Option value="RUSH"><div className="flex items-center gap-2"><ClockCircleOutlined className="text-orange-500" /> <span>รีบเร่ง / ต้องการประหยัดเวลา</span></div></Select.Option>
+                    <Select.Option value="UNAWARE"><div className="flex items-center gap-2"><QuestionCircleOutlined className="text-slate-500" /> <span>ไม่รู้ / ไม่ตระหนักถึงอันตราย</span></div></Select.Option>
+                    <Select.Option value="EQUIPMENT"><div className="flex items-center gap-2"><ToolOutlined className="text-blue-500" /> <span>อุปกรณ์ไม่พร้อม / ไม่เหมาะสม</span></div></Select.Option>
+                    <Select.Option value="HABIT"><div className="flex items-center gap-2"><SyncOutlined className="text-purple-500" /> <span>ความเคยชิน / ทำเป็นประจำ</span></div></Select.Option>
                   </Select>
                 </Form.Item>
                 <Form.Item name="suggestion" label={<span className="font-bold text-slate-700 text-xs md:text-sm">ข้อเสนอแนะเพื่อป้องกัน (Preventive Measure)</span>} className="mb-0">

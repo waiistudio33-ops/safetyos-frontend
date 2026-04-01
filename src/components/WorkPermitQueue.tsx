@@ -21,7 +21,8 @@ dayjs.extend(timezone);
 dayjs.locale('th');
 dayjs.tz.setDefault('Asia/Bangkok');
 
-export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus, pagination, onChangePage, uploadToolboxPhoto }: any) {
+// 🟢 เพิ่ม onRefresh เข้ามาใน Props
+export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus, pagination, onChangePage, uploadToolboxPhoto, onRefresh }: any) {
   
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [selectedGasPermit, setSelectedGasPermit] = useState<any>(null);
@@ -89,10 +90,14 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
           content: (<div className="mt-4 text-base font-bold text-slate-700">ตรวจพบค่าก๊าซอันตรายเกินมาตรฐาน!<br/>ระบบได้ <span className="text-rose-600 font-black">"ระงับใบอนุญาตทำงาน"</span> และสั่งอพยพผู้ปฏิบัติงานทั้งหมดออกจากพื้นที่โดยอัตโนมัติแล้ว!</div>),
           centered: true, okText: 'รับทราบ', okButtonProps: { danger: true, size: 'large' }
         });
-        setTimeout(() => window.location.reload(), 2000); 
+        // 🟢 เปลี่ยนจาก window.location.reload() เป็น onRefresh()
+        setTimeout(() => {
+          if (onRefresh) onRefresh();
+        }, 2000); 
       } else {
         message.success('บันทึกผลตรวจวัดก๊าซ และ Safety Talk สำเร็จ!');
-        setTimeout(() => window.location.reload(), 1000); 
+        // 🟢 เรียก onRefresh() ทันที เพื่ออัปเดตป้ายเตือน
+        if (onRefresh) onRefresh();
       }
     } catch (error) { message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'); } 
     finally { setIsSubmittingGas(false); }
@@ -105,7 +110,8 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       await axios.put(`https://safetyos-backend.onrender.com/permits/${selectedExtendPermit.id}/extend`, payload);
       message.success('ขอขยายเวลาสำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่ จป. แล้ว');
       setIsExtendModalOpen(false);
-      setTimeout(() => window.location.reload(), 1000); 
+      // 🟢 เปลี่ยนจาก reload เป็น onRefresh
+      if (onRefresh) onRefresh();
     } catch (error) { message.error('ระบบขัดข้อง ไม่สามารถขยายเวลาได้'); } 
     finally { setIsSubmittingExtend(false); }
   };
@@ -120,6 +126,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       const success = await uploadToolboxPhoto(selectedToolboxPermit.id, file);
       if (success) {
         setIsToolboxModalOpen(false);
+        // การดึงข้อมูลใหม่มีอยู่ใน usePermits ของ uploadToolboxPhoto อยู่แล้ว
       }
     } else {
       message.error('ไม่พบฟังก์ชันอัปโหลด (ระบบขัดข้อง)');
@@ -303,11 +310,11 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             },
             showSizeChanger: true, 
             pageSizeOptions: ['10', '20', '50'],
-            showTotal: (total, range) => <span className="font-bold text-slate-500 text-xs sm:text-sm">แสดงผล {range[0]}-{range[1]} จากทั้งหมด <span className="text-blue-600">{total}</span> รายการ</span>,
+            showTotal: (total, range) => <span className="font-bold text-slate-500 text-xs sm:text-sm">แสดงผล <span className="text-blue-600">{range[0]}-{range[1]}</span> จากทั้งหมด {total} รายการ</span>,
             className: "modern-pagination px-4 pb-4" 
           }} 
-          size="small" // 🟢 เปลี่ยนจาก middle เป็น small ให้พอดีจอมือถือมากขึ้น 
-          scroll={{ x: 1000 }} // 🟢 ลดความกว้างแนวนอนที่บังคับ scroll
+          size="small" 
+          scroll={{ x: 1000 }} 
           rowKey="id"
           className="modern-expanded-table"
           expandable={{
@@ -431,7 +438,7 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             </div>
             
             <div className="bg-white p-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6">
-              <h4 className="font-black text-slate-800 text-sm mb-4 border-b border-slate-100 pb-3">✅ ยืนยันความพร้อมหน้างาน</h4>
+              <h4 className="font-black text-slate-800 text-sm mb-4 border-b border-slate-100 pb-3"> ยืนยันความพร้อมหน้างาน</h4>
               <Form.Item name="check1" valuePropName="checked" rules={[{ validator: (_, val) => val ? Promise.resolve() : Promise.reject('กดยืนยันด้วยครับ') }]} className="mb-3">
                 <Checkbox className="font-bold text-slate-700 text-sm">สมาชิกมาครบถ้วน สภาพร่างกายพร้อมทำงาน</Checkbox>
               </Form.Item>

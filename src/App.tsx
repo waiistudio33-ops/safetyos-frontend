@@ -76,7 +76,7 @@ export default function App() {
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
-  const { isAuthenticated, isAuthChecking, isLoggingIn, lineProfile, currentUser, handleLogin, handleLineLoginSubmit, handleSSOLogin, handleLogout } = useAuth();
+  const { isAuthenticated, isAuthChecking, isLoggingIn, lineProfile, currentUser, setCurrentUser, handleLogin, handleLineLoginSubmit, handleSSOLogin, handleLogout } = useAuth();
   
   // 🟢 ดึง uploadToolboxPhoto ออกมาจาก Hook
   const { permits, loading: permitsLoading, isSubmitting: isSubmittingPermit, fetchPermits, createPermit, updatePermitStatus, total, currentPage, pageSize, uploadToolboxPhoto } = usePermits(currentUser);
@@ -95,6 +95,73 @@ export default function App() {
   const [gasLogsDetail, setGasLogsDetail] = useState<any[]>([]);
 
   const documentRef = useRef<HTMLDivElement>(null);
+
+  // 🟢 ฟังก์ชันส่งอัปเดต Profile กลับไปที่ Backend
+  const handleUpdateProfile = async (values: any) => {
+    try {
+      if (!currentUser?.id) return false;
+      const response = await axios.put(`${API_URL}/users/${currentUser.id}/profile`, values);
+      
+      if (response.data.success) {
+        if (setCurrentUser) {
+           setCurrentUser({
+             ...currentUser, 
+             ...response.data.user 
+           });
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return false;
+    }
+  };
+
+  // 🟢 NEW: ฟังก์ชันอัปโหลดรูปโปรไฟล์
+  const handleUploadAvatar = async (file: File) => {
+    try {
+      if (!currentUser?.id) return null;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profiles/${fileName}`;
+
+      // 1. โยนรูปขึ้น Supabase Storage (Bucket: avatars)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("Supabase Upload Error:", uploadError);
+        throw new Error('อัปโหลดรูปล้มเหลว');
+      }
+
+      // 2. ขอ URL สำหรับดูรูป
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      // 3. เซฟ URL ลง Database
+      const response = await axios.put(`${API_URL}/users/${currentUser.id}/profile`, {
+        profile_url: publicUrl
+      });
+      
+      // 4. อัปเดต State หน้าเว็บให้รูปเปลี่ยนทันที
+      if (response.data.success) {
+        if (setCurrentUser) {
+           setCurrentUser({
+             ...currentUser,
+             profile_url: publicUrl 
+           });
+        }
+        return publicUrl; 
+      }
+      return null;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const safetyChannel = supabase.channel('safety-alert-channel');
@@ -169,7 +236,7 @@ export default function App() {
     }
   };
 
-  const getDisplayAvatar = () => lineProfile?.pictureUrl || currentUser?.profile_url || null;
+  const getDisplayAvatar = () => currentUser?.profile_url || lineProfile?.pictureUrl || null;
 
   if (isAuthChecking) {
     return <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' } }}><div className="h-screen w-full flex items-center justify-center bg-slate-50"><Spin size="large" /></div></ConfigProvider>;
@@ -266,7 +333,16 @@ export default function App() {
             <Content className="flex-1 relative z-10" style={{ padding: isMobile ? '16px' : '24px 24px 32px 0' }}>
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
-                {activeMenu === 'PROFILE' && <UserProfile currentUser={currentUser} lineProfile={lineProfile} />}
+                
+                {/* 🟢 NEW: ส่ง handleUploadAvatar เข้าไปใน UserProfile */}
+                {activeMenu === 'PROFILE' && (
+                  <UserProfile 
+                    currentUser={currentUser} 
+                    lineProfile={lineProfile} 
+                    onUpdateProfile={handleUpdateProfile} 
+                    onUploadAvatar={handleUploadAvatar}
+                  />
+                )}
                 
                 {activeMenu === 'E_PERMIT' && (
                   <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden p-2 md:p-6 min-h-[60vh] flex flex-col">
@@ -284,7 +360,7 @@ export default function App() {
                         onUpdateStatus={updatePermitStatus}
                         pagination={{ current: currentPage, pageSize: pageSize, total: total }}
                         onChangePage={(page: number, limit: number) => fetchPermits(page, limit)}
-                        uploadToolboxPhoto={uploadToolboxPhoto} // 🟢 ส่งฟังก์ชันเข้าตารางตรงนี้!
+                        uploadToolboxPhoto={uploadToolboxPhoto} 
                       />
                     )}
                   </div>
@@ -301,11 +377,11 @@ export default function App() {
                   </div>
                 )}
                 
-                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} glassPanel={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }} />}
+                {activeMenu === 'CONFINED_SPACE' && <ConfinedSpaceBoard activePermits={activeConfinedPermits} selectedPermit={selectedConfinedPermit} onSelectPermit={setSelectedConfinedPermit} entries={confinedEntries} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onEvacuate={handleEvacuateAll} currentUser={currentUser} isMobile={isMobile} onRefresh={fetchConfinedSpaceData} glassPanel={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }} />}
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
-                {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />}
+                {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />}   
               </div>
             </Content>
           </Layout>
