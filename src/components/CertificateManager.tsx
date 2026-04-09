@@ -8,7 +8,6 @@ import {
   CalendarOutlined, IdcardOutlined, CheckOutlined, CloseOutlined,
   SearchOutlined, FilterOutlined, ExclamationCircleOutlined,
   WarningOutlined, AppstoreOutlined,
-  // 🟢 นำเข้า Icon ใหม่สำหรับ Dropdown
   FireOutlined, ThunderboltOutlined, MedicineBoxOutlined, 
   BuildOutlined, ControlOutlined, ApartmentOutlined
 } from '@ant-design/icons';
@@ -68,11 +67,8 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<any[]>([]);
   
-  // 🟢 State สำหรับค้นหาและกรองข้อมูล
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
-
-  // 🟢 State สำหรับ Segmented Control (Tab สลับหน้า)
   const [activeTab, setActiveTab] = useState<'UPLOAD' | 'REGISTRY'>(currentUser?.role === 'CONTRACTOR' ? 'UPLOAD' : 'REGISTRY');
 
   const fetchCerts = async () => {
@@ -88,9 +84,7 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     }
   };
 
-  useEffect(() => {
-    fetchCerts();
-  }, []);
+  useEffect(() => { fetchCerts(); }, []);
 
   const handleUploadCert = async (values: any) => {
     if (!currentUser || currentUser.role !== 'CONTRACTOR') {
@@ -134,7 +128,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       form.resetFields();
       setFileList([]); 
       fetchCerts(); 
-      // เปลี่ยน Tab กลับไปหน้าตารางอัตโนมัติเมื่อส่งเสร็จ
       setActiveTab('REGISTRY');
     } catch (error) {
       message.error('เกิดข้อผิดพลาดในการอัปโหลด');
@@ -157,14 +150,12 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     }
   };
 
-  // 🟢 Logic ประมวลผลข้อมูล (Filter & Search)
   const filteredCerts = useMemo(() => {
     return certs.filter(cert => {
       const matchName = cert.user?.full_name?.toLowerCase().includes(searchText.toLowerCase()) || 
                         cert.cert_name?.toLowerCase().includes(searchText.toLowerCase());
       const matchStatus = filterStatus === 'ALL' || cert.status === filterStatus;
       
-      // ดักเคสพิเศษ: หาใบที่หมดอายุ
       if (filterStatus === 'EXPIRED') {
         const isExpired = dayjs(cert.expiry_date).diff(dayjs(), 'day') < 0;
         return matchName && isExpired;
@@ -174,7 +165,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     });
   }, [certs, searchText, filterStatus]);
 
-  // 🟢 คำนวณสถิติสำหรับ Dashboard
   const stats = useMemo(() => {
     const today = dayjs();
     let pending = 0, expired = 0, expiringSoon = 0, valid = 0;
@@ -191,7 +181,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
     return { pending, expired, expiringSoon, valid, total: certs.length };
   }, [certs]);
 
-  // --- UI Helpers ---
   const getStatusTag = (status: string, expiryDate?: string) => {
     if (status === 'APPROVED' && expiryDate) {
       const daysLeft = dayjs(expiryDate).diff(dayjs(), 'day');
@@ -309,10 +298,8 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
 
   return (
     <div className="w-full pb-20 px-2 md:px-0 relative">
-      {/* Background Decor */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-400/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>
       
-      {/* 🚀 Header */}
       <div className="flex items-center gap-3 mb-6 md:mb-8">
         <div className="bg-gradient-to-tr from-blue-500 to-indigo-600 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-[1rem] shadow-lg shadow-blue-500/30 text-white shrink-0">
           <IdcardOutlined className="text-2xl md:text-3xl" />
@@ -323,7 +310,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         </div>
       </div>
 
-      {/* 🟢 Dashboard สถิติ (แสดงเฉพาะ จป. หรือ Admin) */}
       {currentUser?.role !== 'CONTRACTOR' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up">
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
@@ -345,17 +331,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         </div>
       )}
 
-      {/* 🚀 Segmented Control (สลับหน้าจอเฉพาะผู้รับเหมา) */}
       {currentUser?.role === 'CONTRACTOR' && (
         <div className="flex justify-center mb-8 animate-fade-in-up">
           <div className="relative flex bg-slate-200/50 backdrop-blur-xl p-1.5 rounded-[1.25rem] w-full max-w-[340px] md:max-w-[440px] shadow-inner border border-white/50">
-            {/* 🟢 Elevated Slider Background */}
             <div
               className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-out"
               style={{ transform: activeTab === 'UPLOAD' ? 'translateX(0)' : 'translateX(100%)' }}
             />
-            
-            {/* Buttons */}
             <button
               onClick={() => setActiveTab('UPLOAD')}
               className={`relative z-10 flex-1 py-2.5 md:py-3 text-[13px] md:text-sm font-black transition-colors duration-300 flex items-center justify-center gap-2 rounded-xl ${
@@ -376,10 +358,8 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         </div>
       )}
 
-      {/* 🟢 Render Content Based on Active Tab */}
       <div className="w-full">
         
-        {/* 📝 Tab 1: ฟอร์มอัปโหลด */}
         {activeTab === 'UPLOAD' && currentUser?.role === 'CONTRACTOR' && (
           <div className="animate-fade-in-up max-w-2xl mx-auto">
             <div className="bg-white rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden">
@@ -397,7 +377,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
               
               <div className="p-5 md:p-8 bg-white">
                 <Form form={form} layout="vertical" onFinish={handleUploadCert} requiredMark={false} className="anatomy-form">
-                  {/* 🟢 อัปเกรด Dropdown เปลี่ยน Emojis เป็น Professional Icons */}
                   <Form.Item name="cert_name" label={<span className="font-black text-slate-700 text-xs">ประเภทใบรับรอง (Certificate Type) <span className="text-rose-500">*</span></span>} rules={[{ required: true, message: 'กรุณาเลือกประเภท' }]}>
                     <Select size="large" placeholder="-- เลือกประเภทเอกสาร --" className="w-full" popupClassName="cert-dropdown">
                       <Select.Option value="ผู้ปฏิบัติงานในที่อับอากาศ (Confined Space)">
@@ -456,7 +435,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
           </div>
         )}
 
-        {/* 📋 Tab 2: ตารางข้อมูลทะเบียนประวัติ */}
         {activeTab === 'REGISTRY' && (
           <div className="animate-fade-in-up w-full">
             <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col">
@@ -476,30 +454,33 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
                   />
                 </div>
 
-                {/* 🟢 Segmented Control สำหรับ Filter (แทน Select Dropdown) */}
+                {/* 🌟 อัปเกรด Semantic Colors ของ Segmented Filter */}
                 <div className="w-full overflow-x-auto pb-1 custom-scrollbar">
-                  <div className="inline-flex bg-slate-200/50 p-1.5 rounded-2xl backdrop-blur-md shadow-inner min-w-max">
+                  <div className="inline-flex bg-slate-100/80 p-1.5 rounded-2xl backdrop-blur-md shadow-inner min-w-max border border-slate-200/50">
                     {[
-                      { key: 'ALL', label: 'ทั้งหมด', icon: <AppstoreOutlined /> },
-                      { key: 'PENDING', label: 'รอตรวจสอบ', icon: <ClockCircleOutlined /> },
-                      { key: 'APPROVED', label: 'ใช้งานได้', icon: <CheckCircleOutlined /> },
-                      { key: 'EXPIRED', label: 'หมดอายุ', icon: <WarningOutlined /> },
-                      { key: 'REJECTED', label: 'ไม่อนุมัติ', icon: <CloseCircleOutlined /> },
-                    ].map(tab => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setFilterStatus(tab.key)}
-                        className={`
-                          relative px-4 py-1.5 text-[11px] md:text-xs font-black rounded-xl transition-all duration-300 ease-out flex items-center justify-center gap-1.5
-                          ${filterStatus === tab.key 
-                            ? 'text-slate-800 bg-white shadow-sm ring-1 ring-slate-900/5' 
-                            : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
-                          }
-                        `}
-                      >
-                        {tab.icon} {tab.label}
-                      </button>
-                    ))}
+                      { key: 'ALL', label: 'ทั้งหมด', icon: <AppstoreOutlined />, activeColor: 'text-slate-700 bg-white ring-slate-200 shadow-sm' },
+                      { key: 'PENDING', label: 'รอตรวจสอบ', icon: <ClockCircleOutlined />, activeColor: 'text-blue-700 bg-blue-50 ring-blue-200 shadow-sm' },
+                      { key: 'APPROVED', label: 'ใช้งานได้', icon: <CheckCircleOutlined />, activeColor: 'text-emerald-700 bg-emerald-50 ring-emerald-200 shadow-sm' },
+                      { key: 'EXPIRED', label: 'หมดอายุ', icon: <WarningOutlined />, activeColor: 'text-amber-700 bg-amber-50 ring-amber-200 shadow-sm' },
+                      { key: 'REJECTED', label: 'ไม่อนุมัติ', icon: <CloseCircleOutlined />, activeColor: 'text-rose-700 bg-rose-50 ring-rose-200 shadow-sm' },
+                    ].map(tab => {
+                      const isActive = filterStatus === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          onClick={() => setFilterStatus(tab.key)}
+                          className={`
+                            relative px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-black rounded-xl transition-all duration-300 ease-out flex items-center justify-center gap-1.5
+                            ${isActive 
+                              ? `${tab.activeColor} ring-1` 
+                              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'
+                            }
+                          `}
+                        >
+                          {tab.icon} {tab.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -584,7 +565,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
       </div>
 
       <style>{`
-        /* ✨ Animation */
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -602,7 +582,6 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
         .modern-table .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f5f9; padding: 16px 20px; background: white; }
         .modern-table .ant-table-tbody > tr:hover > td { background-color: #f8fafc; }
         
-        /* 🟢 CSS RWD Pagination & Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
