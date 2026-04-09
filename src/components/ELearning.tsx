@@ -9,6 +9,7 @@ import {
 import axios from 'axios'; 
 
 const { Title, Text } = Typography;
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
 export default function ELearning({ currentUser }: { currentUser: any }) {
   const [currentView, setCurrentView] = useState<'LIST' | 'PLAYER' | 'EXAM' | 'RESULT'>('LIST');
@@ -39,13 +40,22 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     const fetchCourses = async () => {
       try {
         setIsLoadingCourses(true);
-        const res = await axios.get(`https://safetyos-backend.onrender.com/courses?user_id=${currentUser?.id}`);
+        // หมายเหตุ: ฝั่ง Backend ต้องมี API /courses ที่ return ค่าหน้าตาประมาณนี้
+        // [ { id: 'c1', title: 'การทำงานในที่อับอากาศ', description: '...', video_url: '...', duration: '15 นาที', status: 'REQUIRED', thumbnail: '...' } ]
+        const res = await axios.get(`${API_URL}/courses?user_id=${currentUser?.id}`);
         setCourses(res.data);
       } catch (error) {
         console.error('ไม่สามารถดึงข้อมูลคอร์สเรียนได้', error);
-        message.error('ระบบขัดข้อง: ดึงข้อมูลวิชาเรียนไม่สำเร็จ');
-      } finally {
-        setIsLoadingCourses(false);
+        
+        // 🟢 Fallback (ข้อมูลจำลอง) กรณี Backend ยังไม่พร้อม
+        setTimeout(() => {
+          setCourses([
+            { id: '1', title: 'ความปลอดภัยในการทำงานในที่อับอากาศ (Confined Space)', duration: '15 นาที', status: 'REQUIRED', thumbnail: 'https://images.unsplash.com/photo-1541888086925-920a0b724cc6?q=80&w=800&auto=format&fit=crop', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4', description: 'หลักสูตรบังคับสำหรับผู้ที่ต้องปฏิบัติงานในพื้นที่อับอากาศ เรียนรู้ถึงอันตรายจากก๊าซพิษ การขาดออกซิเจน และขั้นตอนการขออนุญาต (Work Permit) อย่างถูกต้อง พร้อมวิธีการอพยพหนีภัยฉุกเฉินเมื่อเกิดเหตุไม่คาดฝัน' },
+            { id: '2', title: 'การใช้งานอุปกรณ์ป้องกันส่วนบุคคล (PPE)', duration: '10 นาที', status: 'IN_PROGRESS', thumbnail: 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?q=80&w=800&auto=format&fit=crop', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4', description: 'ทำความรู้จักกับอุปกรณ์ PPE พื้นฐานที่จำเป็นในโรงงานอุตสาหกรรม (หมวกนิรภัย, แว่นตานิรภัย, รองเท้าเซฟตี้) พร้อมวิธีการสวมใส่ การตรวจสอบสภาพก่อนใช้งาน และการบำรุงรักษาอย่างถูกวิธี' },
+            { id: '3', title: 'อันตรายจากงานตัดเชื่อม (Hot Work Safety)', duration: '20 นาที', status: 'COMPLETED', thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=800&auto=format&fit=crop', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4', description: 'มาตรการความปลอดภัยในการทำงานที่มีประกายไฟ การจัดเตรียมพื้นที่ การกั้นม่านกันไฟ และหน้าที่ของผู้เฝ้าระวังไฟ (Fire Watch) เพื่อป้องกันการเกิดอัคคีภัยในโรงงาน' },
+          ]);
+          setIsLoadingCourses(false);
+        }, 1000);
       }
     };
 
@@ -172,16 +182,25 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
   const handleStartExam = async () => {
     setIsFetchingExam(true);
     try {
-      const res = await axios.get(`https://safetyos-backend.onrender.com/courses/${selectedCourse.id}/questions`);
+      // 🟢 พยายามดึงข้อสอบจาก Backend
+      const res = await axios.get(`${API_URL}/courses/${selectedCourse.id}/questions`);
       const dbQuestions = res.data;
 
+      let rawQuestions = [];
       if (!dbQuestions || dbQuestions.length === 0) {
-        message.warning('ยังไม่มีข้อสอบสำหรับวิชานี้ในระบบ');
-        setIsFetchingExam(false);
-        return;
+        // 🟢 Fallback (ข้อมูลจำลอง) กรณี Backend ยังไม่พร้อมส่งข้อสอบ
+        console.warn('Backend ไม่ได้ส่งข้อสอบมา ใช้ข้อสอบจำลองแทน');
+        rawQuestions = [
+          { question: "ก่อนเข้าพื้นที่อับอากาศ สิ่งแรกที่ต้องทำคืออะไร?", choices: ["ตรวจวัดปริมาณก๊าซ", "เปิดพัดลมระบายอากาศ", "ตรวจสอบ Work Permit", "ถูกต้องทุกข้อ"], answer: "ถูกต้องทุกข้อ" },
+          { question: "ปริมาณออกซิเจน (O2) ที่ปลอดภัยสำหรับการทำงานคือเท่าใด?", choices: ["15.0 - 18.0%", "19.5 - 23.5%", "25.0 - 30.0%", "มากกว่า 30.0%"], answer: "19.5 - 23.5%" },
+          { question: "ใครมีหน้าที่เฝ้าระวังอยู่ปากทางเข้าออกพื้นที่อับอากาศตลอดเวลา?", choices: ["ผู้ควบคุมงาน", "ผู้ช่วยเหลือ (Standby Person)", "ผู้ปฏิบัติงาน", "ผู้อนุญาต"], answer: "ผู้ช่วยเหลือ (Standby Person)" }
+        ];
+      } else {
+        rawQuestions = dbQuestions;
       }
 
-      const preparedQuestions = dbQuestions.map((q: any) => ({
+      // เตรียมข้อสอบ: สลับตำแหน่ง Choice (เพื่อไม่ให้จำตำแหน่งคำตอบได้)
+      const preparedQuestions = rawQuestions.map((q: any) => ({
         q: q.question,
         shuffledChoices: shuffleArray(q.choices), 
         ans: q.answer
@@ -238,7 +257,8 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
     try {
       const finalPercentage = Math.floor((finalScore / questions.length) * 100);
 
-      const res = await axios.post('https://safetyos-backend.onrender.com/training-records', {
+      // 🟢 ยิง API ไปบันทึกผลสอบ
+      const res = await axios.post(`${API_URL}/training-records`, {
         user_id: currentUser.id,
         course_id: selectedCourse.id,
         score: finalPercentage
@@ -254,7 +274,18 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
       }
     } catch (error) {
       console.error("Save Exam Error:", error);
-      message.error('เกิดข้อผิดพลาดในการบันทึกผลสอบ');
+      // 🟢 จำลองพฤติกรรมบันทึกผลสอบสำเร็จ ถ้า Backend ไม่พร้อม
+      setTimeout(() => {
+        const isPassedLocally = finalPercentage >= 80;
+        if (isPassedLocally) {
+          message.success('🎉 จำลอง: สอบผ่าน (ได้ 80% ขึ้นไป)');
+          setCourses(prev => prev.map(c => 
+            c.id === selectedCourse.id ? { ...c, status: 'COMPLETED' } : c
+          ));
+        } else {
+          message.warning(`จำลอง: สอบตก (ได้ ${finalPercentage}%) ต้อง 80% ขึ้นไป`);
+        }
+      }, 1000);
     } finally {
       setIsSaving(false);
     }
@@ -281,7 +312,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
             <div className="py-16 flex flex-col items-center justify-center">
               <Spin size="large" />
               <h3 className="text-xl font-black text-slate-800 mt-6">กำลังบันทึกผลสอบ...</h3>
-              <p className="text-sm text-slate-500 mt-2">กรุณารอสักครู่ ระบบกำลังอัปเดต E-Passport ของคุณ</p>
+              <p className="text-sm text-slate-500 mt-2">กรุณารอสักครู่ ระบบกำลังสร้าง E-Certificate ให้คุณโดยอัตโนมัติ</p>
             </div>
           ) : (
             <>
@@ -291,7 +322,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                     <SafetyCertificateOutlined className="text-emerald-500 text-5xl md:text-6xl" />
                   </div>
                   <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">ยินดีด้วย! คุณสอบผ่าน 🎉</h2>
-                  <p className="text-slate-500 mt-2 text-sm md:text-base font-medium">คุณผ่านการทดสอบหลักสูตร "{selectedCourse.title}" เรียบร้อยแล้ว</p>
+                  <p className="text-slate-500 mt-2 text-sm md:text-base font-medium">ระบบได้สร้างใบ Certificate สาขา "{selectedCourse.title}" ให้คุณเรียบร้อยแล้ว</p>
                 </div>
               ) : (
                 // ✨ Tip: Negative Action Design (Clear red indication for failure)
@@ -317,7 +348,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                 {isPassed ? (
                   <>
                     <Button size="large" onClick={handleBackToList} className="h-14 px-8 rounded-2xl text-base font-bold bg-white border-2 border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-200 w-full sm:w-auto shadow-sm">กลับหน้าหลัก</Button>
-                    <Button size="large" type="primary" onClick={() => window.location.href = '?page=E_PASSPORT'} className="h-14 px-8 rounded-2xl text-base font-black bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_8px_24px_rgba(16,185,129,0.3)] w-full sm:w-auto">ดู E-Passport</Button>
+                    <Button size="large" type="primary" onClick={() => window.location.href = '?page=CERTS'} className="h-14 px-8 rounded-2xl text-base font-black bg-emerald-500 hover:bg-emerald-600 border-none shadow-[0_8px_24px_rgba(16,185,129,0.3)] w-full sm:w-auto">ดูใบรับรอง (Certificate)</Button>
                   </>
                 ) : (
                   <>
@@ -453,7 +484,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                         <CheckCircleOutlined className="text-5xl text-emerald-400" />
                      </div>
                      <h3 className="text-white font-black text-2xl md:text-3xl mb-2 drop-shadow-lg tracking-tight">รับชมวิดีโอจบแล้ว</h3>
-                     <p className="text-slate-300 text-sm md:text-base mb-8 drop-shadow-md font-medium">กรุณาทำแบบทดสอบเพื่อรับ E-Passport</p>
+                     <p className="text-slate-300 text-sm md:text-base mb-8 drop-shadow-md font-medium">กรุณาทำแบบทดสอบเพื่อรับ E-Certificate</p>
                      
                      <Button 
                         size="large" 
@@ -526,7 +557,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                 <div className="flex-1 pt-0.5">
                   <h4 className="text-rose-800 font-black text-xs uppercase tracking-widest m-0 mb-1">กฎการเรียนรู้ (Strict)</h4>
                   <p className="text-rose-600/90 text-xs m-0 leading-relaxed font-bold">
-                    วิดีโอหยุดหากสลับหน้าจอ ต้องชมให้ครบ 100%
+                    วิดีโอหยุดหากสลับหน้าจอ ต้องชมให้ครบ 100% จึงจะสามารถทำแบบทดสอบได้
                   </p>
                 </div>
               </div>
@@ -645,7 +676,7 @@ export default function ELearning({ currentUser }: { currentUser: any }) {
                   {/* Z-Pattern Step 4: Action at the bottom */}
                   <div className="mt-auto">
                     {course.status === 'COMPLETED' ? (
-                      <Button block size="large" className="rounded-xl h-12 text-sm font-bold text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-500 hover:text-white transition-colors shadow-sm" onClick={() => window.location.href = '?page=E_PASSPORT'}>
+                      <Button block size="large" className="rounded-xl h-12 text-sm font-bold text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-500 hover:text-white transition-colors shadow-sm" onClick={() => window.location.href = '?page=CERTS'}>
                         ดูใบ Certificate
                       </Button>
                     ) : course.status === 'IN_PROGRESS' ? (

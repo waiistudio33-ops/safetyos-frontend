@@ -334,13 +334,22 @@ export default function App() {
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
                 
-                {/* 🟢 NEW: ส่ง handleUploadAvatar เข้าไปใน UserProfile */}
+               {/* 🟢 NEW: ส่ง Props เพิ่มเติมเข้าไปใน UserProfile */}
                 {activeMenu === 'PROFILE' && (
                   <UserProfile 
                     currentUser={currentUser} 
                     lineProfile={lineProfile} 
                     onUpdateProfile={handleUpdateProfile} 
                     onUploadAvatar={handleUploadAvatar}
+                    // 🟢 1. ส่งฟังก์ชัน LINE Login ที่มีอยู่ใน useAuth ไปให้ปุ่มทำงาน
+                    onToggleLineConnection={handleLineLoginSubmit}
+                    // 🟢 2. ดึงประวัติเฉพาะของ User คนนี้ส่งไปให้ Timeline 
+                    userTimelineData={{
+                      permits: permits || [], // ข้อมูลการขอใบอนุญาตของ User คนนี้ (ใช้ hook usePermits ที่มีอยู่แล้ว)
+                      bbs: bbsRecords || [],   // ข้อมูลรายงาน BBS ของ User คนนี้ (ใช้ hook useBbs ที่มีอยู่แล้ว)
+                      certs: [],              // รอ API ใบเซอร์ (ใส่ Array เปล่าไว้ก่อน)
+                      elearning: []           // รอ API E-Learning (ใส่ Array เปล่าไว้ก่อน)
+                    }}
                   />
                 )}
                 
@@ -381,7 +390,7 @@ export default function App() {
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
-                {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />}   
+                {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />} 
               </div>
             </Content>
           </Layout>

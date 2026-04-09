@@ -21,7 +21,9 @@ dayjs.extend(timezone);
 dayjs.locale('th');
 dayjs.tz.setDefault('Asia/Bangkok');
 
-// 🟢 เพิ่ม onRefresh เข้ามาใน Props
+// 🟢 ดึง URL จาก .env เพื่อแก้ปัญหา CORS และ Hardcode
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
+
 export default function WorkPermitQueue({ permits, loading, currentUser, onPreviewFile, onViewDetails, onUpdateStatus, pagination, onChangePage, uploadToolboxPhoto, onRefresh }: any) {
   
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
@@ -79,8 +81,22 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
   const handleSubmitGasLog = async (values: any) => {
     setIsSubmittingGas(true);
     try {
-      const payload = { permit_id: selectedGasPermit.id, tester_id: currentUser?.id, o2_level: values.o2, lel_level: values.lel, co_level: values.co, h2s_level: values.h2s, safety_talk_done: values.safety_talk };
-      const response = await axios.post('https://safetyos-backend.onrender.com/gas-logs', payload);
+      const payload = { 
+        permit_id: selectedGasPermit.id, 
+        tester_id: currentUser?.id, 
+        o2_level: values.o2, 
+        lel_level: values.lel, 
+        co_level: values.co, 
+        h2s_level: values.h2s, 
+        safety_talk_done: values.safety_talk 
+      };
+
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+      // 🟢 แก้ไขเป็น template literal เพื่อใช้ API_URL จาก .env
+      const response = await axios.post(`${API_URL}/gas-logs`, payload, config);
+
       setIsGasModalOpen(false);
       setCompletedGasTests(prev => [...prev, selectedGasPermit.id]);
 
@@ -90,27 +106,31 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
           content: (<div className="mt-4 text-base font-bold text-slate-700">ตรวจพบค่าก๊าซอันตรายเกินมาตรฐาน!<br/>ระบบได้ <span className="text-rose-600 font-black">"ระงับใบอนุญาตทำงาน"</span> และสั่งอพยพผู้ปฏิบัติงานทั้งหมดออกจากพื้นที่โดยอัตโนมัติแล้ว!</div>),
           centered: true, okText: 'รับทราบ', okButtonProps: { danger: true, size: 'large' }
         });
-        // 🟢 เปลี่ยนจาก window.location.reload() เป็น onRefresh()
         setTimeout(() => {
           if (onRefresh) onRefresh();
         }, 2000); 
       } else {
         message.success('บันทึกผลตรวจวัดก๊าซ และ Safety Talk สำเร็จ!');
-        // 🟢 เรียก onRefresh() ทันที เพื่ออัปเดตป้ายเตือน
         if (onRefresh) onRefresh();
       }
-    } catch (error) { message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'); } 
-    finally { setIsSubmittingGas(false); }
+    } catch (error: any) { 
+      console.error("Gas Test Error:", error);
+      const errorMsg = error.response?.data?.error || 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง';
+      message.error(errorMsg); 
+    } 
+    finally { 
+      setIsSubmittingGas(false); 
+    }
   };
 
   const handleSubmitExtend = async (values: any) => {
     setIsSubmittingExtend(true);
     try {
       const payload = { new_end_time: dayjs(values.new_end_time).toISOString(), reason: values.reason, requested_by: currentUser?.full_name || 'ไม่ระบุชื่อ' };
-      await axios.put(`https://safetyos-backend.onrender.com/permits/${selectedExtendPermit.id}/extend`, payload);
+      // 🟢 แก้ไขเป็น template literal เพื่อใช้ API_URL จาก .env
+      await axios.put(`${API_URL}/permits/${selectedExtendPermit.id}/extend`, payload);
       message.success('ขอขยายเวลาสำเร็จ! ระบบได้ส่งแจ้งเตือนไปที่ จป. แล้ว');
       setIsExtendModalOpen(false);
-      // 🟢 เปลี่ยนจาก reload เป็น onRefresh
       if (onRefresh) onRefresh();
     } catch (error) { message.error('ระบบขัดข้อง ไม่สามารถขยายเวลาได้'); } 
     finally { setIsSubmittingExtend(false); }
@@ -126,7 +146,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
       const success = await uploadToolboxPhoto(selectedToolboxPermit.id, file);
       if (success) {
         setIsToolboxModalOpen(false);
-        // การดึงข้อมูลใหม่มีอยู่ใน usePermits ของ uploadToolboxPhoto อยู่แล้ว
       }
     } else {
       message.error('ไม่พบฟังก์ชันอัปโหลด (ระบบขัดข้อง)');
@@ -217,8 +236,15 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             </button>
 
             {isOwnerOrSafety && requiresGasTest && !hasGasLog && !['CLOSED', 'REVOKED', 'EXPIRED'].includes(record?.status) && (
-              <button onClick={() => handleOpenGasModal(record)} className="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl text-[11px] font-extrabold transition-all duration-200 ease-out active:scale-[0.98] border border-cyan-200 shadow-[0_4px_12px_rgba(6,182,212,0.15)] mb-1">
-                <DashboardOutlined /> ตรวจก๊าซหน้างาน (Pre-entry)
+              // 🟢 แก้ไขปุ่มตรวจก๊าซให้ขึ้นบรรทัดใหม่
+              <button 
+                onClick={() => handleOpenGasModal(record)} 
+                className="w-full flex flex-col items-center justify-center gap-0.5 py-2 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white rounded-xl transition-all duration-200 ease-out active:scale-[0.98] border border-cyan-200 shadow-[0_4px_12px_rgba(6,182,212,0.15)] mb-1 h-auto"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] font-extrabold leading-tight">
+                  <DashboardOutlined /> ตรวจก๊าซหน้างาน
+                </div>
+                <span className="text-[10px] font-bold opacity-80 leading-tight">(Pre-entry)</span>
               </button>
             )}
             
@@ -585,7 +611,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
           background: #eff6ff !important;
         }
 
-        /* 🟢 CSS สำหรับปรับ RWD Pagination ให้สวยและไม่เบียดบนมือถือ */
         @media (max-width: 640px) {
           .modern-pagination.ant-pagination {
             display: flex !important;
@@ -595,7 +620,6 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             padding: 16px 8px !important;
           }
           
-          /* ดันข้อความแสดงผลขึ้นไปไว้บนสุด แล้วจัดให้อยู่ตรงกลาง */
           .modern-pagination .ant-pagination-total-text {
             width: 100% !important;
             text-align: center !important;
@@ -608,14 +632,12 @@ export default function WorkPermitQueue({ permits, loading, currentUser, onPrevi
             border: 1px solid #e2e8f0;
           }
           
-          /* จัดปุ่มหมายเลขหน้าและปุ่มลูกศรให้อยู่ตรงกลาง */
           .modern-pagination .ant-pagination-prev,
           .modern-pagination .ant-pagination-next,
           .modern-pagination .ant-pagination-item {
             margin: 0 4px !important;
           }
           
-          /* ดันปุ่ม Dropdown (10 / page) ลงไปอยู่ล่างสุด */
           .modern-pagination .ant-pagination-options {
             width: 100% !important;
             text-align: center !important;

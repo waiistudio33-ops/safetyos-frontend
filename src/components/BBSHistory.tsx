@@ -1,114 +1,128 @@
-import React, { useState, useRef } from 'react';
-import { Table, Tag, Button, Input, DatePicker, Select, Row, Col, Avatar, Tooltip } from 'antd';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import { Table, Tag, Button, Input, DatePicker, Select, Row, Col, Avatar, Tooltip, Empty, message, Grid } from 'antd';
 import { 
-  SearchOutlined, 
-  FilterOutlined, 
-  PrinterOutlined, 
-  CheckCircleOutlined, 
-  WarningOutlined, 
-  EnvironmentOutlined,
-  UserOutlined,
-  SafetyCertificateOutlined,
-  ThunderboltOutlined,
-  InfoCircleOutlined,
-  PictureOutlined,
-  TeamOutlined,
-  IdcardOutlined
+  SearchOutlined, FilterOutlined, PrinterOutlined, CheckCircleOutlined, 
+  WarningOutlined, EnvironmentOutlined, UserOutlined, SafetyCertificateOutlined,
+  ThunderboltOutlined, InfoCircleOutlined, PictureOutlined, TeamOutlined, IdcardOutlined,
+  SyncOutlined, FileTextOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
+const { useBreakpoint } = Grid;
+const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
-export default function BBSObservationHistory({ observations = [], loading = false }: any) {
+export default function BBSObservationHistory() {
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
   const [searchText, setSearchText] = useState('');
   const [filterType, setFilterType] = useState<string | null>(null);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const printRef = useRef<HTMLDivElement>(null);
 
-  const getBehaviorTag = (type: string) => {
-    if (type === 'SAFE') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap">
-          <CheckCircleOutlined /> ปลอดภัย (Safe)
-        </span>
-      );
+  const [observations, setObservations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // 🟢 State สำหรับเก็บข้อมูลที่จะนำไปแสดงในหน้ากระดาษ Print
+  const [printData, setPrintData] = useState<any[]>([]);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    fetchBBSHistory();
+  }, []);
+
+  const fetchBBSHistory = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/bbs`);
+      if (res.data) {
+        setObservations(res.data);
+      }
+    } catch (error) {
+      console.error("ดึงข้อมูล BBS ล้มเหลว", error);
+      message.error('ไม่สามารถโหลดประวัติการสังเกตการณ์ได้');
+    } finally {
+      setLoading(false);
     }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-50 text-rose-600 border border-rose-200 shadow-sm whitespace-nowrap animate-pulse">
-        <WarningOutlined /> เสี่ยง (At-Risk)
-      </span>
-    );
   };
 
   const getCategoryLabel = (category: string) => {
     const categories: Record<string, string> = {
-      'PPE': 'อุปกรณ์ป้องกันภัย (PPE)',
+      'PPE': 'อุปกรณ์ป้องกัน (PPE)',
       'TOOLS': 'เครื่องมือ/อุปกรณ์',
       'POSTURE': 'ท่าทางการทำงาน',
-      'HOUSEKEEPING': 'ความสะอาด (Housekeeping)',
+      'HOUSEKEEPING': 'ความสะอาด (5ส)',
       'LINE_OF_FIRE': 'แนวรัศมีอันตราย',
       'PROCEDURE': 'ขั้นตอนการทำงาน'
     };
     return categories[category] || category;
   };
 
-  // 🟢 ฟังก์ชันสำหรับสั่งพิมพ์เฉพาะแถว (Individual Print)
-  const handlePrintRow = (record: any) => {
-    // 1. บังคับให้แถวนี้กางออกก่อน เพื่อให้ DOM เรนเดอร์ข้อมูลข้างใน
-    setExpandedRowKeys([record.id]);
+  // 🟢 ฟังก์ชันสั่งพิมพ์ (Native Browser Print)
+  const triggerPrint = (dataToPrint: any[]) => {
+    setPrintData(dataToPrint);
+    setIsPrinting(true); // สั่งเปิดหน้า Print Template
     
-    // 2. ให้หน่วงเวลาเล็กน้อยเพื่อให้ React ขยายแถวเสร็จ แล้วค่อยสั่งพิมพ์
+    // หน่วงเวลารอให้ React เรนเดอร์หน้า Print Template ลง DOM ให้เสร็จก่อน
     setTimeout(() => {
-      // แปะคลาสชั่วคราวเพื่อบอก CSS ว่าเรากำลังพิมพ์รายการเดี่ยว
-      document.body.classList.add('print-single-row');
-      // กำหนด ID ให้แถวที่ถูกเลือก เพื่อให้ CSS เลือกแสดงเฉพาะแถวนี้
-      document.body.setAttribute('data-print-id', record.id);
-      
       window.print();
-      
-      // ล้างค่าหลังจากพิมพ์เสร็จ
-      document.body.classList.remove('print-single-row');
-      document.body.removeAttribute('data-print-id');
-    }, 300);
+      // เมื่อ Dialog Print ปิดลง (ไม่ว่าจะกดพิมพ์หรือยกเลิก) ค่อยเคลียร์ค่าคืน
+      setTimeout(() => {
+        setIsPrinting(false);
+        setPrintData([]);
+      }, 500);
+    }, 500);
+  };
+
+  const handlePrintRow = (record: any) => triggerPrint([record]);
+  
+  const handlePrintAll = () => {
+    const filtered = observations.filter((obs: any) => 
+      (filterType ? obs.behavior_type === filterType : true) &&
+      (obs.location?.toLowerCase().includes(searchText.toLowerCase()))
+    );
+    triggerPrint(filtered);
   };
 
   const columns = [
     {
-      title: 'วันที่และเวลา',
+      title: 'เวลา',
       dataIndex: 'date',
       key: 'date',
-      width: 150,
+      width: isMobile ? 100 : 130,
       render: (date: string) => (
-        <div className="font-bold text-slate-600 text-xs">
-          <div className="text-slate-800">{dayjs(date).format('DD/MM/YYYY')}</div>
-          <div className="text-slate-400 mt-0.5">{dayjs(date).format('HH:mm น.')}</div>
+        <div className="font-bold text-slate-600 text-[11px] md:text-xs">
+          <div className="text-slate-800">{dayjs(date).format('DD/MM/YY')}</div>
+          <div className="text-slate-400 mt-0.5">{dayjs(date).format('HH:mm')}</div>
         </div>
       ),
     },
     {
-      title: 'พื้นที่ / กลุ่มที่สังเกต',
+      title: 'พื้นที่สังเกต',
       key: 'location_group',
-      width: 200,
+      width: isMobile ? 150 : 200,
       render: (_, record: any) => (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-start gap-1.5 font-bold text-slate-700 text-[13px] leading-tight">
-            <EnvironmentOutlined className="text-blue-500 mt-0.5" /> {record.location}
+        <div className="flex flex-col gap-1 md:gap-1.5">
+          <div className="flex items-start gap-1 md:gap-1.5 font-bold text-slate-700 text-[11px] md:text-[13px] leading-tight break-words">
+            <EnvironmentOutlined className="text-blue-500 mt-0.5 shrink-0" /> <span className="line-clamp-2">{record.location}</span>
           </div>
           <div>
             {record.observed_group === 'CONTRACTOR' ? (
-              <Tag icon={<TeamOutlined />} color="orange" className="border-orange-200 rounded-lg text-[10px] font-bold m-0">ผู้รับเหมา</Tag>
+              <Tag icon={<TeamOutlined />} color="orange" className="border-orange-200 rounded-md md:rounded-lg text-[9px] md:text-[10px] font-bold m-0">ผู้รับเหมา</Tag>
             ) : (
-              <Tag icon={<IdcardOutlined />} color="blue" className="border-blue-200 rounded-lg text-[10px] font-bold m-0">พนักงาน</Tag>
+              <Tag icon={<IdcardOutlined />} color="blue" className="border-blue-200 rounded-md md:rounded-lg text-[9px] md:text-[10px] font-bold m-0">พนักงาน</Tag>
             )}
           </div>
         </div>
       ),
     },
     {
-      title: 'หมวดหมู่พฤติกรรม',
+      title: 'หมวดหมู่',
       dataIndex: 'category',
       key: 'category',
-      width: 180,
+      width: 160,
+      responsive: ['md'] as any, 
       render: (category: string) => (
         <div className="font-bold text-slate-700 text-xs bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg inline-block">
           {getCategoryLabel(category)}
@@ -116,294 +130,343 @@ export default function BBSObservationHistory({ observations = [], loading = fal
       ),
     },
     {
-      title: 'ประเภท (Behavior)',
+      title: 'ประเภท',
       dataIndex: 'behavior_type',
       key: 'behavior_type',
-      width: 150,
-      render: (type: string) => getBehaviorTag(type),
+      width: isMobile ? 110 : 140,
+      render: (type: string) => (
+        type === 'SAFE' ? (
+          <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm whitespace-nowrap">
+            <CheckCircleOutlined /> <span className="hidden sm:inline">ปลอดภัย</span> <span className="sm:hidden">Safe</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black bg-rose-50 text-rose-600 border border-rose-200 shadow-sm whitespace-nowrap animate-pulse">
+            <WarningOutlined /> <span className="hidden sm:inline">พฤติกรรมเสี่ยง</span> <span className="sm:hidden">Unsafe</span>
+          </span>
+        )
+      ),
     },
     {
-      title: 'ผู้สังเกตการณ์',
+      title: 'ผู้รายงาน',
       key: 'observer',
-      width: 180,
+      width: 160,
+      responsive: ['lg'] as any, 
       render: (_, record: any) => (
         <div className="flex items-center gap-2">
-          <Avatar size="small" icon={<UserOutlined />} className="bg-slate-200 text-slate-500" />
-          <span className="font-bold text-slate-600 text-xs truncate">{record.observer?.full_name || 'ไม่ระบุชื่อ'}</span>
+          <Avatar src={record.observer?.profile_url} size="small" icon={<UserOutlined />} className="bg-slate-200 text-slate-500 shrink-0" />
+          <span className="font-bold text-slate-600 text-xs truncate max-w-[100px]">{record.observer?.full_name || 'ไม่ระบุชื่อ'}</span>
         </div>
       ),
     },
     {
-      title: '', // 🟢 คอลัมน์ Action สำหรับปุ่มพิมพ์รายบุคคล
+      title: '', 
       key: 'action',
-      width: 80,
+      width: 60,
       render: (_, record: any) => (
-        <Tooltip title="พิมพ์หน้านี้ (PDF)">
+        <Tooltip title="พิมพ์รายงาน (PDF)">
           <Button 
             type="text" 
-            icon={<PrinterOutlined className="text-slate-400 hover:text-blue-500 text-lg" />} 
+            icon={<PrinterOutlined className="text-slate-400 hover:text-blue-500 text-base md:text-lg" />} 
             onClick={() => handlePrintRow(record)}
-            className="hover:bg-blue-50 transition-colors"
+            className="hover:bg-blue-50 transition-colors p-1 md:p-2"
           />
         </Tooltip>
       ),
     }
   ];
 
-  // จำลองข้อมูลถ้าไม่มี (เอาไว้ดู UI ตอนแรก)
-  const mockObservations = [
-    {
-      id: '1',
-      date: new Date().toISOString(),
-      location: 'โซนถังเก็บสารเคมี A',
-      observed_group: 'CONTRACTOR',
-      category: 'PPE',
-      behavior_type: 'UNSAFE',
-      action_taken: 'แนะนำ/แก้ไขทันที',
-      description: 'ผู้รับเหมาไม่สวมแว่นตานิรภัยขณะปฏิบัติงานใกล้จุดที่มีไอระเหย',
-      root_cause: 'รีบเร่ง / ต้องการประหยัดเวลา',
-      suggestion: 'ย้ำเตือนผู้คุมงานผู้รับเหมาให้ตรวจ PPE ก่อนเริ่มงานทุกครั้ง และชี้แจงอันตรายเพิ่มเติม',
-      observer: { full_name: 'คุณวิศวกร จป.' }
-    },
-    {
-      id: '2',
-      date: new Date(Date.now() - 86400000).toISOString(),
-      location: 'พื้นที่ซ่อมบำรุง (Workshop)',
-      observed_group: 'EMPLOYEE',
-      category: 'HOUSEKEEPING',
-      behavior_type: 'SAFE',
-      action_taken: 'กล่าวชื่นชม',
-      description: 'พนักงานจัดเก็บเครื่องมือเข้าตู้เรียบร้อยหลังใช้งานเสร็จ พื้นที่สะอาดไม่มีคราบน้ำมัน',
-      observer: { full_name: 'คุณวิศวกร จป.' }
-    }
-  ];
-
-  const displayData = observations.length > 0 ? observations : mockObservations;
-
   return (
-    <div ref={printRef} className="bg-white rounded-[2.5rem] border border-slate-50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden p-4 md:p-6 flex flex-col h-full bbs-history-container">
+    <div className="h-full flex flex-col relative">
       
-      {/* 🔍 ส่วน Header & Filters */}
-      <div className="mb-6 hide-on-print-single">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-          <div>
-            <h2 className="text-xl md:text-2xl font-black text-slate-800 m-0 flex items-center gap-2">
-              <SafetyCertificateOutlined className="text-emerald-500" /> ทะเบียนประวัติ BBS
-            </h2>
-            <p className="text-xs md:text-sm text-slate-500 m-0 mt-1 font-medium">BBS Observation History</p>
+      {/* =========================================================
+          🖥️ หน้าจอแอปพลิเคชันปกติ (ซ่อนตอนเปิดโหมดพิมพ์)
+          ========================================================= */}
+      <div className={`bg-white rounded-3xl md:rounded-[2.5rem] border border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] p-3 md:p-6 flex flex-col flex-1 overflow-hidden app-ui-container ${isPrinting ? 'hidden-during-print' : ''}`}>
+        
+        {/* 🔍 Header & Filters */}
+        <div className="mb-4 md:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-5">
+            <div>
+              <h2 className="text-lg md:text-2xl font-black text-slate-800 m-0 flex items-center gap-2">
+                <SafetyCertificateOutlined className="text-emerald-500" /> ประวัติ BBS
+              </h2>
+              <p className="text-[10px] md:text-sm text-slate-500 m-0 mt-0.5 md:mt-1 font-medium">BBS Observation History</p>
+            </div>
+            
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button 
+                type="default" 
+                icon={<SyncOutlined className={loading ? "animate-spin" : ""} />} 
+                onClick={fetchBBSHistory}
+                className="rounded-xl h-8 md:h-10 text-xs md:text-sm font-bold bg-slate-50 border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300"
+              >
+                {isMobile ? '' : 'รีเฟรช'}
+              </Button>
+              <Button 
+                type="primary" 
+                icon={<PrinterOutlined />} 
+                onClick={handlePrintAll}
+                className="bg-slate-800 hover:bg-slate-900 border-none font-bold rounded-xl h-8 md:h-10 text-xs md:text-sm shadow-md"
+                disabled={observations.length === 0}
+              >
+                {isMobile ? 'พิมพ์ทั้งหมด' : 'พิมพ์รายงานทั้งหมด (PDF)'}
+              </Button>
+            </div>
           </div>
-          
-          <Button 
-            type="primary" 
-            icon={<PrinterOutlined />} 
-            onClick={() => window.print()}
-            className="bg-slate-800 hover:bg-slate-900 border-none font-bold rounded-xl h-10 shadow-md"
-          >
-            พิมพ์รายงานทั้งหมด (PDF)
-          </Button>
+
+          <div className="bg-slate-50/80 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100/80">
+            <div className="font-bold text-slate-500 text-[10px] md:text-xs flex items-center gap-1.5 mb-2 md:mb-0 md:mr-3 md:inline-flex">
+              <FilterOutlined /> คัดกรองข้อมูล:
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 md:inline-grid md:w-[calc(100%-100px)] align-middle">
+              <Input placeholder="ค้นหาพื้นที่..." prefix={<SearchOutlined className="text-slate-400" />} value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full rounded-lg md:rounded-xl font-medium text-xs md:text-sm" />
+              <Select placeholder="ประเภทพฤติกรรม" allowClear className="w-full font-medium custom-select-sm md:custom-select-md" onChange={setFilterType}>
+                <Select.Option value="SAFE">พฤติกรรมปลอดภัย</Select.Option>
+                <Select.Option value="UNSAFE">พฤติกรรมเสี่ยง</Select.Option>
+              </Select>
+              <RangePicker className="w-full rounded-lg md:rounded-xl font-medium text-xs md:text-sm lg:col-span-2" format="DD/MM/YYYY" />
+            </div>
+          </div>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-wrap gap-3 items-center">
-          <div className="font-bold text-slate-500 text-xs flex items-center gap-1.5 mr-2">
-            <FilterOutlined /> คัดกรองข้อมูล:
-          </div>
-          <Input 
-            placeholder="ค้นหาพื้นที่..." 
-            prefix={<SearchOutlined className="text-slate-400" />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full md:w-48 rounded-xl font-medium"
-          />
-          <Select 
-            placeholder="ประเภทพฤติกรรม" 
-            allowClear 
-            className="w-full md:w-40 font-medium"
-            onChange={setFilterType}
-          >
-            <Select.Option value="SAFE">พฤติกรรมปลอดภัย</Select.Option>
-            <Select.Option value="UNSAFE">พฤติกรรมเสี่ยง</Select.Option>
-          </Select>
-          <RangePicker className="w-full md:w-64 rounded-xl font-medium" format="DD/MM/YYYY" />
-        </div>
-      </div>
-
-      {/* 📊 ส่วนตารางหลัก */}
-      <div className="flex-1 overflow-hidden print-table-container">
-        <Table 
-          columns={columns} 
-          dataSource={displayData.filter((obs: any) => 
-            (filterType ? obs.behavior_type === filterType : true) &&
-            (obs.location?.toLowerCase().includes(searchText.toLowerCase()))
-          )} 
-          loading={loading}
-          rowKey="id"
-          size="middle"
-          scroll={{ x: 800 }}
-          pagination={{ pageSize: 10, className: "px-4 hide-on-print-single" }}
-          className="modern-expanded-table"
-          expandedRowKeys={expandedRowKeys}
-          onExpand={(expanded, record) => {
-            if (expanded) {
-              setExpandedRowKeys([...expandedRowKeys, record.id]);
-            } else {
-              setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.id));
-            }
-          }}
-          rowClassName={(record) => `printable-row printable-row-${record.id}`} // 🟢 ใส่ Class สำหรับชี้เป้าเวลา Print
-          expandable={{
-            expandedRowRender: (record) => (
-              <div className="p-5 md:p-8 bg-[#f8fafc] rounded-2xl md:rounded-[2rem] border border-slate-200/60 m-2 md:m-4 shadow-inner animate-fade-in origin-top expanded-details-box">
-                <h4 className="text-sm font-black text-slate-800 mb-5 flex items-center gap-2 border-b border-slate-200 pb-3">
-                  <InfoCircleOutlined className="text-blue-500" /> รายละเอียดการสังเกตการณ์ (Observation Details) - Ref: BBS-{record.id.substring(0,6)}
-                </h4>
-                
-                <Row gutter={[32, 24]}>
-                  {/* ซ้าย: ข้อมูลพฤติกรรม */}
-                  <Col xs={24} md={12}>
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">รายละเอียดสิ่งที่พบเห็น</span>
-                        <div className="mt-1.5 bg-white p-4 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 whitespace-pre-wrap shadow-sm">
-                          {record.description || '-'}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="bg-blue-50 w-10 h-10 rounded-full flex items-center justify-center text-blue-500 shrink-0">
-                          <CheckCircleOutlined className="text-lg" />
-                        </div>
+        {/* 📊 ตารางหลัก */}
+        <div className="flex-1 overflow-hidden">
+          <Table 
+            columns={columns} 
+            dataSource={observations.filter((obs: any) => 
+              (filterType ? obs.behavior_type === filterType : true) &&
+              (obs.location?.toLowerCase().includes(searchText.toLowerCase()))
+            )} 
+            loading={loading}
+            rowKey="id"
+            size={isMobile ? "small" : "middle"} 
+            scroll={{ x: 500 }} 
+            pagination={{ pageSize: 10, className: "px-2 md:px-4", size: isMobile ? "small" : "default" }}
+            className="modern-expanded-table"
+            expandedRowKeys={expandedRowKeys}
+            onExpand={(expanded, record) => {
+              if (expanded) setExpandedRowKeys([...expandedRowKeys, record.id]);
+              else setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.id));
+            }}
+            locale={{ emptyText: <Empty description={<span className="text-slate-400 font-bold text-xs">ยังไม่มีประวัติ BBS</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div className="p-4 md:p-8 bg-[#f8fafc] rounded-xl md:rounded-[2rem] border border-slate-200/60 m-1 md:m-4 shadow-inner animate-fade-in origin-top">
+                  <h4 className="text-[11px] md:text-sm font-black text-slate-800 mb-3 md:mb-5 flex flex-wrap items-center gap-1.5 md:gap-2 border-b border-slate-200 pb-2 md:pb-3">
+                    <InfoCircleOutlined className="text-blue-500" /> 
+                    <span>รายละเอียด</span> 
+                    <span className="text-slate-400 font-normal">| Ref: BBS-{record.id?.substring(0,6)}</span>
+                  </h4>
+                  
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
+                      <div className="flex flex-col gap-3 md:gap-4">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">การตอบสนอง (Action Taken)</span>
-                          <span className="text-sm font-extrabold text-blue-700">{record.action_taken || 'ตักเตือน/แนะนำ'}</span>
+                          <span className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-widest">รายละเอียดสิ่งที่พบเห็น</span>
+                          <div className="mt-1 md:mt-1.5 bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-200 text-[11px] md:text-sm font-bold text-slate-700 whitespace-pre-wrap shadow-sm leading-relaxed">
+                            {record.description || '-'}
+                          </div>
                         </div>
+                        <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3.5 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm">
+                          <div className="bg-blue-50 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-blue-500 shrink-0">
+                            <CheckCircleOutlined className="text-base md:text-lg" />
+                          </div>
+                          <div>
+                            <span className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">การตอบสนอง (Action)</span>
+                            <span className="text-xs md:text-sm font-extrabold text-blue-700">{record.action_taken || 'ตักเตือน/แนะนำ'}</span>
+                          </div>
+                        </div>
+                        {record.photos && record.photos.length > 0 && (
+                          <div className="mt-1">
+                             <span className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1 mb-1.5 md:mb-2"><PictureOutlined /> ภาพถ่าย (Evidence)</span>
+                             <div className="flex flex-wrap gap-2 md:gap-3">
+                               {record.photos.map((url: string, index: number) => (
+                                 <div key={index} className="w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl border border-slate-200 overflow-hidden bg-slate-100">
+                                   <img src={url} alt="BBS Evidence" className="w-full h-full object-cover" />
+                                 </div>
+                               ))}
+                             </div>
+                          </div>
+                        )}
                       </div>
-
-                      {record.photos && record.photos.length > 0 && (
-                        <div className="print-avoid-break">
-                           <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1 mb-2"><PictureOutlined /> หลักฐานภาพถ่าย</span>
-                           <div className="flex gap-3">
-                             {record.photos.map((url: string, index: number) => (
-                               <div key={index} className="w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-100">
-                                 <img src={url} alt="BBS Evidence" className="w-full h-full object-cover" />
-                               </div>
-                             ))}
-                           </div>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      {record.behavior_type === 'UNSAFE' ? (
+                        <div className="bg-rose-50/50 p-4 md:p-5 rounded-xl md:rounded-[1.5rem] border border-rose-100 h-full relative overflow-hidden">
+                          <div className="absolute top-0 left-0 w-1 md:w-1.5 h-full bg-rose-500"></div>
+                          <h4 className="font-black text-rose-700 text-xs md:text-sm mb-3 md:mb-4 flex items-center gap-1.5 md:gap-2">
+                            <ThunderboltOutlined /> วิเคราะห์สาเหตุรากเหง้า (Root Cause)
+                          </h4>
+                          <div className="flex flex-col gap-3 md:gap-4 pl-1 md:pl-2">
+                            <div>
+                              <span className="text-[9px] md:text-[10px] text-rose-400 font-black uppercase tracking-widest">สาเหตุหลัก</span>
+                              <div className="mt-1 bg-white px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl border border-rose-200 text-[11px] md:text-sm font-bold text-rose-600 inline-block shadow-sm">
+                                {record.root_cause || 'ไม่ได้ระบุสาเหตุ'}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-[9px] md:text-[10px] text-rose-400 font-black uppercase tracking-widest">ข้อเสนอแนะเพื่อป้องกัน</span>
+                              <div className="mt-1 bg-white p-3 md:p-3.5 rounded-xl border border-rose-200 text-[11px] md:text-sm font-bold text-slate-700 whitespace-pre-wrap shadow-sm leading-relaxed">
+                                {record.suggestion || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-50/50 flex flex-col items-center justify-center h-full rounded-xl md:rounded-[1.5rem] border border-emerald-100 border-dashed p-4 md:p-6 text-center min-h-[150px] md:min-h-[200px]">
+                          <SafetyCertificateOutlined className="text-3xl md:text-4xl text-emerald-300 mb-2 md:mb-3" />
+                          <span className="font-bold text-emerald-600 text-xs md:text-sm leading-relaxed">พฤติกรรมปลอดภัย<br/>ขอบคุณที่ช่วยกันดูแลความปลอดภัยครับ</span>
                         </div>
                       )}
-                    </div>
-                  </Col>
-
-                  {/* ขวา: วิเคราะห์รากเหง้า */}
-                  <Col xs={24} md={12}>
-                    {record.behavior_type === 'UNSAFE' ? (
-                      <div className="bg-rose-50/50 p-5 rounded-[1.5rem] border border-rose-100 h-full relative overflow-hidden print-avoid-break">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
-                        <h4 className="font-black text-rose-700 text-sm mb-4 flex items-center gap-2">
-                          <ThunderboltOutlined /> วิเคราะห์สาเหตุรากเหง้า (Root Cause Analysis)
-                        </h4>
-                        
-                        <div className="flex flex-col gap-4 pl-2">
-                          <div>
-                            <span className="text-[10px] text-rose-400 font-black uppercase tracking-widest">สาเหตุหลักที่พนักงานกระทำเสี่ยง</span>
-                            <div className="mt-1 bg-white px-3 py-2 rounded-xl border border-rose-200 text-sm font-bold text-rose-600 inline-block shadow-sm">
-                              {record.root_cause || 'ไม่ได้ระบุสาเหตุ'}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <span className="text-[10px] text-rose-400 font-black uppercase tracking-widest">ข้อเสนอแนะเพื่อป้องกัน (Preventive Measure)</span>
-                            <div className="mt-1 bg-white p-3.5 rounded-xl border border-rose-200 text-sm font-bold text-slate-700 whitespace-pre-wrap shadow-sm">
-                              {record.suggestion || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-emerald-50/50 flex flex-col items-center justify-center h-full rounded-[1.5rem] border border-emerald-100 border-dashed p-6 text-center min-h-[200px] print-avoid-break">
-                        <SafetyCertificateOutlined className="text-4xl text-emerald-300 mb-3" />
-                        <span className="font-bold text-emerald-600 text-sm">พฤติกรรมปลอดภัย<br/>ขอบคุณที่ช่วยกันรักษาสภาพแวดล้อมการทำงาน</span>
-                      </div>
-                    )}
-                  </Col>
-                </Row>
-              </div>
-            )
-          }}
-        />
+                    </Col>
+                  </Row>
+                </div>
+              )
+            }}
+          />
+        </div>
       </div>
 
-      {/* 🖨️ CSS สำหรับควบคุมการ Print */}
+      {/* =========================================================
+          🖨️ หน้าจอสำหรับพิมพ์ (ซ่อนตอนใช้งานปกติ โผล่มาเฉพาะตอน Print)
+          ========================================================= */}
+      {isPrinting && (
+        <div className="print-template-container bg-white absolute inset-0 z-[999] w-full min-h-screen pb-20">
+          {printData.map((record, index) => (
+            <div key={record.id || index} className="print-page w-full max-w-[800px] mx-auto bg-white mb-10 p-8 border border-slate-200 rounded-xl" style={{ breakAfter: 'page', pageBreakAfter: 'always' }}>
+              
+              {/* Header รายงาน */}
+              <div className="border-b-[3px] border-slate-800 pb-4 mb-6 flex justify-between items-end">
+                <div>
+                  <h1 className="text-2xl font-black text-slate-900 m-0 flex items-center gap-2">
+                    <FileTextOutlined /> แบบรายงานการสังเกตการณ์ความปลอดภัย (BBS)
+                  </h1>
+                  <p className="text-slate-500 m-0 mt-1 font-bold">Behavior Based Safety Observation Report</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-600 m-0">Ref: BBS-{record.id?.substring(0,8).toUpperCase()}</p>
+                  <p className="text-[10px] text-slate-400 m-0 mt-1">พิมพ์เมื่อ: {dayjs().format('DD/MM/YYYY HH:mm')}</p>
+                </div>
+              </div>
+
+              {/* ข้อมูลทั่วไป */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">วันที่และเวลาที่พบเหตุ</p>
+                  <p className="text-base font-black text-slate-800 m-0">{dayjs(record.date).format('DD MMMM YYYY • HH:mm น.')}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">สถานที่ / พื้นที่ปฏิบัติงาน</p>
+                  <p className="text-base font-black text-slate-800 m-0">{record.location}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">กลุ่มที่ถูกสังเกต</p>
+                  <p className="text-base font-black text-slate-800 m-0">{record.observed_group === 'CONTRACTOR' ? 'ผู้รับเหมา (Contractor)' : 'พนักงาน (Employee)'}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">หมวดหมู่พฤติกรรม</p>
+                  <p className="text-base font-black text-slate-800 m-0">{getCategoryLabel(record.category)}</p>
+                </div>
+              </div>
+
+              {/* สถานะความปลอดภัย */}
+              <div className={`p-4 rounded-xl border mb-6 ${record.behavior_type === 'SAFE' ? 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]' : 'bg-[#fff1f2] border-[#fecdd3] text-[#9f1239]'}`} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                <div className="flex items-center gap-3">
+                  {record.behavior_type === 'SAFE' ? <CheckCircleOutlined className="text-3xl text-[#10b981]" /> : <WarningOutlined className="text-3xl text-[#f43f5e]" />}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase mb-0.5 opacity-70">ประเมินสถานะพฤติกรรม</p>
+                    <p className="text-xl font-black m-0">{record.behavior_type === 'SAFE' ? 'พฤติกรรมปลอดภัย (Safe Behavior)' : 'พฤติกรรมเสี่ยง (At-Risk Behavior)'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* รายละเอียด */}
+              <h3 className="text-lg font-black text-slate-800 border-b border-slate-200 pb-2 mb-4">รายละเอียดการสังเกตการณ์</h3>
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-500 mb-2">สิ่งที่พบเห็น (Description):</p>
+                <div className="p-4 border border-slate-200 rounded-xl bg-white text-sm text-slate-700 whitespace-pre-wrap min-h-[60px]">
+                  {record.description || '-ไม่มีการระบุรายละเอียด-'}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-500 mb-2">การตอบสนอง/การแก้ไข (Action Taken):</p>
+                <div className="p-4 border border-slate-200 rounded-xl bg-white text-sm font-bold text-blue-700 inline-block">
+                  {record.action_taken || '-'}
+                </div>
+              </div>
+
+              {/* วิเคราะห์สาเหตุ (ถ้ามี) */}
+              {record.behavior_type === 'UNSAFE' && (
+                <div className="mt-8 page-break-inside-avoid">
+                  <h3 className="text-lg font-black text-rose-700 border-b border-rose-200 pb-2 mb-4">การวิเคราะห์สาเหตุ (Root Cause Analysis)</h3>
+                  <div className="grid grid-cols-1 gap-4 mb-6">
+                    <div className="bg-[#fff1f2] p-4 rounded-xl border border-[#ffe4e6]" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                      <p className="text-xs font-bold text-rose-500 mb-2">สาเหตุรากเหง้า (Root Cause):</p>
+                      <p className="text-base font-black text-rose-700 m-0">{record.root_cause || '-ไม่ระบุ-'}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <p className="text-xs font-bold text-slate-500 mb-2">ข้อเสนอแนะเพื่อป้องกัน (Suggestion):</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap m-0">{record.suggestion || '-ไม่มีข้อเสนอแนะ-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ลายเซ็น / ผู้รายงาน */}
+              <div className="mt-12 pt-8 border-t border-slate-200 flex justify-end page-break-inside-avoid">
+                <div className="text-center w-64">
+                  <p className="text-sm text-slate-500 mb-10">ลงชื่อผู้รายงาน (Observer)</p>
+                  <div className="border-b border-slate-400 mb-2"></div>
+                  <p className="text-sm font-black text-slate-800 m-0">{record.observer?.full_name || 'ไม่ระบุชื่อ'}</p>
+                  <p className="text-xs text-slate-500 m-0 mt-1">เจ้าหน้าที่ความปลอดภัย / ผู้สังเกตการณ์</p>
+                </div>
+              </div>
+
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 🎨 CSS ควบคุมการพิมพ์ (สลับโชว์ซ่อนหน้าจอ) */}
       <style>{`
+        .custom-select-sm .ant-select-selector { border-radius: 8px !important; }
+        .custom-select-md .ant-select-selector { border-radius: 12px !important; }
         .modern-expanded-table .ant-table { background: transparent !important; }
-        .modern-expanded-table .ant-table-thead > tr > th { background: #f8fafc !important; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding: 16px 24px; }
-        .modern-expanded-table .ant-table-tbody > tr > td { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; }
+        .modern-expanded-table .ant-table-thead > tr > th { background: #f8fafc !important; color: #64748b; font-weight: 800; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding: 12px 16px; }
+        @media (min-width: 768px) { .modern-expanded-table .ant-table-thead > tr > th { font-size: 11px; padding: 16px 24px; } }
+        .modern-expanded-table .ant-table-tbody > tr > td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+        @media (min-width: 768px) { .modern-expanded-table .ant-table-tbody > tr > td { padding: 16px 24px; } }
         .modern-expanded-table .ant-table-tbody > tr:hover > td { background: #fdfdfd !important; }
         .modern-expanded-table .ant-table-expanded-row > td { background: #ffffff !important; padding: 0 !important; }
-        .modern-expanded-table .ant-table-row-expand-icon { width: 24px; height: 24px; border-radius: 8px; color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease-out; }
-        .modern-expanded-table .ant-table-row-expand-icon:hover { background: #3b82f6; color: white; transform: scale(1.1); }
         
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
 
-        /* =========================================
-           🖨️ PRINT MEDIA QUERIES (เวทมนตร์การพิมพ์)
-           ========================================= */
+        /* 🖨️ THE ULTIMATE PRINT CSS */
         @media print {
-          /* ซ่อนเมนูด้านข้างและ Header ของเว็บหลัก (สมมติว่ามีคลาสเหล่านี้ในโครงสร้างแอป) */
-          body * {
-            visibility: hidden;
-          }
+          /* 1. ซ่อนหน้าต่างและเมนูแอปพลิเคชันปกติทั้งหมด */
+          body * { visibility: hidden; }
+          .hidden-during-print, .hidden-during-print * { display: none !important; }
           
-          /* ซ่อน Header และ Filter ของ BBS Board เอง */
-          .hide-on-print-single {
-            display: none !important;
-          }
-
-          /* กำหนดให้คอนเทนเนอร์หลักและตารางแสดงผล */
-          .bbs-history-container, 
-          .bbs-history-container *,
-          .print-table-container,
-          .print-table-container * {
-            visibility: visible;
-          }
-
-          /* จัดหน้ากระดาษ A4 แนวนอน */
-          @page {
-            size: A4 landscape;
-            margin: 1cm;
-          }
-
-          /* กรณีพิมพ์รายบุคคล: ซ่อนแถวอื่นๆ ที่ไม่ได้เลือก */
-          body.print-single-row .printable-row {
-            display: none !important;
-          }
+          /* 2. ดึงเฉพาะหน้า Print Template ขึ้นมาโชว์ */
+          .print-template-container, .print-template-container * { visibility: visible; }
           
-          /* กรณีพิมพ์รายบุคคล: แสดงเฉพาะแถวที่ตรงกับ data-print-id */
-          body.print-single-row[data-print-id="1"] .printable-row-1,
-          body.print-single-row[data-print-id="2"] .printable-row-2,
-          /* ... ทริค CSS เล็กๆ: เราใช้วิธีแสดงเฉพาะแถวที่ Expanded */
-          body.print-single-row .ant-table-row-expanded,
-          body.print-single-row .ant-table-expanded-row {
-            display: table-row !important;
+          .print-template-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
           }
 
-          /* ปรับสีให้เหมาะกับกระดาษ (ลบพื้นหลังที่กินหมึก) */
-          .expanded-details-box {
-            background-color: white !important;
-            border: 2px solid #e2e8f0 !important;
-            padding: 20px !important;
-            border-radius: 8px !important;
-          }
-
-          .ant-table-thead > tr > th {
-            background-color: #f1f5f9 !important;
-            -webkit-print-color-adjust: exact; 
-          }
-
-          /* ห้ามตัดแบ่งข้อมูลในกล่องเดียวกันไปคนละหน้ากระดาษ */
-          .print-avoid-break {
-            page-break-inside: avoid;
-          }
+          /* 3. จัดการระยะขอบและสีกระดาษ */
+          @page { size: A4 portrait; margin: 10mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          
+          /* 4. จัดการไม่ให้เนื้อหาสำคัญโดนหั่นครึ่ง */
+          .page-break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
         }
       `}</style>
     </div>
