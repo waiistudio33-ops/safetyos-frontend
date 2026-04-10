@@ -71,14 +71,27 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'UPLOAD' | 'REGISTRY'>(currentUser?.role === 'CONTRACTOR' ? 'UPLOAD' : 'REGISTRY');
 
+  // 🟢 แก้ไข: เพิ่มการส่ง Authorization Token และดัก Error
   const fetchCerts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/certificates`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/certificates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
-      setCerts(data);
+      
+      if (res.ok) {
+        setCerts(Array.isArray(data) ? data : []); // ป้องกันกรณี data ไม่ใช่ array
+      } else {
+        message.error(data.error || 'ดึงข้อมูลล้มเหลว');
+        setCerts([]);
+      }
     } catch (error) {
       message.error('ไม่สามารถดึงข้อมูลใบ Certificate ได้');
+      setCerts([]);
     } finally {
       setIsLoading(false);
     }
@@ -110,10 +123,15 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
 
       const issuedDate = values.dateRange[0].toISOString();
       const expiryDate = values.dateRange[1].toISOString();
+      const token = localStorage.getItem('token');
 
-      await fetch(`${API_URL}/certificates`, {
+      // 🟢 แก้ไข: เพิ่มการส่ง Authorization Token
+      const response = await fetch(`${API_URL}/certificates`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           user_id: currentUser.id,
           cert_name: values.cert_name,
@@ -123,6 +141,8 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
           status: 'PENDING'
         })
       });
+
+      if (!response.ok) throw new Error('อัปโหลดไม่สำเร็จ');
 
       message.success('อัปโหลดใบ Certificate สำเร็จ! รอ จป. ตรวจสอบครับ');
       form.resetFields();
@@ -138,11 +158,20 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
 
   const handleVerify = async (certId: string, status: string) => {
     try {
-      await fetch(`${API_URL}/certificates/${certId}/status`, {
+      const token = localStorage.getItem('token');
+      
+      // 🟢 แก้ไข: เพิ่มการส่ง Authorization Token
+      const response = await fetch(`${API_URL}/certificates/${certId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
+
+      if (!response.ok) throw new Error('อัปเดตไม่สำเร็จ');
+
       message.success(status === 'APPROVED' ? 'อนุมัติใบ Certificate แล้ว' : 'ปฏิเสธใบ Certificate แล้ว');
       fetchCerts(); 
     } catch (error) {
