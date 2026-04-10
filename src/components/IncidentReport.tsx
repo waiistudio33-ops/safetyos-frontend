@@ -5,7 +5,7 @@ import {
   PushpinOutlined, CheckCircleOutlined, SyncOutlined, AlertOutlined,
   UserOutlined, ThunderboltOutlined, HistoryOutlined, SafetyCertificateOutlined,
   FireOutlined, DashboardOutlined, SafetyOutlined, MedicineBoxOutlined, 
-  ToolOutlined, CloudOutlined, FormOutlined, AppstoreOutlined
+  ToolOutlined, CloudOutlined, FormOutlined, AppstoreOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -42,16 +42,21 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
+  // 🟢 แก้ไข: เพิ่ม Header Authorization สำหรับดึงข้อมูล
   const fetchIncidents = async () => {
     setIsFetching(true);
     try {
-      const res = await fetch(`${API_URL}/incidents`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/incidents`, {
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setIncidents(data);
     } catch (error) {
       console.error("Fetch Error:", error);
-      message.error('ไม่สามารถดึงข้อมูลจุดเสี่ยงได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsFetching(false);
     }
@@ -82,6 +87,7 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
     }
   };
 
+  // 🟢 แก้ไข: เพิ่ม Header Authorization สำหรับส่งข้อมูลใหม่
   const handleReportIncident = async (values: any) => {
     if (!currentUser) return message.error('กรุณาเข้าสู่ระบบก่อนแจ้งจุดเสี่ยง');
     
@@ -101,9 +107,13 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
         imageUrl = publicUrlData.publicUrl;
       }
 
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/incidents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify({
           reporter_id: currentUser.id,
           title: values.title,
@@ -131,11 +141,16 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
     }
   };
 
+  // 🟢 แก้ไข: เพิ่ม Header Authorization สำหรับอัปเดตสถานะ
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/incidents/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify({ status: newStatus })
       });
       if (!response.ok) throw new Error('Failed to update status');
@@ -406,13 +421,16 @@ export default function IncidentReport({ currentUser }: { currentUser: any }) {
                   </div>
 
                   {/* Upload Button */}
+                  {/* 🟢 แก้ไข: ใส่ valuePropName เพื่อลด Warning จาก Antd */}
                   <div className="flex flex-col">
                     <label className="font-extrabold text-slate-700 text-[11px] sm:text-xs mb-2 uppercase tracking-wide">รูปหลักฐาน</label>
-                    <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
-                      <Button icon={<CameraOutlined />} className={`h-12 rounded-xl sm:rounded-2xl border-2 w-full font-bold transition-all text-xs sm:text-sm ${fileList.length > 0 ? 'border-purple-500 text-purple-600 bg-purple-50 hover:!border-purple-600 shadow-[0_4px_12px_rgba(168,85,247,0.2)]' : 'border-slate-200 text-slate-500 bg-slate-50 hover:!border-slate-300 hover:!text-slate-600'}`}>
-                        {fileList.length > 0 ? 'แนบแล้ว' : 'แนบรูป'}
-                      </Button>
-                    </Upload>
+                    <Form.Item name="upload" valuePropName="fileList" getValueFromEvent={(e) => Array.isArray(e) ? e : e?.fileList} noStyle>
+                      <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
+                        <Button icon={<CameraOutlined />} className={`h-12 rounded-xl sm:rounded-2xl border-2 w-full font-bold transition-all text-xs sm:text-sm ${fileList.length > 0 ? 'border-purple-500 text-purple-600 bg-purple-50 hover:!border-purple-600 shadow-[0_4px_12px_rgba(168,85,247,0.2)]' : 'border-slate-200 text-slate-500 bg-slate-50 hover:!border-slate-300 hover:!text-slate-600'}`}>
+                          {fileList.length > 0 ? 'แนบแล้ว' : 'แนบรูป'}
+                        </Button>
+                      </Upload>
+                    </Form.Item>
                   </div>
                 </div>
 

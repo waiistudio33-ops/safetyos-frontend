@@ -436,7 +436,13 @@ export default function CertificateManager({ currentUser }: { currentUser: any }
                     <ModernDatePickerRange />
                   </Form.Item>
 
-                  <Form.Item label={<span className="font-black text-slate-700 text-xs">แนบไฟล์เอกสารอ้างอิง <span className="text-rose-500">*</span></span>}>
+                  {/* 🟢 แก้ไข: เพิ่ม valuePropName และ getValueFromEvent เพื่อแก้ Warning สีเหลือง */}
+                  <Form.Item 
+                    name="upload" 
+                    label={<span className="font-black text-slate-700 text-xs">แนบไฟล์เอกสารอ้างอิง <span className="text-rose-500">*</span></span>}
+                    valuePropName="fileList"
+                    getValueFromEvent={(e) => Array.isArray(e) ? e : e?.fileList}
+                  >
                     <Upload beforeUpload={() => false} maxCount={1} fileList={fileList} onChange={(info) => setFileList(info.fileList)}>
                       <div className="w-full border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-colors rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer mb-2">
                         <div className="bg-white text-blue-500 p-3 rounded-full mb-3 shadow-sm border border-blue-100">
