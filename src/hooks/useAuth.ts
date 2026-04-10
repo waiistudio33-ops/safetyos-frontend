@@ -7,24 +7,27 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrend
 const LIFF_ID = import.meta.env.VITE_LINE_LIFF_ID || '2009277207-jNY8QghJ'; 
 
 export function useAuth() {
-  // 🟢 1. ประกาศ useState ทั้งหมดให้เสร็จก่อน ห้ามมีเงื่อนไขมาคั่น
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [lineProfile, setLineProfile] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // 🟢 2. ประกาศ useCallback ให้เสร็จ
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('safetyos_token');
+    localStorage.removeItem('token'); // 🟢 เปลี่ยนมาใช้ชื่อ 'token'
+    localStorage.removeItem('safetyos_token'); // 🟢 ลบของเก่าทิ้งเผื่อมันค้าง
     setIsAuthenticated(false);
     setCurrentUser(null);
   }, []);
 
   const fetchUserData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('safetyos_token');
-      if (!token) throw new Error('No token');
+      const token = localStorage.getItem('token'); // 🟢 ดึงด้วยชื่อ 'token'
+      
+      // 🟢 เช็คแบบ Safe ป้องกัน atob error
+      if (!token || token === 'undefined' || !token.includes('.')) {
+         throw new Error('Invalid or missing token');
+      }
 
       const tokenData = JSON.parse(atob(token.split('.')[1]));
       const userId = tokenData.id;
@@ -44,13 +47,12 @@ export function useAuth() {
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
-      handleLogout();
+      handleLogout(); // ถ้า Token พัง ให้เตะออกไปล็อกอินใหม่เลย
     } finally {
       setIsAuthChecking(false);
     }
   }, [handleLogout]);
 
-  // 🟢 3. ประกาศ useEffect ให้เสร็จ
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -63,8 +65,8 @@ export function useAuth() {
         console.error('LIFF init failed', err);
       }
 
-      const token = localStorage.getItem('safetyos_token');
-      if (token) {
+      const token = localStorage.getItem('token'); // 🟢 เช็คด้วยชื่อ 'token'
+      if (token && token !== 'undefined') {
         await fetchUserData();
       } else {
         setIsAuthChecking(false);
@@ -74,28 +76,25 @@ export function useAuth() {
     initAuth();
   }, [fetchUserData]);
 
-  // 🟢 4. ประกาศฟังก์ชันทั่วไป
   const handleLogin = async (values: any) => {
-    setIsLoggingIn(true);
     try {
-      const response = await axios.post(`${API_URL}/login`, {
-        username: values.username,
-        password: values.password,
-        line_id: lineProfile?.userId,
-        picture_url: lineProfile?.pictureUrl
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values)
       });
-      
-      const { token, user } = response.data;
-      localStorage.setItem('safetyos_token', token);
-      
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      message.success(`ยินดีต้อนรับคุณ ${user.full_name}`);
-      
-    } catch (error: any) {
-      message.error(error.response?.data?.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    } finally {
-      setIsLoggingIn(false);
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem('token', data.token); // 🟢 เก็บด้วยชื่อ 'token'
+        setCurrentUser(data.user);
+        setIsAuthenticated(true); // 🟢 เพิ่มบรรทัดนี้ เพื่อให้ระบบรู้ว่าล็อกอินแล้ว
+        message.success('เข้าสู่ระบบสำเร็จ');
+      } else {
+        message.error(data.error);
+      }
+    } catch (error) {
+      message.error('เกิดข้อผิดพลาด');
     }
   };
 
@@ -113,7 +112,7 @@ export function useAuth() {
       });
       
       const { token, user } = response.data;
-      localStorage.setItem('safetyos_token', token);
+      localStorage.setItem('token', token); // 🟢 เก็บด้วยชื่อ 'token' (เหมือนกันแล้ว!)
       
       setCurrentUser(user);
       setIsAuthenticated(true);
@@ -130,7 +129,6 @@ export function useAuth() {
     message.info('ระบบ SCGC SSO กำลังอยู่ระหว่างการพัฒนา');
   };
 
-  // 🟢 5. Return ค่าออกไป
   return {
     isAuthenticated,
     isAuthChecking,
