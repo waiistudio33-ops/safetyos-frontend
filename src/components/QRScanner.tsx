@@ -11,7 +11,7 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🔊 1. เตรียมเสียง "ติ๊ด" (Beep Sound)
+  // 🔊 เตรียมเสียง "ติ๊ด"
   const playBeepSound = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -32,23 +32,20 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     }
   };
 
-  // 📸 2. ฟังก์ชันสแกนจากไฟล์รูปภาพ (แกลลอรี่)
+  // 📸 ฟังก์ชันสแกนจากไฟล์รูปภาพ
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsProcessingFile(true);
     try {
-      // ถ้ากำลังเปิดกล้องอยู่ ให้หยุดกล้องก่อนชั่วคราว
       if (scannerRef.current && scannerRef.current.isScanning) {
         await scannerRef.current.stop();
       }
 
-      // ใช้ Html5Qrcode สแกนไฟล์รูปภาพ
       const html5QrCode = new Html5Qrcode("qr-reader");
       const decodedText = await html5QrCode.scanFile(file, true);
       
-      // สแกนสำเร็จ
       if (navigator.vibrate) { navigator.vibrate(50); }
       playBeepSound();
       message.success('อ่าน QR Code จากรูปภาพสำเร็จ!');
@@ -57,17 +54,14 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     } catch (err) {
       console.error("Error scanning file:", err);
       message.error('ไม่พบ QR Code ในรูปภาพนี้ หรือรูปภาพไม่ชัดเจน');
-      
-      // สแกนไม่ผ่าน ให้เปิดกล้องกลับมาใหม่
       startLiveScanning(); 
     } finally {
       setIsProcessingFile(false);
-      // เคลียร์ค่า input เผื่อผู้ใช้เลือกรูปเดิมซ้ำ
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // 🎥 3. ฟังก์ชันเปิดกล้องสด (Live Scan)
+  // 🎥 ฟังก์ชันเปิดกล้องสด (แก้ปัญหาจอยืด)
   const startLiveScanning = async () => {
     if (!scannerRef.current) {
       scannerRef.current = new Html5Qrcode("qr-reader");
@@ -76,13 +70,11 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     const html5QrCode = scannerRef.current;
     setIsInitializing(true);
     setHasError(false);
-    
-    const isPortrait = window.innerHeight > window.innerWidth;
-    const calculatedAspectRatio = isPortrait 
-       ? Number((window.innerHeight / window.innerWidth).toFixed(4)) 
-       : Number((window.innerWidth / window.innerHeight).toFixed(4));
 
-    const scanSize = window.innerWidth < 400 ? 220 : 250;
+    // 🟢 แก้ไข: ใช้ขนาดกรอบตามสัดส่วนจอ แต่อย่าเล็กเกินไป
+    const minEdge = Math.min(window.innerWidth, window.innerHeight);
+    const scanSize = Math.max(200, Math.floor(minEdge * 0.7)); // ให้กรอบโฟกัสมีขนาด 70% ของจอ
+
     let isScanSuccess = false;
 
     try {
@@ -91,7 +83,7 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         {
           fps: 10, 
           qrbox: { width: scanSize, height: scanSize },
-          aspectRatio: calculatedAspectRatio, 
+          // 🚨 ท่าไม้ตาย: ลบคำสั่ง aspectRatio ทิ้งไปเลย! ปล่อยให้มันหาค่าธรรมชาติของกล้องเอง
           disableFlip: false 
         },
         (decodedText) => {
@@ -130,10 +122,10 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
   }, [onScan]);
 
   return (
-    <div className="relative flex flex-col items-center w-full h-full">
+    <div className="relative flex flex-col items-center w-full h-[500px] md:h-[600px] max-h-[80vh]">
       
       {/* 🌟 กล่องสแกนเนอร์ */}
-      <div className="relative w-full h-full bg-black flex items-center justify-center">
+      <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
         
         {/* State: กำลังโหลดกล้อง หรือ กำลังประมวลผลรูป */}
         {(isStarting || isProcessingFile) && (
@@ -156,7 +148,6 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
               อุปกรณ์อาจไม่รองรับ หรือคุณยังไม่ได้อนุญาตให้เบราว์เซอร์ใช้งานกล้อง
             </p>
             
-            {/* ปุ่มเลือกรูปภาพตอนกล้องพัง */}
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform"
@@ -166,28 +157,30 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
           </div>
         )}
         
-        {/* ตัวคอนเทนเนอร์กล้อง */}
-        <div id="qr-reader" className="w-full h-full absolute inset-0 bg-black"></div>
+        {/* 🟢 ตัวคอนเทนเนอร์กล้อง */}
+        {/* ใช้ absolute inset-0 ให้มันยืดเต็มกรอบที่กำหนดไว้ด้านบน */}
+        <div id="qr-reader" className="absolute inset-0 bg-black z-0"></div>
 
         {/* 🎨 Overlay กรอบโฟกัส (ฟิล์มดำเจาะช่องใสตรงกลาง) */}
         {!isStarting && !hasError && !isProcessingFile && (
           <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
              
              {/* กล่องใสตรงกลาง + เงามืดรอบนอก */}
-             <div className="relative w-[240px] h-[240px] rounded-[1.75rem] shadow-[0_0_0_2000px_rgba(0,0,0,0.7)] transition-all duration-300">
+             {/* 🟢 ปรับให้กรอบตรงกลางขยับขึ้นมานิดนึง ไม่ให้อยู่ต่ำเกินไป */}
+             <div className="relative w-[220px] sm:w-[250px] h-[220px] sm:h-[250px] -mt-10 rounded-[1.75rem] shadow-[0_0_0_2000px_rgba(0,0,0,0.75)] transition-all duration-300">
                
                {/* เส้นเลเซอร์สแกนขึ้นลง */}
                <div className="absolute left-4 right-4 h-0.5 bg-emerald-400 shadow-[0_0_12px_3px_rgba(52,211,153,0.8)] animate-scan-laser rounded-full"></div>
 
                {/* มุม 4 ด้าน (Corner Brackets) */}
-               <div className="absolute -top-0.5 -left-0.5 w-14 h-14 border-t-[4px] border-l-[4px] border-white rounded-tl-[1.75rem] opacity-100 drop-shadow-md"></div>
-               <div className="absolute -top-0.5 -right-0.5 w-14 h-14 border-t-[4px] border-r-[4px] border-white rounded-tr-[1.75rem] opacity-100 drop-shadow-md"></div>
-               <div className="absolute -bottom-0.5 -left-0.5 w-14 h-14 border-b-[4px] border-l-[4px] border-white rounded-bl-[1.75rem] opacity-100 drop-shadow-md"></div>
-               <div className="absolute -bottom-0.5 -right-0.5 w-14 h-14 border-b-[4px] border-r-[4px] border-white rounded-br-[1.75rem] opacity-100 drop-shadow-md"></div>
+               <div className="absolute -top-0.5 -left-0.5 w-12 sm:w-14 h-12 sm:h-14 border-t-[4px] border-l-[4px] border-white rounded-tl-[1.75rem] opacity-100 drop-shadow-md"></div>
+               <div className="absolute -top-0.5 -right-0.5 w-12 sm:w-14 h-12 sm:h-14 border-t-[4px] border-r-[4px] border-white rounded-tr-[1.75rem] opacity-100 drop-shadow-md"></div>
+               <div className="absolute -bottom-0.5 -left-0.5 w-12 sm:w-14 h-12 sm:h-14 border-b-[4px] border-l-[4px] border-white rounded-bl-[1.75rem] opacity-100 drop-shadow-md"></div>
+               <div className="absolute -bottom-0.5 -right-0.5 w-12 sm:w-14 h-12 sm:h-14 border-b-[4px] border-r-[4px] border-white rounded-br-[1.75rem] opacity-100 drop-shadow-md"></div>
              </div>
              
-             {/* 🟢 ปุ่มเลือกรูปจากแกลลอรี่ (ลอยอยู่ด้านล่าง) */}
-             <div className="absolute bottom-12 w-full flex justify-center pointer-events-auto px-6">
+             {/* 🟢 ปุ่มเลือกรูปจากแกลลอรี่ */}
+             <div className="absolute bottom-6 sm:bottom-10 w-full flex justify-center pointer-events-auto px-6">
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 text-white px-5 py-2.5 rounded-full font-bold text-[13px] tracking-wide transition-all shadow-lg active:scale-95"
@@ -199,7 +192,6 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         )}
       </div>
 
-      {/* 📁 Input ซ่อนไว้สำหรับเลือกไฟล์ */}
       <input 
         type="file" 
         accept="image/*" 
@@ -212,20 +204,22 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         #qr-reader { border: none !important; background: #000; }
         #qr-reader img, #qr-reader a, #qr-reader span, #qr-reader div[style*="text-align: center"], #qr-reader > div:first-child { display: none !important; }
         
+        /* 🟢 CSS ท่าไม้ตาย แก้ภาพยืด */
         #qr-reader video {
-          object-fit: cover !important; 
+          object-fit: cover !important; /* บังคับให้วิดีโอตัดขอบตัวเองให้เต็มกรอบ ห้ามยืดเด็ดขาด! */
           width: 100% !important;
           height: 100% !important;
-          min-height: 100vh !important; 
+          /* ซูมเข้าจิ๊ดนึงเผื่อมันหดเกินไป */
           transform: scale(1.05); 
         }
 
+        /* ปรับอนิเมชันเลเซอร์ให้ระยะพอดีกับกรอบใหม่ */
         @keyframes scan-laser {
-          0% { top: 15px; opacity: 0; transform: scaleX(0.8); }
+          0% { top: 10px; opacity: 0; transform: scaleX(0.8); }
           15% { opacity: 1; transform: scaleX(1); }
-          50% { top: 120px; }
+          50% { top: 110px; }
           85% { opacity: 1; transform: scaleX(1); }
-          100% { top: 225px; opacity: 0; transform: scaleX(0.8); }
+          100% { top: 200px; opacity: 0; transform: scaleX(0.8); }
         }
         .animate-scan-laser {
           animation: scan-laser 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
