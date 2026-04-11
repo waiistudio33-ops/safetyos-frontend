@@ -55,10 +55,15 @@ export default function Dashboard({ currentUser }: DashboardProps) {
     setIsRefreshing(true);
 
     try {
+      // 🟢 ดึงกุญแจจากกระเป๋า
+      const token = localStorage.getItem('token');
+      // 🟢 สร้าง Config สำหรับแนบกุญแจไปกับ Axios
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
       const [resDash, resBbs, resPermits] = await Promise.all([
-        axios.get(`${API_URL}/dashboard`).catch(() => ({ data: {} })),
-        axios.get(`${API_URL}/bbs`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/permits?limit=5`).catch(() => ({ data: { data: [] } }))
+        axios.get(`${API_URL}/dashboard`, config).catch(() => ({ data: {} })), // 🟢 แนบกุญแจ
+        axios.get(`${API_URL}/bbs`, config).catch(() => ({ data: [] })),       // 🟢 แนบกุญแจ
+        axios.get(`${API_URL}/permits?limit=5`, config).catch(() => ({ data: { data: [] } })) // 🟢 แนบกุญแจ
       ]);
 
       const dashData = resDash.data || {};
