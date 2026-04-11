@@ -142,7 +142,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
   const handleSubmit = async () => {
     if (fileList.length === 0) {
-      return message.warning('⚠️ กรุณาแนบภาพถ่ายหน้างานอย่างน้อย 1 ภาพ เพื่อเป็นหลักฐานการตรวจสอบ!');
+      return message.warning('⚠️ กรุณาแนบภาพถ่ายหน้างาน 1 ภาพ เพื่อเป็นหลักฐานการตรวจสอบ!');
     }
 
     setIsLoading(true);
@@ -487,7 +487,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
       )}
 
       {/* 🌟 หน้าต่าง Modal ดูรูปภาพขยาย */}
-      <Modal open={previewOpen} title={<span className="font-bold text-slate-700">รูปภาพหลักฐาน</span>} footer={null} onCancel={() => setPreviewOpen(false)} centered destroyOnClose>
+      <Modal open={previewOpen} title={<span className="font-bold text-slate-700">รูปภาพหลักฐาน (1 รูปที่เห็นได้ชัดเจน)</span>} footer={null} onCancel={() => setPreviewOpen(false)} centered destroyOnClose>
         <img alt="Preview" style={{ width: '100%', borderRadius: '12px' }} src={previewImage} />
       </Modal>
 

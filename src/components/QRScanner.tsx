@@ -71,7 +71,7 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     setIsInitializing(true);
     setHasError(false);
 
-    // 🟢 แก้ไข: ใช้ขนาดกรอบตามสัดส่วนจอ แต่อย่าเล็กเกินไป
+    // 🟢 ใช้ขนาดกรอบตามสัดส่วนจอ แต่อย่าเล็กเกินไป
     const minEdge = Math.min(window.innerWidth, window.innerHeight);
     const scanSize = Math.max(200, Math.floor(minEdge * 0.7)); // ให้กรอบโฟกัสมีขนาด 70% ของจอ
 
@@ -158,7 +158,6 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         )}
         
         {/* 🟢 ตัวคอนเทนเนอร์กล้อง */}
-        {/* ใช้ absolute inset-0 ให้มันยืดเต็มกรอบที่กำหนดไว้ด้านบน */}
         <div id="qr-reader" className="absolute inset-0 bg-black z-0"></div>
 
         {/* 🎨 Overlay กรอบโฟกัส (ฟิล์มดำเจาะช่องใสตรงกลาง) */}
@@ -166,7 +165,6 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
           <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
              
              {/* กล่องใสตรงกลาง + เงามืดรอบนอก */}
-             {/* 🟢 ปรับให้กรอบตรงกลางขยับขึ้นมานิดนึง ไม่ให้อยู่ต่ำเกินไป */}
              <div className="relative w-[220px] sm:w-[250px] h-[220px] sm:h-[250px] -mt-10 rounded-[1.75rem] shadow-[0_0_0_2000px_rgba(0,0,0,0.75)] transition-all duration-300">
                
                {/* เส้นเลเซอร์สแกนขึ้นลง */}
@@ -209,7 +207,7 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
           object-fit: cover !important; /* บังคับให้วิดีโอตัดขอบตัวเองให้เต็มกรอบ ห้ามยืดเด็ดขาด! */
           width: 100% !important;
           height: 100% !important;
-          /* ซูมเข้าจิ๊ดนึงเผื่อมันหดเกินไป */
+          min-height: 100vh !important; /* บังคับให้เต็มจอมือถือ */
           transform: scale(1.05); 
         }
 
