@@ -6,7 +6,7 @@ import {
   QrcodeOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, 
   CloseCircleOutlined, SaveOutlined, HistoryOutlined, UserOutlined,
   SafetyCertificateOutlined, ScanOutlined, ExclamationCircleOutlined,
-  FormOutlined, CameraOutlined
+  FormOutlined, CameraOutlined, CloseOutlined
 } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
@@ -142,7 +142,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
   const handleSubmit = async () => {
     if (fileList.length === 0) {
-      return message.warning('⚠️ กรุณาแนบภาพถ่ายหน้างาน 1 ภาพ เพื่อเป็นหลักฐานการตรวจสอบ!');
+      return message.warning('⚠️ กรุณาแนบภาพถ่ายหน้างานอย่างน้อย 1 ภาพ เพื่อเป็นหลักฐานการตรวจสอบ!');
     }
 
     setIsLoading(true);
@@ -155,6 +155,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
     try {
       const token = localStorage.getItem('token');
+      // 🔥 ค้นหาข้อมูลล่าสุดอีกครั้งหลังจากบันทึกสำเร็จ เพื่อให้หน้าประวัติอัปเดต
       await fetch(`${API_URL}/equipment/${equipment.id}/inspect`, {
         method: 'PUT',
         headers: { 
@@ -169,6 +170,16 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
           photos: JSON.stringify(photosBase64) 
         })
       });
+      
+      // ดึงข้อมูลใหม่เพื่อเอา Logs ล่าสุดมาโชว์ในหน้า History
+      const res = await fetch(`${API_URL}/equipment/${equipment.qr_code}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const updatedData = await res.json();
+        setEquipment(updatedData);
+      }
+
       message.success('บันทึกผลการตรวจสอบพร้อมรูปถ่ายเรียบร้อยแล้ว');
       setIsSuccess(true);
     } catch (error) {
@@ -194,23 +205,45 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     </div>
   );
 
+  // 🟢 หน้าจอ "บันทึกสำเร็จ" โฉมใหม่ มีปุ่มให้เลือกทำต่อ
   if (isSuccess) {
     return (
       <div className="max-w-xl mx-auto mt-4 md:mt-10 p-6 md:p-12 bg-white rounded-3xl md:rounded-[2rem] shadow-xl border border-emerald-100 text-center animate-fade-in mx-4">
+        
         <div className="w-20 h-20 md:w-24 md:h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner relative">
            <div className="absolute inset-0 rounded-full border-4 border-emerald-200 animate-ping opacity-20"></div>
            <CheckCircleOutlined className="text-5xl md:text-6xl drop-shadow-md" />
         </div>
+        
         <h2 className="text-2xl md:text-4xl font-black text-slate-800 mb-3 tracking-tight">บันทึกเรียบร้อย!</h2>
+        
         <p className="text-slate-500 text-sm md:text-lg mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
           อัปเดตสถานะของ <strong className="text-emerald-600 block mt-1 text-lg md:text-xl">{equipment?.name}</strong> สำเร็จ
         </p>
-        <button 
-          onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); handleStartScan(); }} 
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl h-12 md:h-14 text-base md:text-lg font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all"
-        >
-          <ScanOutlined className="text-xl" /> สแกนอุปกรณ์ชิ้นต่อไป
-        </button>
+        
+        <div className="flex flex-col gap-3">
+          <button 
+            onClick={() => { setIsSuccess(false); setActiveTab('HISTORY'); }} 
+            className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg hover:bg-slate-900 transition-all"
+          >
+            <HistoryOutlined className="text-lg" /> ดูประวัติอุปกรณ์ชิ้นนี้
+          </button>
+
+          <button 
+            onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); handleStartScan(); }} 
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all"
+          >
+            <ScanOutlined className="text-lg" /> สแกนอุปกรณ์ชิ้นต่อไป
+          </button>
+          
+          <button 
+            onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); }} 
+            className="w-full flex items-center justify-center gap-2 bg-white text-slate-500 border border-slate-200 rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold hover:bg-slate-50 hover:text-slate-700 transition-all mt-2"
+          >
+            <CloseOutlined /> ปิดหน้าต่างนี้
+          </button>
+        </div>
+
       </div>
     );
   }
@@ -400,7 +433,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
               </div>
             )}
 
-            {/* TAB CONTENT: HISTORY (ปรับแก้ให้ป้ายไม่หดตัว และข้อความไม่ตกขอบ) */}
+            {/* TAB CONTENT: HISTORY */}
             {activeTab === 'HISTORY' && (
               <div className="py-2 animate-fade-in">
                 {equipment.logs && equipment.logs.length > 0 ? (
@@ -422,7 +455,6 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                         
                         <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[1.25rem] border border-slate-100 shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-md transition-shadow">
                           
-                          {/* 🟢 แก้ไขตรงนี้: จัด Layout Header ของ History ให้ป้ายไม่โดนบีบ */}
                           <div className="flex justify-between items-start gap-3 mb-3">
                             <div className="font-extrabold text-slate-800 text-[13px] md:text-base m-0 flex items-start md:items-center gap-1.5 md:gap-2 flex-1 min-w-0">
                               <HistoryOutlined className="text-slate-400 mt-0.5 md:mt-0 shrink-0" />
@@ -487,7 +519,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
       )}
 
       {/* 🌟 หน้าต่าง Modal ดูรูปภาพขยาย */}
-      <Modal open={previewOpen} title={<span className="font-bold text-slate-700">รูปภาพหลักฐาน (1 รูปที่เห็นได้ชัดเจน)</span>} footer={null} onCancel={() => setPreviewOpen(false)} centered destroyOnClose>
+      <Modal open={previewOpen} title={<span className="font-bold text-slate-700">รูปภาพหลักฐาน</span>} footer={null} onCancel={() => setPreviewOpen(false)} centered destroyOnClose>
         <img alt="Preview" style={{ width: '100%', borderRadius: '12px' }} src={previewImage} />
       </Modal>
 
@@ -509,9 +541,6 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
                executeSearch(text); 
              }} 
            />
-        </div>
-        <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-           <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">จัด QR Code ให้อยู่ในกรอบ</span>
         </div>
       </Modal>
 
