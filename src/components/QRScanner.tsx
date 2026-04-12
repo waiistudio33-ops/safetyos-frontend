@@ -61,7 +61,7 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     }
   };
 
-  // 🎥 ฟังก์ชันเปิดกล้องสด (แก้ปัญหาจอยืด)
+  // 🎥 ฟังก์ชันเปิดกล้องสด
   const startLiveScanning = async () => {
     if (!scannerRef.current) {
       scannerRef.current = new Html5Qrcode("qr-reader");
@@ -71,9 +71,8 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     setIsInitializing(true);
     setHasError(false);
 
-    // 🟢 ใช้ขนาดกรอบตามสัดส่วนจอ แต่อย่าเล็กเกินไป
     const minEdge = Math.min(window.innerWidth, window.innerHeight);
-    const scanSize = Math.max(200, Math.floor(minEdge * 0.7)); // ให้กรอบโฟกัสมีขนาด 70% ของจอ
+    const scanSize = Math.max(200, Math.floor(minEdge * 0.7)); 
 
     let isScanSuccess = false;
 
@@ -83,7 +82,6 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         {
           fps: 10, 
           qrbox: { width: scanSize, height: scanSize },
-          // 🚨 ท่าไม้ตาย: ลบคำสั่ง aspectRatio ทิ้งไปเลย! ปล่อยให้มันหาค่าธรรมชาติของกล้องเอง
           disableFlip: false 
         },
         (decodedText) => {
@@ -202,6 +200,17 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
         #qr-reader { border: none !important; background: #000; }
         #qr-reader img, #qr-reader a, #qr-reader span, #qr-reader div[style*="text-align: center"], #qr-reader > div:first-child { display: none !important; }
         
+        /* 🚨 ซ่อน UI กรอบสแกน Default ของ html5-qrcode 🚨 */
+        #qr-reader__scan_region > div > svg {
+            display: none !important;
+        }
+        
+        /* ซ่อนพื้นหลังโปร่งแสงของ Default UI เพื่อป้องกันความมืดซ้อนกัน */
+        #qr-shaded-region {
+            border-width: 0px !important;
+            background: transparent !important;
+        }
+
         /* 🟢 CSS ท่าไม้ตาย แก้ภาพยืด */
         #qr-reader video {
           object-fit: cover !important; /* บังคับให้วิดีโอตัดขอบตัวเองให้เต็มกรอบ ห้ามยืดเด็ดขาด! */

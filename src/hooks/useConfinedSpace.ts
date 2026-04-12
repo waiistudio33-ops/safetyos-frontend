@@ -12,7 +12,10 @@ export function useConfinedSpace(currentUser: any) {
 
   const fetchConfinedSpaceData = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/confined-space/active-permits`);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/confined-space/active-permits`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setActiveConfinedPermits(res.data || []);
       // ถ้ามีงานอับอากาศที่กำลังทำอยู่ ให้เลือกงานแรกอัตโนมัติ
       if (res.data && res.data.length > 0 && !selectedConfinedPermit) {
@@ -27,7 +30,10 @@ export function useConfinedSpace(currentUser: any) {
   const fetchEntries = useCallback(async (permitId: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/confined-space/${permitId}/entries`);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/confined-space/${permitId}/entries`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setConfinedEntries(res.data || []);
     } catch (error) {
       console.error('Fetch Entries Error:', error);
@@ -39,12 +45,15 @@ export function useConfinedSpace(currentUser: any) {
   const handleCheckIn = async (workerName: string, role: string = 'ENTRANT') => {
     if (!selectedConfinedPermit) return;
     try {
+      const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/confined-space/in`, {
         permit_id: selectedConfinedPermit,
         worker_name: workerName,
         time_in: new Date().toISOString(),
         status: 'INSIDE',
         role: role
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       message.success(`บันทึก ${workerName} เข้าสู่พื้นที่แล้ว`);
       fetchEntries(selectedConfinedPermit);
@@ -56,7 +65,10 @@ export function useConfinedSpace(currentUser: any) {
   const handleCheckOut = async (entryId: string) => {
     if (!selectedConfinedPermit) return;
     try {
-      await axios.put(`${API_URL}/confined-space/out/${entryId}`);
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/confined-space/out/${entryId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       message.success('บันทึกการออกจากพื้นที่สำเร็จ');
       fetchEntries(selectedConfinedPermit);
     } catch (error) {
@@ -67,8 +79,11 @@ export function useConfinedSpace(currentUser: any) {
   const handleEvacuateAll = async () => {
     if (!selectedConfinedPermit) return;
     try {
+      const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/confined-space/evacuate`, {
         permit_id: selectedConfinedPermit
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       message.warning('สั่งอพยพผู้ปฏิบัติงานทั้งหมดแล้ว!');
       fetchEntries(selectedConfinedPermit);

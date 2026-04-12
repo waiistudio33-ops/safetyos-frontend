@@ -54,7 +54,7 @@ const LoadingSpinner = () => (
   </svg>
 );
 
-// 🔥 เพิ่มฟังก์ชันบีบอัดรูปภาพก่อนแปลงเป็น Base64 ป้องกัน Payload Too Large
+// 🔥 ฟังก์ชันบีบอัดรูปภาพ
 const compressImageAndGetBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -64,7 +64,7 @@ const compressImageAndGetBase64 = (file: File): Promise<string> => {
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1000; // ลดขนาดความกว้างภาพสูงสุดไม่เกิน 1000px
+        const MAX_WIDTH = 1000;
         const scaleSize = MAX_WIDTH / img.width;
         
         let targetWidth = img.width;
@@ -81,7 +81,6 @@ const compressImageAndGetBase64 = (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, targetWidth, targetHeight);
         
-        // บีบอัดเป็น JPEG ที่ Quality 70%
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
         resolve(compressedBase64);
       };
@@ -111,7 +110,6 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     const formattedCode = codeToSearch.toUpperCase().trim();
     const token = localStorage.getItem('token');
     
-    // ดักจับเคสไม่มี Token
     if (!token) {
       return message.error('ไม่พบ Token ยืนยันตัวตน หากใช้งานผ่านแอป LINE กรุณาล็อกอินใหม่ครับ');
     }
@@ -165,7 +163,6 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview) {
-      // สำหรับการ Preview ไม่ต้องบีบอัด
       const reader = new FileReader();
       reader.readAsDataURL(file.originFileObj as File);
       reader.onload = () => {
@@ -195,7 +192,6 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     const finalStatus = isDefective ? 'DEFECTIVE' : 'NORMAL';
 
     try {
-      // แปลงรูปผ่านฟังก์ชันบีบอัด เพื่อป้องกัน Payload ใหญ่เกิน
       const photosBase64 = await Promise.all(
         fileList.map(async (file) => file.url || await compressImageAndGetBase64(file.originFileObj as File))
       );
@@ -215,14 +211,12 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
         })
       });
       
-      // ดักจับ Error แจ้งเตือนสาเหตุที่แท้จริง
       if (!res.ok) {
         if (res.status === 413) throw new Error('ขนาดไฟล์รูปภาพรวมใหญ่เกินไป ระบบปฏิเสธการรับข้อมูล (Payload Too Large)');
         if (res.status === 401) throw new Error('Token ไม่ถูกต้อง หรือหมดอายุ กรุณาล็อกอินใหม่');
         throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
       }
 
-      // ดึงข้อมูลใหม่เพื่อเอา Logs ล่าสุดมาโชว์ในหน้า History
       const refreshRes = await fetch(`${API_URL}/equipment/${equipment.qr_code}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -595,6 +589,19 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* 🎯 CSS พิเศษสำหรับซ่อนกรอบสี่เหลี่ยมด้านนอกของ QR Library (เช่น html5-qrcode) */
+        .custom-scanner-modal #qr-shaded-region > div {
+          border: none !important;
+          display: none !important;
+        }
+        .custom-scanner-modal .qr-scanner-overlay {
+          border: none !important;
+        }
+        .custom-scanner-modal svg path:first-child {
+          /* ซ่อน Path SVG หากใช้ @yudiel/react-qr-scanner แล้วมันวาดกรอบด้านนอก */
+          stroke: transparent !important;
+        }
       `}</style>
     </div>
   );
