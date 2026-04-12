@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Spin } from 'antd';
+import { Spin, Avatar } from 'antd'; // 👈 เติม Avatar เข้าไปตรงนี้ครับ
 import { 
   CheckCircleOutlined, CloseCircleOutlined, UserOutlined, 
   SafetyCertificateOutlined, EnvironmentOutlined, WarningOutlined, ScanOutlined
@@ -16,23 +16,22 @@ export default function VerificationPage({ userId }: { userId: string }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. ดึงข้อมูลพนักงานทั้งหมด แล้วหาคนที่มี ID ตรงกับที่สแกนมา
-        const usersRes = await axios.get('https://safetyos-backend.onrender.com/users');
-        const foundUser = usersRes.data.find((u: any) => u.id === userId);
+        const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
+        const userRes = await axios.get(`${API_URL}/users/verify/${userId}`);
+        const foundUser = userRes.data;
         
-        if (!foundUser) {
-          setIsError(true);
-          setIsLoading(false);
-          return;
-        }
         setUser(foundUser);
 
-        // 2. ดึงข้อมูลใบ Certificate ของคนๆ นี้
-        const certsRes = await axios.get('https://safetyos-backend.onrender.com/certificates');
-        const userCerts = certsRes.data.filter((c: any) => c.user_id === userId && c.status === 'APPROVED');
+        const token = localStorage.getItem('safetyos_token') || localStorage.getItem('token');
+        const certsRes = await axios.get(`${API_URL}/certificates`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        const userCerts = certsRes.data.filter((c: any) => c.user_id === foundUser.id && c.status === 'APPROVED');
         setCerts(userCerts);
 
-      } catch (error) {
+      } catch (error: any) {
+        console.error("Verification error:", error);
         setIsError(true);
       } finally {
         setIsLoading(false);

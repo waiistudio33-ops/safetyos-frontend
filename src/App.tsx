@@ -243,20 +243,42 @@ export default function App() {
   const getDisplayAvatar = () => currentUser?.profile_url || lineProfile?.pictureUrl || null;
 
   // 🟢 ฟังก์ชันเมื่อสแกนจาก Global Scanner สำเร็จ
-  const handleGlobalScanResult = (decodedText: string) => {
-    setIsGlobalScannerOpen(false); // 1. ปิดกล้องก่อน
-    
+  const handleGlobalScanResult = async (decodedText: string) => {
+    setIsGlobalScannerOpen(false); // ปิดกล้องก่อน
     console.log("Global Scanner Detected:", decodedText);
 
-    // 2. วิเคราะห์ว่าเป็น QR Code ของคน หรือ อุปกรณ์
-    // สมมติว่าพนักงานรหัสขึ้นต้นด้วย EMP หรือเป็น UUID (มีขีด -)
-    if (decodedText.startsWith('EMP') || decodedText.includes('-')) {
-      // เป็นพนักงาน -> เปิดหน้า Verification
-      setVerifyUserId(decodedText); 
-    } else {
-      // เป็นอย่างอื่น (สันนิษฐานว่าเป็นอุปกรณ์ เช่น EXT-001) -> ไปหน้า Equipment
-      localStorage.setItem('scanned_qr_code', decodedText);
+    // 💡 ป้องกันกรณี QR Code มี URL ติดมาด้วย (ดึงเฉพาะ ID ออกมา)
+    // เช่น https://web.com/user/EMP-123 -> เอาแค่ EMP-123
+    let cleanId = decodedText;
+    if (decodedText.includes('/')) {
+       cleanId = decodedText.split('/').pop() || decodedText;
+    }
+    
+    // ตัดช่องว่างหน้าหลัง
+    cleanId = cleanId.trim();
+
+    try {
+      // 1️⃣ ลองค้นหาว่าเป็น "พนักงาน" ก่อนไหม?
+      const token = localStorage.getItem('safetyos_token') || localStorage.getItem('token');
+      
+      // ยิงไปถาม API ว่ามีคนนี้ไหม (ป้องกัน error ล่ม โดยใช้ catch)
+      const userCheck = await axios.get(`${API_URL}/users/verify/${cleanId}`, {
+         headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => null); // ถ้าหาไม่เจอ (404) จะคืนค่า null แทนที่จะ error 
+
+      if (userCheck && userCheck.data && userCheck.data.id) {
+         // ✅ เจอว่าเป็น "พนักงาน" -> เปิดหน้า E-Passport เลย!
+         setVerifyUserId(cleanId);
+         return; // จบการทำงาน
+      }
+      // 2️⃣ ถ้าไม่ใช่พนักงาน งั้นลองเดาว่าเป็น "อุปกรณ์" แล้วไปหน้า Equipment
+      // (หน้า Equipment จะไปเช็คกับ API ต่อเองว่ามีอุปกรณ์นี้จริงไหม)
+      localStorage.setItem('scanned_qr_code', cleanId);
       setActiveMenu('EQUIPMENT');
+
+    } catch (error) {
+       console.error("Error verifying scan result:", error);
+       message.error('เกิดข้อผิดพลาดในการตรวจสอบ QR Code');
     }
   };
 
