@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Table, Tag, Button, Input, DatePicker, Select, Row, Col, Avatar, Tooltip, Empty, message, Grid } from 'antd';
+import { Table, Tag, Button, Input, DatePicker, Select, Row, Col, Avatar, Empty, message, Grid } from 'antd';
 import { 
-  SearchOutlined, FilterOutlined, PrinterOutlined, CheckCircleOutlined, 
+  SearchOutlined, FilterOutlined, CheckCircleOutlined, 
   WarningOutlined, EnvironmentOutlined, UserOutlined, SafetyCertificateOutlined,
   ThunderboltOutlined, InfoCircleOutlined, PictureOutlined, TeamOutlined, IdcardOutlined,
-  SyncOutlined, FileTextOutlined
+  SyncOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -23,10 +23,6 @@ export default function BBSObservationHistory() {
 
   const [observations, setObservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // 🟢 State สำหรับเก็บข้อมูลที่จะนำไปแสดงในหน้ากระดาษ Print
-  const [printData, setPrintData] = useState<any[]>([]);
-  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     fetchBBSHistory();
@@ -35,7 +31,11 @@ export default function BBSObservationHistory() {
   const fetchBBSHistory = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/bbs`);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/bbs`, {
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
       if (res.data) {
         setObservations(res.data);
       }
@@ -57,32 +57,6 @@ export default function BBSObservationHistory() {
       'PROCEDURE': 'ขั้นตอนการทำงาน'
     };
     return categories[category] || category;
-  };
-
-  // 🟢 ฟังก์ชันสั่งพิมพ์ (Native Browser Print)
-  const triggerPrint = (dataToPrint: any[]) => {
-    setPrintData(dataToPrint);
-    setIsPrinting(true); // สั่งเปิดหน้า Print Template
-    
-    // หน่วงเวลารอให้ React เรนเดอร์หน้า Print Template ลง DOM ให้เสร็จก่อน
-    setTimeout(() => {
-      window.print();
-      // เมื่อ Dialog Print ปิดลง (ไม่ว่าจะกดพิมพ์หรือยกเลิก) ค่อยเคลียร์ค่าคืน
-      setTimeout(() => {
-        setIsPrinting(false);
-        setPrintData([]);
-      }, 500);
-    }, 500);
-  };
-
-  const handlePrintRow = (record: any) => triggerPrint([record]);
-  
-  const handlePrintAll = () => {
-    const filtered = observations.filter((obs: any) => 
-      (filterType ? obs.behavior_type === filterType : true) &&
-      (obs.location?.toLowerCase().includes(searchText.toLowerCase()))
-    );
-    triggerPrint(filtered);
   };
 
   const columns = [
@@ -157,21 +131,6 @@ export default function BBSObservationHistory() {
           <span className="font-bold text-slate-600 text-xs truncate max-w-[100px]">{record.observer?.full_name || 'ไม่ระบุชื่อ'}</span>
         </div>
       ),
-    },
-    {
-      title: '', 
-      key: 'action',
-      width: 60,
-      render: (_, record: any) => (
-        <Tooltip title="พิมพ์รายงาน (PDF)">
-          <Button 
-            type="text" 
-            icon={<PrinterOutlined className="text-slate-400 hover:text-blue-500 text-base md:text-lg" />} 
-            onClick={() => handlePrintRow(record)}
-            className="hover:bg-blue-50 transition-colors p-1 md:p-2"
-          />
-        </Tooltip>
-      ),
     }
   ];
 
@@ -179,9 +138,9 @@ export default function BBSObservationHistory() {
     <div className="h-full flex flex-col relative">
       
       {/* =========================================================
-          🖥️ หน้าจอแอปพลิเคชันปกติ (ซ่อนตอนเปิดโหมดพิมพ์)
+          🖥️ หน้าจอแอปพลิเคชันปกติ
           ========================================================= */}
-      <div className={`bg-white rounded-3xl md:rounded-[2.5rem] border border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] p-3 md:p-6 flex flex-col flex-1 overflow-hidden app-ui-container ${isPrinting ? 'hidden-during-print' : ''}`}>
+      <div className="bg-white rounded-3xl md:rounded-[2.5rem] border border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] p-3 md:p-6 flex flex-col flex-1 overflow-hidden app-ui-container">
         
         {/* 🔍 Header & Filters */}
         <div className="mb-4 md:mb-6">
@@ -201,15 +160,6 @@ export default function BBSObservationHistory() {
                 className="rounded-xl h-8 md:h-10 text-xs md:text-sm font-bold bg-slate-50 border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300"
               >
                 {isMobile ? '' : 'รีเฟรช'}
-              </Button>
-              <Button 
-                type="primary" 
-                icon={<PrinterOutlined />} 
-                onClick={handlePrintAll}
-                className="bg-slate-800 hover:bg-slate-900 border-none font-bold rounded-xl h-8 md:h-10 text-xs md:text-sm shadow-md"
-                disabled={observations.length === 0}
-              >
-                {isMobile ? 'พิมพ์ทั้งหมด' : 'พิมพ์รายงานทั้งหมด (PDF)'}
               </Button>
             </div>
           </div>
@@ -327,108 +277,7 @@ export default function BBSObservationHistory() {
         </div>
       </div>
 
-      {/* =========================================================
-          🖨️ หน้าจอสำหรับพิมพ์ (ซ่อนตอนใช้งานปกติ โผล่มาเฉพาะตอน Print)
-          ========================================================= */}
-      {isPrinting && (
-        <div className="print-template-container bg-white absolute inset-0 z-[999] w-full min-h-screen pb-20">
-          {printData.map((record, index) => (
-            <div key={record.id || index} className="print-page w-full max-w-[800px] mx-auto bg-white mb-10 p-8 border border-slate-200 rounded-xl" style={{ breakAfter: 'page', pageBreakAfter: 'always' }}>
-              
-              {/* Header รายงาน */}
-              <div className="border-b-[3px] border-slate-800 pb-4 mb-6 flex justify-between items-end">
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900 m-0 flex items-center gap-2">
-                    <FileTextOutlined /> แบบรายงานการสังเกตการณ์ความปลอดภัย (BBS)
-                  </h1>
-                  <p className="text-slate-500 m-0 mt-1 font-bold">Behavior Based Safety Observation Report</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-slate-600 m-0">Ref: BBS-{record.id?.substring(0,8).toUpperCase()}</p>
-                  <p className="text-[10px] text-slate-400 m-0 mt-1">พิมพ์เมื่อ: {dayjs().format('DD/MM/YYYY HH:mm')}</p>
-                </div>
-              </div>
-
-              {/* ข้อมูลทั่วไป */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">วันที่และเวลาที่พบเหตุ</p>
-                  <p className="text-base font-black text-slate-800 m-0">{dayjs(record.date).format('DD MMMM YYYY • HH:mm น.')}</p>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">สถานที่ / พื้นที่ปฏิบัติงาน</p>
-                  <p className="text-base font-black text-slate-800 m-0">{record.location}</p>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">กลุ่มที่ถูกสังเกต</p>
-                  <p className="text-base font-black text-slate-800 m-0">{record.observed_group === 'CONTRACTOR' ? 'ผู้รับเหมา (Contractor)' : 'พนักงาน (Employee)'}</p>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">หมวดหมู่พฤติกรรม</p>
-                  <p className="text-base font-black text-slate-800 m-0">{getCategoryLabel(record.category)}</p>
-                </div>
-              </div>
-
-              {/* สถานะความปลอดภัย */}
-              <div className={`p-4 rounded-xl border mb-6 ${record.behavior_type === 'SAFE' ? 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]' : 'bg-[#fff1f2] border-[#fecdd3] text-[#9f1239]'}`} style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-                <div className="flex items-center gap-3">
-                  {record.behavior_type === 'SAFE' ? <CheckCircleOutlined className="text-3xl text-[#10b981]" /> : <WarningOutlined className="text-3xl text-[#f43f5e]" />}
-                  <div>
-                    <p className="text-[10px] font-bold uppercase mb-0.5 opacity-70">ประเมินสถานะพฤติกรรม</p>
-                    <p className="text-xl font-black m-0">{record.behavior_type === 'SAFE' ? 'พฤติกรรมปลอดภัย (Safe Behavior)' : 'พฤติกรรมเสี่ยง (At-Risk Behavior)'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* รายละเอียด */}
-              <h3 className="text-lg font-black text-slate-800 border-b border-slate-200 pb-2 mb-4">รายละเอียดการสังเกตการณ์</h3>
-              <div className="mb-6">
-                <p className="text-xs font-bold text-slate-500 mb-2">สิ่งที่พบเห็น (Description):</p>
-                <div className="p-4 border border-slate-200 rounded-xl bg-white text-sm text-slate-700 whitespace-pre-wrap min-h-[60px]">
-                  {record.description || '-ไม่มีการระบุรายละเอียด-'}
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-xs font-bold text-slate-500 mb-2">การตอบสนอง/การแก้ไข (Action Taken):</p>
-                <div className="p-4 border border-slate-200 rounded-xl bg-white text-sm font-bold text-blue-700 inline-block">
-                  {record.action_taken || '-'}
-                </div>
-              </div>
-
-              {/* วิเคราะห์สาเหตุ (ถ้ามี) */}
-              {record.behavior_type === 'UNSAFE' && (
-                <div className="mt-8 page-break-inside-avoid">
-                  <h3 className="text-lg font-black text-rose-700 border-b border-rose-200 pb-2 mb-4">การวิเคราะห์สาเหตุ (Root Cause Analysis)</h3>
-                  <div className="grid grid-cols-1 gap-4 mb-6">
-                    <div className="bg-[#fff1f2] p-4 rounded-xl border border-[#ffe4e6]" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-                      <p className="text-xs font-bold text-rose-500 mb-2">สาเหตุรากเหง้า (Root Cause):</p>
-                      <p className="text-base font-black text-rose-700 m-0">{record.root_cause || '-ไม่ระบุ-'}</p>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200">
-                      <p className="text-xs font-bold text-slate-500 mb-2">ข้อเสนอแนะเพื่อป้องกัน (Suggestion):</p>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap m-0">{record.suggestion || '-ไม่มีข้อเสนอแนะ-'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ลายเซ็น / ผู้รายงาน */}
-              <div className="mt-12 pt-8 border-t border-slate-200 flex justify-end page-break-inside-avoid">
-                <div className="text-center w-64">
-                  <p className="text-sm text-slate-500 mb-10">ลงชื่อผู้รายงาน (Observer)</p>
-                  <div className="border-b border-slate-400 mb-2"></div>
-                  <p className="text-sm font-black text-slate-800 m-0">{record.observer?.full_name || 'ไม่ระบุชื่อ'}</p>
-                  <p className="text-xs text-slate-500 m-0 mt-1">เจ้าหน้าที่ความปลอดภัย / ผู้สังเกตการณ์</p>
-                </div>
-              </div>
-
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 🎨 CSS ควบคุมการพิมพ์ (สลับโชว์ซ่อนหน้าจอ) */}
+      {/* 🎨 CSS พื้นฐาน */}
       <style>{`
         .custom-select-sm .ant-select-selector { border-radius: 8px !important; }
         .custom-select-md .ant-select-selector { border-radius: 12px !important; }
@@ -442,32 +291,6 @@ export default function BBSObservationHistory() {
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-
-        /* 🖨️ THE ULTIMATE PRINT CSS */
-        @media print {
-          /* 1. ซ่อนหน้าต่างและเมนูแอปพลิเคชันปกติทั้งหมด */
-          body * { visibility: hidden; }
-          .hidden-during-print, .hidden-during-print * { display: none !important; }
-          
-          /* 2. ดึงเฉพาะหน้า Print Template ขึ้นมาโชว์ */
-          .print-template-container, .print-template-container * { visibility: visible; }
-          
-          .print-template-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-          }
-
-          /* 3. จัดการระยะขอบและสีกระดาษ */
-          @page { size: A4 portrait; margin: 10mm; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          
-          /* 4. จัดการไม่ให้เนื้อหาสำคัญโดนหั่นครึ่ง */
-          .page-break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
-        }
       `}</style>
     </div>
   );

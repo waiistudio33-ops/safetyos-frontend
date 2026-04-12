@@ -54,13 +54,41 @@ const LoadingSpinner = () => (
   </svg>
 );
 
-const getBase64 = (file: any): Promise<string> =>
-  new Promise((resolve, reject) => {
+// 🔥 เพิ่มฟังก์ชันบีบอัดรูปภาพก่อนแปลงเป็น Base64 ป้องกัน Payload Too Large
+const compressImageAndGetBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1000; // ลดขนาดความกว้างภาพสูงสุดไม่เกิน 1000px
+        const scaleSize = MAX_WIDTH / img.width;
+        
+        let targetWidth = img.width;
+        let targetHeight = img.height;
+
+        if (img.width > MAX_WIDTH) {
+          targetWidth = MAX_WIDTH;
+          targetHeight = img.height * scaleSize;
+        }
+
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, targetWidth, targetHeight);
+        
+        // บีบอัดเป็น JPEG ที่ Quality 70%
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(compressedBase64);
+      };
+    };
     reader.onerror = (error) => reject(error);
   });
+};
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrender.com';
 
@@ -81,10 +109,15 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     if (!codeToSearch) return message.warning('กรุณาระบุรหัส QR Code');
     
     const formattedCode = codeToSearch.toUpperCase().trim();
+    const token = localStorage.getItem('token');
+    
+    // ดักจับเคสไม่มี Token
+    if (!token) {
+      return message.error('ไม่พบ Token ยืนยันตัวตน หากใช้งานผ่านแอป LINE กรุณาล็อกอินใหม่ครับ');
+    }
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/equipment/${formattedCode}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -132,7 +165,14 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview) {
-      file.preview = await getBase64(file.originFileObj as any);
+      // สำหรับการ Preview ไม่ต้องบีบอัด
+      const reader = new FileReader();
+      reader.readAsDataURL(file.originFileObj as File);
+      reader.onload = () => {
+        setPreviewImage(reader.result as string);
+        setPreviewOpen(true);
+      };
+      return;
     }
     setPreviewImage(file.url || (file.preview as string));
     setPreviewOpen(true);
@@ -141,6 +181,11 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
   const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => setFileList(newFileList);
 
   const handleSubmit = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return message.error('เซสชั่นหมดอายุหรือไม่พบ Token หากใช้งานผ่านแอป LINE กรุณาล็อกอินเข้าระบบใหม่');
+    }
+
     if (fileList.length === 0) {
       return message.warning('⚠️ กรุณาแนบภาพถ่ายหน้างานอย่างน้อย 1 ภาพ เพื่อเป็นหลักฐานการตรวจสอบ!');
     }
@@ -149,14 +194,13 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     const isDefective = Object.values(inspectionResult).includes(false);
     const finalStatus = isDefective ? 'DEFECTIVE' : 'NORMAL';
 
-    const photosBase64 = await Promise.all(
-      fileList.map(async (file) => file.url || await getBase64(file.originFileObj as any))
-    );
-
     try {
-      const token = localStorage.getItem('token');
-      // 🔥 ค้นหาข้อมูลล่าสุดอีกครั้งหลังจากบันทึกสำเร็จ เพื่อให้หน้าประวัติอัปเดต
-      await fetch(`${API_URL}/equipment/${equipment.id}/inspect`, {
+      // แปลงรูปผ่านฟังก์ชันบีบอัด เพื่อป้องกัน Payload ใหญ่เกิน
+      const photosBase64 = await Promise.all(
+        fileList.map(async (file) => file.url || await compressImageAndGetBase64(file.originFileObj as File))
+      );
+
+      const res = await fetch(`${API_URL}/equipment/${equipment.id}/inspect`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -171,19 +215,27 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
         })
       });
       
+      // ดักจับ Error แจ้งเตือนสาเหตุที่แท้จริง
+      if (!res.ok) {
+        if (res.status === 413) throw new Error('ขนาดไฟล์รูปภาพรวมใหญ่เกินไป ระบบปฏิเสธการรับข้อมูล (Payload Too Large)');
+        if (res.status === 401) throw new Error('Token ไม่ถูกต้อง หรือหมดอายุ กรุณาล็อกอินใหม่');
+        throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      }
+
       // ดึงข้อมูลใหม่เพื่อเอา Logs ล่าสุดมาโชว์ในหน้า History
-      const res = await fetch(`${API_URL}/equipment/${equipment.qr_code}`, {
+      const refreshRes = await fetch(`${API_URL}/equipment/${equipment.qr_code}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
-        const updatedData = await res.json();
+      if (refreshRes.ok) {
+        const updatedData = await refreshRes.json();
         setEquipment(updatedData);
       }
 
       message.success('บันทึกผลการตรวจสอบพร้อมรูปถ่ายเรียบร้อยแล้ว');
       setIsSuccess(true);
-    } catch (error) {
-      message.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      message.error(`ไม่สามารถบันทึกข้อมูลได้: ${error.message || 'กรุณาลองใหม่อีกครั้ง'}`);
     } finally {
       setIsLoading(false);
     }
@@ -205,45 +257,28 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     </div>
   );
 
-  // 🟢 หน้าจอ "บันทึกสำเร็จ" โฉมใหม่ มีปุ่มให้เลือกทำต่อ
   if (isSuccess) {
     return (
       <div className="max-w-xl mx-auto mt-4 md:mt-10 p-6 md:p-12 bg-white rounded-3xl md:rounded-[2rem] shadow-xl border border-emerald-100 text-center animate-fade-in mx-4">
-        
         <div className="w-20 h-20 md:w-24 md:h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner relative">
            <div className="absolute inset-0 rounded-full border-4 border-emerald-200 animate-ping opacity-20"></div>
            <CheckCircleOutlined className="text-5xl md:text-6xl drop-shadow-md" />
         </div>
-        
         <h2 className="text-2xl md:text-4xl font-black text-slate-800 mb-3 tracking-tight">บันทึกเรียบร้อย!</h2>
-        
         <p className="text-slate-500 text-sm md:text-lg mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
           อัปเดตสถานะของ <strong className="text-emerald-600 block mt-1 text-lg md:text-xl">{equipment?.name}</strong> สำเร็จ
         </p>
-        
         <div className="flex flex-col gap-3">
-          <button 
-            onClick={() => { setIsSuccess(false); setActiveTab('HISTORY'); }} 
-            className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg hover:bg-slate-900 transition-all"
-          >
+          <button onClick={() => { setIsSuccess(false); setActiveTab('HISTORY'); }} className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg hover:bg-slate-900 transition-all">
             <HistoryOutlined className="text-lg" /> ดูประวัติอุปกรณ์ชิ้นนี้
           </button>
-
-          <button 
-            onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); handleStartScan(); }} 
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all"
-          >
+          <button onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); handleStartScan(); }} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all">
             <ScanOutlined className="text-lg" /> สแกนอุปกรณ์ชิ้นต่อไป
           </button>
-          
-          <button 
-            onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); }} 
-            className="w-full flex items-center justify-center gap-2 bg-white text-slate-500 border border-slate-200 rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold hover:bg-slate-50 hover:text-slate-700 transition-all mt-2"
-          >
+          <button onClick={() => { setEquipment(null); setQrCode(''); setIsSuccess(false); }} className="w-full flex items-center justify-center gap-2 bg-white text-slate-500 border border-slate-200 rounded-2xl h-12 md:h-14 text-sm md:text-base font-bold hover:bg-slate-50 hover:text-slate-700 transition-all mt-2">
             <CloseOutlined /> ปิดหน้าต่างนี้
           </button>
         </div>
-
       </div>
     );
   }
