@@ -7,31 +7,41 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://safetyos-backend.onrend
 const LIFF_ID = import.meta.env.VITE_LINE_LIFF_ID || '2009277207-jNY8QghJ'; 
 
 export function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // 🟢 ให้สิทธิ์ isAuthenticated เป็น true ไปก่อนเลย ถ้ามี token ในกระเป๋า (แก้ปัญหารีเฟรชแล้วจอกระพริบ)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
+  
+  // 🟢 isAuthChecking เอาไว้โชว์หน้าโหลด (Loading Screen) ระหว่างรอข้อมูลจาก Backend
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [lineProfile, setLineProfile] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // 🟢 พยายามดึงข้อมูล User จาก LocalStorage มาโชว์พลางๆ ก่อนได้ (ถ้าเคยเก็บไว้)
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('token'); // 🟢 เปลี่ยนมาใช้ชื่อ 'token'
-    localStorage.removeItem('safetyos_token'); // 🟢 ลบของเก่าทิ้งเผื่อมันค้าง
+    localStorage.removeItem('token'); 
+    localStorage.removeItem('currentUser'); // 🟢 ล้างข้อมูล User ด้วย
     setIsAuthenticated(false);
     setCurrentUser(null);
+    window.location.href = '/'; // 🟢 บังคับเด้งกลับหน้าแรกทันที
   }, []);
 
   const fetchUserData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token'); // 🟢 ดึงด้วยชื่อ 'token'
+      const token = localStorage.getItem('token'); 
       
-      // 🟢 เช็คแบบ Safe ป้องกัน atob error
       if (!token || token === 'undefined' || !token.includes('.')) {
          throw new Error('Invalid or missing token');
       }
 
+      // ถอดรหัส Token เพื่อเอา ID
       const tokenData = JSON.parse(atob(token.split('.')[1]));
       const userId = tokenData.id;
 
+      // ยิงไปดึงข้อมูล User จาก Backend
       const response = await axios.get(`${API_URL}/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -42,19 +52,22 @@ export function useAuth() {
       if (me) {
         setCurrentUser(me);
         setIsAuthenticated(true);
+        // 🟢 อัปเดตข้อมูล User ในกระเป๋าให้เป็นปัจจุบันเสมอ
+        localStorage.setItem('currentUser', JSON.stringify(me)); 
       } else {
         throw new Error('User not found in DB');
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
-      handleLogout(); // ถ้า Token พัง ให้เตะออกไปล็อกอินใหม่เลย
+      handleLogout(); // ถ้า Token พัง หรือหา User ไม่เจอ ค่อยเตะออก
     } finally {
-      setIsAuthChecking(false);
+      setIsAuthChecking(false); // เลิกหมุน Loading
     }
   }, [handleLogout]);
 
   useEffect(() => {
     const initAuth = async () => {
+      // 1. ลอง init LINE LIFF ดูก่อน (ถ้าไม่ได้เปิดใน LINE ก็จะผ่านไปเงียบๆ)
       try {
         await liff.init({ liffId: LIFF_ID });
         if (liff.isLoggedIn()) {
@@ -65,11 +78,15 @@ export function useAuth() {
         console.error('LIFF init failed', err);
       }
 
-      const token = localStorage.getItem('token'); // 🟢 เช็คด้วยชื่อ 'token'
+      // 2. เช็ค Token ทันทีที่เปิดเว็บ หรือ รีเฟรช
+      const token = localStorage.getItem('token'); 
       if (token && token !== 'undefined') {
+        // ถ้ามี Token ให้ดึงข้อมูล User ใหม่เงียบๆ เป็น Background
         await fetchUserData();
       } else {
+        // ถ้าไม่มี Token ให้ปิด Loading แล้วปล่อยให้อยู่หน้า Login
         setIsAuthChecking(false);
+        setIsAuthenticated(false);
       }
     };
 
@@ -77,6 +94,7 @@ export function useAuth() {
   }, [fetchUserData]);
 
   const handleLogin = async (values: any) => {
+    setIsLoggingIn(true);
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -86,15 +104,19 @@ export function useAuth() {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem('token', data.token); // 🟢 เก็บด้วยชื่อ 'token'
+        localStorage.setItem('token', data.token); 
+        localStorage.setItem('currentUser', JSON.stringify(data.user)); // 🟢 เซฟ User ไว้ด้วยเผื่อตอนรีเฟรช
+        
         setCurrentUser(data.user);
-        setIsAuthenticated(true); // 🟢 เพิ่มบรรทัดนี้ เพื่อให้ระบบรู้ว่าล็อกอินแล้ว
+        setIsAuthenticated(true); 
         message.success('เข้าสู่ระบบสำเร็จ');
       } else {
         message.error(data.error);
       }
     } catch (error) {
-      message.error('เกิดข้อผิดพลาด');
+      message.error('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -112,7 +134,9 @@ export function useAuth() {
       });
       
       const { token, user } = response.data;
-      localStorage.setItem('token', token); // 🟢 เก็บด้วยชื่อ 'token' (เหมือนกันแล้ว!)
+      
+      localStorage.setItem('token', token); 
+      localStorage.setItem('currentUser', JSON.stringify(user)); // 🟢 เซฟ User ไว้ด้วย
       
       setCurrentUser(user);
       setIsAuthenticated(true);
