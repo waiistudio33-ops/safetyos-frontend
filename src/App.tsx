@@ -6,7 +6,7 @@ import { useReactToPrint } from 'react-to-print';
 
 // 🟢 ตั้งค่า Axios ให้แนบ Token ไปใน Header เสมอ
 axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('safetyos_token');
+  const token = localStorage.getItem('safetyos_token') || localStorage.getItem('token'); // เผื่อไว้ทั้งสองชื่อ
   if (token && token !== 'undefined') {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -83,6 +83,7 @@ export default function App() {
     localStorage.setItem('safetyos_active_menu', activeMenu);
   }, [activeMenu]);
 
+  // State สำหรับเก็บ ID พนักงานที่สแกนได้เพื่อโชว์หน้า Verification
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
@@ -94,7 +95,7 @@ export default function App() {
   const { activeConfinedPermits, selectedConfinedPermit, confinedEntries, setSelectedConfinedPermit, fetchConfinedSpaceData, fetchEntries, handleCheckIn, handleCheckOut, handleEvacuateAll } = useConfinedSpace(currentUser);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isGlobalScannerOpen, setIsGlobalScannerOpen] = useState(false); // 🟢 เปลี่ยนชื่อ State ให้ชัดเจน
+  const [isGlobalScannerOpen, setIsGlobalScannerOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -243,20 +244,41 @@ export default function App() {
 
   // 🟢 ฟังก์ชันเมื่อสแกนจาก Global Scanner สำเร็จ
   const handleGlobalScanResult = (decodedText: string) => {
-    setIsGlobalScannerOpen(false); // ปิดกล้องก่อน
+    setIsGlobalScannerOpen(false); // 1. ปิดกล้องก่อน
     
-    // ย้ายไปหน้า Equipment พร้อมค่า QR Code
-    // เนื่องจากเราใช้ State (activeMenu) ไม่ใช่ React Router 
-    // เราเลยต้องเซฟค่า QR ไว้ใน localStorage ชั่วคราวเพื่อให้หน้า Equipment ดึงไปใช้
-    localStorage.setItem('scanned_qr_code', decodedText);
-    setActiveMenu('EQUIPMENT');
+    console.log("Global Scanner Detected:", decodedText);
+
+    // 2. วิเคราะห์ว่าเป็น QR Code ของคน หรือ อุปกรณ์
+    // สมมติว่าพนักงานรหัสขึ้นต้นด้วย EMP หรือเป็น UUID (มีขีด -)
+    if (decodedText.startsWith('EMP') || decodedText.includes('-')) {
+      // เป็นพนักงาน -> เปิดหน้า Verification
+      setVerifyUserId(decodedText); 
+    } else {
+      // เป็นอย่างอื่น (สันนิษฐานว่าเป็นอุปกรณ์ เช่น EXT-001) -> ไปหน้า Equipment
+      localStorage.setItem('scanned_qr_code', decodedText);
+      setActiveMenu('EQUIPMENT');
+    }
   };
 
   if (isAuthChecking) {
     return <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' } }}><div className="h-screen w-full flex items-center justify-center bg-slate-50"><Spin size="large" /></div></ConfigProvider>;
   }
 
-  if (verifyUserId) return <VerificationPage userId={verifyUserId} />;
+  // 🟢 หน้าต่างตรวจสอบคน (Verification) จะครอบทับแอปทั้งหมดถ้ามี verifyUserId
+  if (verifyUserId) {
+    return (
+      <div className="relative">
+         {/* ปุ่มกดย้อนกลับไปหน้าหลักแบบง่ายๆ (กรณีสแกนเสร็จอยากกลับไปหน้าอื่น) */}
+         <button 
+           onClick={() => setVerifyUserId(null)}
+           className="absolute top-4 left-4 z-50 bg-white/50 backdrop-blur-md p-3 rounded-full shadow-md text-slate-700 hover:bg-white hover:text-blue-600 transition-all"
+         >
+           <CloseOutlined /> ปิด
+         </button>
+         <VerificationPage userId={verifyUserId} />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLogin={handleLogin} onLineLogin={handleLineLoginSubmit} onSSOLogin={handleSSOLogin} isLoggingIn={isLoggingIn} lineProfile={lineProfile} />;
@@ -322,7 +344,6 @@ export default function App() {
               </div>
 
               <Space size={isMobile ? 10 : 16} align="center" className="flex-shrink-0">
-                {/* 🟢 ปุ่มสแกน QR ใน Header -> เปลี่ยนให้ไปเปิด Global Scanner Modal */}
                 <Button 
                   type="default" 
                   icon={<ScanOutlined />} 
@@ -409,8 +430,6 @@ export default function App() {
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
-                
-                {/* 🟢 หน้าตรวจสอบอุปกรณ์ */}
                 {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />} 
               </div>
             </Content>
@@ -424,9 +443,7 @@ export default function App() {
             <div className="h-[75vh] bg-slate-50/80 backdrop-blur-xl rounded-2xl overflow-hidden mt-4 border border-slate-200"><img src={previewUrl} className="w-full h-full object-contain" alt="Preview" /></div>
           </Modal>
 
-          {/* =========================================================
-              🌟 GLOBAL SCANNER MODAL (อยู่ระดับ Layout ทับทุกอย่างมิด)
-              ========================================================= */}
+          {/* 🌟 GLOBAL SCANNER MODAL */}
           <Modal 
             title={<div className="flex items-center gap-2 text-emerald-600 px-2"><ScanOutlined className="text-xl"/> <span className="font-black tracking-tight">สแกน QR Code</span></div>} 
             open={isGlobalScannerOpen} 
@@ -436,10 +453,9 @@ export default function App() {
             destroyOnClose 
             className="custom-global-scanner-modal"
             styles={{ body: { padding: 0 }, header: { margin: 0, padding: '16px 24px', borderBottom: '1px solid #f1f5f9' } }}
-            zIndex={9999} // 🚨 สำคัญมาก: กำหนด z-index ให้สูงที่สุด 
+            zIndex={9999}
           >
             <div className="bg-black w-full relative flex items-center justify-center overflow-hidden min-h-[400px] md:min-h-[500px]">
-               {/* 🟢 เรียกใช้ QRScanner และรับค่ากลับมา */}
                <QRScanner onScan={handleGlobalScanResult} />
             </div>
           </Modal>
@@ -448,7 +464,6 @@ export default function App() {
       </div>
 
       <style>{`
-        /* CSS สำหรับ Global Scanner Modal */
         .custom-global-scanner-modal .ant-modal-content {
           border-radius: 1.5rem !important;
           overflow: hidden;

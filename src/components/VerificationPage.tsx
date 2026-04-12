@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Spin, Avatar } from 'antd';
+import { Spin } from 'antd';
 import { 
   CheckCircleOutlined, CloseCircleOutlined, UserOutlined, 
   SafetyCertificateOutlined, EnvironmentOutlined, WarningOutlined, ScanOutlined
@@ -115,7 +115,9 @@ export default function VerificationPage({ userId }: { userId: string }) {
             {user.profile_url ? (
               <Avatar src={user.profile_url} size={96} className="border-[6px] border-white shadow-lg bg-slate-100 object-cover" />
             ) : (
-              <Avatar size={96} icon={<UserOutlined />} className="border-[6px] border-white shadow-lg bg-slate-100 text-slate-400" />
+              <div className="w-24 h-24 rounded-full border-[6px] border-white shadow-lg bg-slate-100 flex items-center justify-center text-slate-400 text-4xl">
+                <UserOutlined />
+              </div>
             )}
           </div>
 
@@ -123,9 +125,9 @@ export default function VerificationPage({ userId }: { userId: string }) {
             <h2 className="text-xl md:text-2xl font-extrabold text-slate-800 m-0 leading-tight">
               {user.full_name}
             </h2>
-            <p className="text-slate-500 font-medium mb-3 mt-1 text-sm">{user.department}</p>
+            <p className="text-slate-500 font-medium mb-3 mt-1 text-sm">{user.department || '-'}</p>
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 shadow-sm">
-              <ScanOutlined /> {user.role.replace('_', ' ')}
+              <ScanOutlined /> {user.role?.replace('_', ' ') || 'ผู้ใช้ทั่วไป'}
             </span>
           </div>
         </div>
