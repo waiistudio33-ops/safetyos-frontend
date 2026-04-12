@@ -55,7 +55,6 @@ export default function UserProfile({
     const fetchMyTimeline = async () => {
       setIsLoadingTimeline(true);
       try {
-        // 🟢 เพิ่มการดึง Token และแนบไปกับ Headers
         const token = localStorage.getItem('token') || localStorage.getItem('safetyos_token');
         const response = await axios.get(`${API_URL}/users/me/timeline`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -166,7 +165,6 @@ export default function UserProfile({
   };
 
   const handleSignOut = () => {
-    // 🟢 เคลียร์ Token ทั้งสองชื่อเพื่อป้องกันความผิดพลาด
     localStorage.removeItem('token');
     localStorage.removeItem('safetyos_token');
     message.success('ออกจากระบบเรียบร้อยแล้ว');
@@ -211,7 +209,6 @@ export default function UserProfile({
     <div className="animate-fade-in w-full max-w-7xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
       
       {/* Header Banner & Avatar */}
-      {/* 📱 ปรับแก้ Margin และความสูงให้ตอบสนองบนจอมือถือได้ดีขึ้น */}
       <div className="relative mt-4 mb-28 md:mb-32">
         <div className="h-40 sm:h-56 md:h-80 w-full rounded-3xl md:rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] relative overflow-hidden transition-all duration-500" style={{ backgroundColor: '#ffffff', backgroundImage: `radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.45) 0%, transparent 60%), radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.35) 0%, transparent 60%), radial-gradient(circle at 30% 90%, rgba(244, 63, 94, 0.35) 0%, transparent 60%), radial-gradient(circle at 90% 80%, rgba(234, 179, 8, 0.35) 0%, transparent 60%)` }}>
           <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]"></div>
@@ -220,16 +217,16 @@ export default function UserProfile({
           </button>
         </div>
 
-        {/* 📱 จัดเลย์เอาต์ Profile ให้เรียงกลางบนมือถือ และเรียงซ้ายบน Desktop */}
         <div className="absolute -bottom-20 sm:-bottom-16 left-0 right-0 md:left-12 md:right-auto flex flex-col md:flex-row items-center md:items-end gap-3 sm:gap-6 px-4 md:px-0">
           <Upload {...uploadProps} disabled={isUploading}>
             <div className="relative group cursor-pointer">
               <div className="p-1.5 sm:p-2 bg-white rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
+                {/* 🟢 แก้ไขตรงนี้: ลบ class w-full h-full ใน img ออก และใส่ class ที่บังคับให้รูปเป็นจัตุรัสและไม่ยืดหด */}
                 <div className="w-28 h-28 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center">
                   {isUploading ? (
                     <div className="flex flex-col items-center justify-center text-blue-500"><LoadingOutlined className="text-2xl sm:text-3xl mb-1 sm:mb-2" /><span className="text-[10px] sm:text-xs font-bold">Uploading...</span></div>
                   ) : getDisplayAvatar() ? (
-                    <img src={getDisplayAvatar()!} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={getDisplayAvatar()!} alt="Profile" className="w-full h-full object-cover object-center rounded-full" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-200 text-5xl sm:text-6xl"><UserOutlined /></div>
                   )}
