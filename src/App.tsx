@@ -94,7 +94,7 @@ export default function App() {
   const { activeConfinedPermits, selectedConfinedPermit, confinedEntries, setSelectedConfinedPermit, fetchConfinedSpaceData, fetchEntries, handleCheckIn, handleCheckOut, handleEvacuateAll } = useConfinedSpace(currentUser);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isGlobalScannerOpen, setIsGlobalScannerOpen] = useState(false); // 🟢 เปลี่ยนชื่อ State ให้ชัดเจน
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -241,6 +241,17 @@ export default function App() {
 
   const getDisplayAvatar = () => currentUser?.profile_url || lineProfile?.pictureUrl || null;
 
+  // 🟢 ฟังก์ชันเมื่อสแกนจาก Global Scanner สำเร็จ
+  const handleGlobalScanResult = (decodedText: string) => {
+    setIsGlobalScannerOpen(false); // ปิดกล้องก่อน
+    
+    // ย้ายไปหน้า Equipment พร้อมค่า QR Code
+    // เนื่องจากเราใช้ State (activeMenu) ไม่ใช่ React Router 
+    // เราเลยต้องเซฟค่า QR ไว้ใน localStorage ชั่วคราวเพื่อให้หน้า Equipment ดึงไปใช้
+    localStorage.setItem('scanned_qr_code', decodedText);
+    setActiveMenu('EQUIPMENT');
+  };
+
   if (isAuthChecking) {
     return <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' } }}><div className="h-screen w-full flex items-center justify-center bg-slate-50"><Spin size="large" /></div></ConfigProvider>;
   }
@@ -311,7 +322,15 @@ export default function App() {
               </div>
 
               <Space size={isMobile ? 10 : 16} align="center" className="flex-shrink-0">
-                <Button type="default" icon={<ScanOutlined />} size={isMobile ? "middle" : "large"} onClick={() => setIsScannerOpen(true)} className="font-bold border-white bg-white/60 hover:bg-white text-slate-700 shadow-sm" />
+                {/* 🟢 ปุ่มสแกน QR ใน Header -> เปลี่ยนให้ไปเปิด Global Scanner Modal */}
+                <Button 
+                  type="default" 
+                  icon={<ScanOutlined />} 
+                  size={isMobile ? "middle" : "large"} 
+                  onClick={() => setIsGlobalScannerOpen(true)} 
+                  className="font-bold border-white bg-white/60 hover:bg-white text-slate-700 shadow-sm" 
+                />
+                
                 {!isMobile && <div className="w-px h-8 bg-slate-200/50 mx-2"></div>}
                 
                 <div onClick={() => setActiveMenu('PROFILE')} className="bg-white/60 hover:bg-white backdrop-blur-md transition-colors duration-300 ease-out rounded-full border border-white shadow-sm p-1.5 flex items-center gap-3 pr-2 cursor-pointer max-w-[200px]">
@@ -390,6 +409,8 @@ export default function App() {
                 {activeMenu === 'CERTIFICATE' && <CertificateManager currentUser={currentUser} />}
                 {activeMenu === 'INCIDENT' && <IncidentReport currentUser={currentUser} />}
                 {activeMenu === 'E_LEARNING' && <ELearning currentUser={currentUser} />}
+                
+                {/* 🟢 หน้าตรวจสอบอุปกรณ์ */}
                 {activeMenu === 'EQUIPMENT' && <EquipmentInspection currentUser={currentUser} />} 
               </div>
             </Content>
@@ -403,9 +424,37 @@ export default function App() {
             <div className="h-[75vh] bg-slate-50/80 backdrop-blur-xl rounded-2xl overflow-hidden mt-4 border border-slate-200"><img src={previewUrl} className="w-full h-full object-contain" alt="Preview" /></div>
           </Modal>
 
-          {isScannerOpen && <QRScanner visible={isScannerOpen} onClose={() => setIsScannerOpen(false)} />}
+          {/* =========================================================
+              🌟 GLOBAL SCANNER MODAL (อยู่ระดับ Layout ทับทุกอย่างมิด)
+              ========================================================= */}
+          <Modal 
+            title={<div className="flex items-center gap-2 text-emerald-600 px-2"><ScanOutlined className="text-xl"/> <span className="font-black tracking-tight">สแกน QR Code</span></div>} 
+            open={isGlobalScannerOpen} 
+            onCancel={() => setIsGlobalScannerOpen(false)} 
+            footer={null}
+            centered
+            destroyOnClose 
+            className="custom-global-scanner-modal"
+            styles={{ body: { padding: 0 }, header: { margin: 0, padding: '16px 24px', borderBottom: '1px solid #f1f5f9' } }}
+            zIndex={9999} // 🚨 สำคัญมาก: กำหนด z-index ให้สูงที่สุด 
+          >
+            <div className="bg-black w-full relative flex items-center justify-center overflow-hidden min-h-[400px] md:min-h-[500px]">
+               {/* 🟢 เรียกใช้ QRScanner และรับค่ากลับมา */}
+               <QRScanner onScan={handleGlobalScanResult} />
+            </div>
+          </Modal>
+
         </Layout>
       </div>
+
+      <style>{`
+        /* CSS สำหรับ Global Scanner Modal */
+        .custom-global-scanner-modal .ant-modal-content {
+          border-radius: 1.5rem !important;
+          overflow: hidden;
+          padding: 0 !important;
+        }
+      `}</style>
     </ConfigProvider>
   );
 }
