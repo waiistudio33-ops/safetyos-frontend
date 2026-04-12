@@ -72,13 +72,22 @@ export default function App() {
   const isTablet = screens.md && !screens.lg;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState('DASHBOARD');
+  
+  // 🟢 1. ดึงเมนูล่าสุดจาก localStorage เป็นค่าเริ่มต้น ถ้าไม่มีให้ใช้ 'DASHBOARD'
+  const [activeMenu, setActiveMenu] = useState(() => {
+    return localStorage.getItem('safetyos_active_menu') || 'DASHBOARD';
+  });
+
+  // 🟢 2. บันทึก activeMenu ลง localStorage ทุกครั้งที่เปลี่ยนหน้า
+  useEffect(() => {
+    localStorage.setItem('safetyos_active_menu', activeMenu);
+  }, [activeMenu]);
+
   const [verifyUserId, setVerifyUserId] = useState<string | null>(null);
   const [activeBbsTab, setActiveBbsTab] = useState('form');
 
   const { isAuthenticated, isAuthChecking, isLoggingIn, lineProfile, currentUser, setCurrentUser, handleLogin, handleLineLoginSubmit, handleSSOLogin, handleLogout } = useAuth();
   
-  // 🟢 ดึง uploadToolboxPhoto ออกมาจาก Hook
   const { permits, loading: permitsLoading, isSubmitting: isSubmittingPermit, fetchPermits, createPermit, updatePermitStatus, total, currentPage, pageSize, uploadToolboxPhoto } = usePermits(currentUser);
   
   const { bbsRecords, isSubmittingBbs, fetchBbs, handleCreateBbs } = useBbs(currentUser);
@@ -96,7 +105,6 @@ export default function App() {
 
   const documentRef = useRef<HTMLDivElement>(null);
 
-  // 🟢 ฟังก์ชันส่งอัปเดต Profile กลับไปที่ Backend
   const handleUpdateProfile = async (values: any) => {
     try {
       if (!currentUser?.id) return false;
@@ -118,7 +126,6 @@ export default function App() {
     }
   };
 
-  // 🟢 NEW: ฟังก์ชันอัปโหลดรูปโปรไฟล์
   const handleUploadAvatar = async (file: File) => {
     try {
       if (!currentUser?.id) return null;
@@ -127,7 +134,6 @@ export default function App() {
       const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
       const filePath = `profiles/${fileName}`;
 
-      // 1. โยนรูปขึ้น Supabase Storage (Bucket: avatars)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
@@ -137,16 +143,13 @@ export default function App() {
         throw new Error('อัปโหลดรูปล้มเหลว');
       }
 
-      // 2. ขอ URL สำหรับดูรูป
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      // 3. เซฟ URL ลง Database
       const response = await axios.put(`${API_URL}/users/${currentUser.id}/profile`, {
         profile_url: publicUrl
       });
       
-      // 4. อัปเดต State หน้าเว็บให้รูปเปลี่ยนทันที
       if (response.data.success) {
         if (setCurrentUser) {
            setCurrentUser({
@@ -334,21 +337,18 @@ export default function App() {
               <div className="animate-fade-in w-full max-w-[1400px] mx-auto">
                 {activeMenu === 'DASHBOARD' && <Dashboard currentUser={currentUser} />}
                 
-               {/* 🟢 NEW: ส่ง Props เพิ่มเติมเข้าไปใน UserProfile */}
                 {activeMenu === 'PROFILE' && (
                   <UserProfile 
                     currentUser={currentUser} 
                     lineProfile={lineProfile} 
                     onUpdateProfile={handleUpdateProfile} 
                     onUploadAvatar={handleUploadAvatar}
-                    // 🟢 1. ส่งฟังก์ชัน LINE Login ที่มีอยู่ใน useAuth ไปให้ปุ่มทำงาน
                     onToggleLineConnection={handleLineLoginSubmit}
-                    // 🟢 2. ดึงประวัติเฉพาะของ User คนนี้ส่งไปให้ Timeline 
                     userTimelineData={{
-                      permits: permits || [], // ข้อมูลการขอใบอนุญาตของ User คนนี้ (ใช้ hook usePermits ที่มีอยู่แล้ว)
-                      bbs: bbsRecords || [],   // ข้อมูลรายงาน BBS ของ User คนนี้ (ใช้ hook useBbs ที่มีอยู่แล้ว)
-                      certs: [],              // รอ API ใบเซอร์ (ใส่ Array เปล่าไว้ก่อน)
-                      elearning: []           // รอ API E-Learning (ใส่ Array เปล่าไว้ก่อน)
+                      permits: permits || [], 
+                      bbs: bbsRecords || [],  
+                      certs: [],              
+                      elearning: []           
                     }}
                   />
                 )}
