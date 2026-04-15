@@ -5,7 +5,7 @@ import {
   CheckCircleOutlined, SettingOutlined, HistoryOutlined, CameraOutlined, EditOutlined,
   FileTextOutlined, EyeOutlined, ReadOutlined, ArrowRightOutlined, LogoutOutlined,
   ToolOutlined, PictureOutlined, DisconnectOutlined, LinkOutlined, LoadingOutlined,
-  EnvironmentOutlined, HeartOutlined, MedicineBoxOutlined, InfoCircleOutlined
+  EnvironmentOutlined, HeartOutlined, MedicineBoxOutlined, InfoCircleOutlined, KeyOutlined
 } from '@ant-design/icons';
 import { message, Popconfirm, Modal, Form, Input, Button, Upload, Timeline, Tag, Spin, Select } from 'antd';
 import type { UploadProps } from 'antd';
@@ -38,11 +38,13 @@ export default function UserProfile({
   const [activeTab, setActiveTab] = useState('timeline');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false); 
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // 🟢 State สำหรับ Modal เปลี่ยนรหัสผ่าน
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
   const [form] = Form.useForm();
   const [medicalForm] = Form.useForm(); 
+  const [passwordForm] = Form.useForm(); // 🟢 ฟอร์มเปลี่ยนรหัสผ่าน
 
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
 
@@ -55,7 +57,6 @@ export default function UserProfile({
     const fetchMyTimeline = async () => {
       setIsLoadingTimeline(true);
       try {
-        // 🟢 เพิ่มการดึง Token และแนบไปกับ Headers
         const token = localStorage.getItem('token') || localStorage.getItem('safetyos_token');
         const response = await axios.get(`${API_URL}/users/me/timeline`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -101,6 +102,12 @@ export default function UserProfile({
     setIsMedicalModalOpen(true);
   };
 
+  // 🟢 ฟังก์ชันเปิด Modal เปลี่ยนรหัสผ่าน
+  const handleOpenPasswordModal = () => {
+    passwordForm.resetFields();
+    setIsPasswordModalOpen(true);
+  };
+
   const handleSaveProfile = async (values: any) => {
     if (onUpdateProfile) {
       setIsSubmitting(true);
@@ -125,6 +132,22 @@ export default function UserProfile({
         setIsMedicalModalOpen(false);
       } else {
         message.error('ไม่สามารถบันทึกข้อมูลได้');
+      }
+    }
+  };
+
+  // 🟢 ฟังก์ชันบันทึกรหัสผ่านใหม่
+  const handleChangePassword = async (values: any) => {
+    if (onUpdateProfile) {
+      setIsSubmitting(true);
+      // ส่งค่า new_password ไปให้ onUpdateProfile จัดการ (Backend เราเขียนรอรับไว้แล้ว)
+      const success = await onUpdateProfile({ new_password: values.new_password });
+      setIsSubmitting(false);
+      if (success) {
+        message.success('เปลี่ยนรหัสผ่านสำเร็จ! กรุณาใช้รหัสผ่านใหม่ในครั้งถัดไป');
+        setIsPasswordModalOpen(false);
+      } else {
+        message.error('ไม่สามารถเปลี่ยนรหัสผ่านได้ กรุณาลองใหม่');
       }
     }
   };
@@ -166,7 +189,6 @@ export default function UserProfile({
   };
 
   const handleSignOut = () => {
-    // 🟢 เคลียร์ Token ทั้งสองชื่อเพื่อป้องกันความผิดพลาด
     localStorage.removeItem('token');
     localStorage.removeItem('safetyos_token');
     message.success('ออกจากระบบเรียบร้อยแล้ว');
@@ -211,7 +233,6 @@ export default function UserProfile({
     <div className="animate-fade-in w-full max-w-7xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
       
       {/* Header Banner & Avatar */}
-      {/* 📱 ปรับแก้ Margin และความสูงให้ตอบสนองบนจอมือถือได้ดีขึ้น */}
       <div className="relative mt-4 mb-28 md:mb-32">
         <div className="h-40 sm:h-56 md:h-80 w-full rounded-3xl md:rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] relative overflow-hidden transition-all duration-500" style={{ backgroundColor: '#ffffff', backgroundImage: `radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.45) 0%, transparent 60%), radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.35) 0%, transparent 60%), radial-gradient(circle at 30% 90%, rgba(244, 63, 94, 0.35) 0%, transparent 60%), radial-gradient(circle at 90% 80%, rgba(234, 179, 8, 0.35) 0%, transparent 60%)` }}>
           <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]"></div>
@@ -220,7 +241,6 @@ export default function UserProfile({
           </button>
         </div>
 
-        {/* 📱 จัดเลย์เอาต์ Profile ให้เรียงกลางบนมือถือ และเรียงซ้ายบน Desktop */}
         <div className="absolute -bottom-20 sm:-bottom-16 left-0 right-0 md:left-12 md:right-auto flex flex-col md:flex-row items-center md:items-end gap-3 sm:gap-6 px-4 md:px-0">
           <Upload {...uploadProps} disabled={isUploading}>
             <div className="relative group cursor-pointer">
@@ -330,7 +350,6 @@ export default function UserProfile({
           </div>
 
           <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] min-h-[400px] sm:min-h-[500px] flex flex-col overflow-hidden border border-slate-50">
-            {/* 📱 ปรับ Tab ให้เหมาะกับมือถือ */}
             <div className="flex p-2 sm:p-4 gap-2 bg-slate-50/50 border-b border-slate-100">
               <button onClick={() => setActiveTab('timeline')} className={`flex-1 py-2.5 sm:py-3.5 text-[11px] sm:text-[13px] font-extrabold uppercase tracking-wide transition-all rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 ${activeTab === 'timeline' ? 'bg-white text-[#2563eb] shadow-[0_4px_12px_rgba(0,0,0,0.04)]' : 'text-slate-400 hover:bg-white/50 hover:text-slate-600'}`}>
                 <HistoryOutlined /> <span className="hidden xs:inline">ประวัติกิจกรรม</span><span className="xs:hidden">ประวัติ</span>
@@ -390,12 +409,13 @@ export default function UserProfile({
                     </div>
                   </button>
 
-                  <button onClick={() => message.info('เมนูนี้กำลังอยู่ระหว่างการพัฒนา')} className="p-4 sm:p-6 bg-[#f8fafc] hover:bg-white hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-blue-100 rounded-2xl sm:rounded-[2rem] border border-transparent flex items-center justify-between transition-all group text-left">
+                  {/* 🟢 ปุ่มเปลี่ยนรหัสผ่าน (เพิ่ม onClick แล้ว) */}
+                  <button onClick={handleOpenPasswordModal} className="p-4 sm:p-6 bg-[#f8fafc] hover:bg-white hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-blue-100 rounded-2xl sm:rounded-[2rem] border border-transparent flex items-center justify-between transition-all group text-left">
                     <div>
                       <h5 className="font-extrabold text-[13px] sm:text-[14px] text-slate-800 m-0">เปลี่ยนรหัสผ่าน (Password)</h5>
                       <p className="text-[10px] sm:text-[11px] text-slate-500 font-bold mt-1 m-0">อัปเดตรหัสผ่านเพื่อความปลอดภัย</p>
                     </div>
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors shadow-sm"><EditOutlined /></div>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors shadow-sm"><KeyOutlined /></div>
                   </button>
 
                   <button onClick={() => message.info('เมนูนี้กำลังอยู่ระหว่างการพัฒนา')} className="p-4 sm:p-6 bg-[#f8fafc] hover:bg-white hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-blue-100 rounded-2xl sm:rounded-[2rem] border border-transparent flex items-center justify-between transition-all group text-left">
@@ -494,6 +514,68 @@ export default function UserProfile({
         </div>
       </Modal>
 
+      {/* 🟢 Modal 3: เปลี่ยนรหัสผ่าน (Change Password) */}
+      <Modal 
+        title={
+          <div className="flex items-center gap-2 text-lg sm:text-xl font-black text-slate-800 pb-3 border-b border-slate-100">
+            <KeyOutlined className="text-blue-500" /> เปลี่ยนรหัสผ่านใหม่
+          </div>
+        } 
+        open={isPasswordModalOpen} 
+        onCancel={() => setIsPasswordModalOpen(false)} 
+        footer={null} 
+        destroyOnClose 
+        centered 
+        className="custom-modern-modal"
+      >
+        <div className="p-4 sm:p-6">
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl mb-4 sm:mb-5 text-[11px] sm:text-xs font-bold border border-blue-100 flex items-start gap-2">
+            <InfoCircleOutlined className="mt-0.5 flex-shrink-0" />
+            <span>รหัสผ่านควรมีความยาวอย่างน้อย 8 ตัวอักษร เพื่อความปลอดภัยของบัญชีคุณ</span>
+          </div>
+
+          <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} requiredMark={false}>
+            
+            <Form.Item 
+              name="new_password" 
+              label={<span className="font-bold text-slate-700 text-xs sm:text-sm">รหัสผ่านใหม่ (New Password)</span>}
+              rules={[
+                { required: true, message: 'กรุณาระบุรหัสผ่านใหม่' },
+                { min: 8, message: 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร' }
+              ]}
+            >
+              <Input.Password size="large" prefix={<KeyOutlined className="text-slate-400 mr-2" />} className="rounded-xl h-10 sm:h-12 text-sm" placeholder="ระบุรหัสผ่านใหม่" />
+            </Form.Item>
+
+            <Form.Item 
+              name="confirm_password" 
+              label={<span className="font-bold text-slate-700 text-xs sm:text-sm">ยืนยันรหัสผ่านใหม่ (Confirm Password)</span>}
+              dependencies={['new_password']}
+              rules={[
+                { required: true, message: 'กรุณายืนยันรหัสผ่านใหม่' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('new_password') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน!'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password size="large" prefix={<KeyOutlined className="text-slate-400 mr-2" />} className="rounded-xl h-10 sm:h-12 text-sm" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง" />
+            </Form.Item>
+
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-6 sm:mt-8">
+              <Button size="large" onClick={() => setIsPasswordModalOpen(false)} className="w-full sm:flex-1 rounded-xl font-bold bg-slate-100 border-none text-slate-600 hover:bg-slate-200">ยกเลิก</Button>
+              <Button size="large" type="primary" htmlType="submit" loading={isSubmitting} className="w-full sm:flex-[2] rounded-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-md">
+                บันทึกรหัสผ่าน
+              </Button>
+            </div>
+          </Form>
+        </div>
+      </Modal>
+
       <style>{`
         /* 📱 จัดการ Modal บนมือถือให้เต็มจอและโค้งมน */
         .custom-modern-modal .ant-modal-content { border-radius: 1.5rem !important; padding: 0 !important; overflow: hidden; }
@@ -519,4 +601,4 @@ export default function UserProfile({
       `}</style>
     </div>
   );
-} 
+}
