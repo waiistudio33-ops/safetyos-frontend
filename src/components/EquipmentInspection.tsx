@@ -6,7 +6,7 @@ import {
   QrcodeOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, 
   CloseCircleOutlined, SaveOutlined, HistoryOutlined, UserOutlined,
   SafetyCertificateOutlined, ScanOutlined, ExclamationCircleOutlined,
-  FormOutlined, CameraOutlined, CloseOutlined
+  FormOutlined, CameraOutlined, CloseOutlined, ClockCircleOutlined // 🟢 นำเข้า Icon เพิ่ม
 } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
@@ -104,6 +104,9 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
+  // 🟢 State ควบคุมการติด Cooldown ป้องกันตรวจถี่ไป
+  const [cooldownMessage, setCooldownMessage] = useState('');
+
   const executeSearch = async (codeToSearch: string) => {
     if (!codeToSearch) return message.warning('กรุณาระบุรหัส QR Code');
     
@@ -115,6 +118,7 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
     }
 
     setIsLoading(true);
+    setCooldownMessage(''); // รีเซ็ตข้อความ Cooldown
     try {
       const res = await fetch(`${API_URL}/equipment/${formattedCode}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -125,15 +129,32 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
       
       setEquipment(data);
       
+      // 🟢 ตรวจสอบประวัติล่าสุดเพื่อเช็ค Cooldown (ตั้งไว้ 10 นาที)
+      if (data.logs && data.logs.length > 0) {
+        const lastLogTime = dayjs(data.logs[0].created_at);
+        const currentTime = dayjs();
+        const diffMinutes = currentTime.diff(lastLogTime, 'minute');
+        
+        // ถ้าตรวจไปไม่ถึง 10 นาทีที่แล้ว
+        if (diffMinutes < 10) {
+          setCooldownMessage(`อุปกรณ์นี้เพิ่งได้รับการตรวจสอบไปเมื่อ ${diffMinutes === 0 ? 'ไม่กี่วินาที' : `${diffMinutes} นาที`}ที่แล้ว (ผู้ตรวจ: ${data.logs[0].inspector_name || 'ไม่ระบุ'})`);
+          setActiveTab('HISTORY'); // พาไปหน้าประวัติแทน
+        } else {
+          setActiveTab('FORM');
+        }
+      } else {
+        setActiveTab('FORM');
+      }
+
+      // รีเซ็ตค่าฟอร์มทั้งหมดเสมอเมื่อค้นหาใหม่
       const initialResult: Record<number, boolean> = {};
       const typeList = CHECKLISTS[data.type] || ['สภาพทั่วไปปกติพร้อมใช้งาน'];
       typeList.forEach((_, index) => { initialResult[index] = true; });
       setInspectionResult(initialResult);
-      setIsSuccess(false);
-      setActiveTab('FORM');
       
+      setFileList([]); // 🟢 ล้างรูปเก่า
+      setIsSuccess(false);
       setQrCode(formattedCode); 
-      setFileList([]); 
     } catch (error) {
       message.error('ไม่พบอุปกรณ์ในระบบ หรือ QR Code ไม่ถูกต้อง');
       setEquipment(null);
@@ -227,6 +248,11 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
 
       message.success('บันทึกผลการตรวจสอบพร้อมรูปถ่ายเรียบร้อยแล้ว');
       setIsSuccess(true);
+      
+      // 🟢 เคลียร์ฟอร์มหลังบันทึกเสร็จ
+      setFileList([]);
+      setInspectionResult({});
+
     } catch (error: any) {
       console.error("Upload error:", error);
       message.error(`ไม่สามารถบันทึกข้อมูลได้: ${error.message || 'กรุณาลองใหม่อีกครั้ง'}`);
@@ -379,6 +405,17 @@ export default function EquipmentInspection({ currentUser }: { currentUser: any 
             {/* TAB CONTENT: FORM */}
             {activeTab === 'FORM' && (
               <div className="animate-fade-in">
+                {/* 🟢 แจ้งเตือน Cooldown หากมีการตรวจถี่เกินไป */}
+                {cooldownMessage && (
+                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                    <ClockCircleOutlined className="text-amber-500 text-xl mt-0.5" />
+                    <div>
+                      <h4 className="text-amber-800 font-bold text-sm m-0">เพิ่งตรวจสอบไปเมื่อครู่</h4>
+                      <p className="text-amber-600 text-xs mt-1 m-0">{cooldownMessage} หากต้องการแก้ไขหรือรายงานฉุกเฉิน สามารถบันทึกทับได้</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 mb-4 md:mb-6 px-1">
                   <ToolOutlined className="text-blue-500 text-lg md:text-xl" />
                   <h4 className="text-sm md:text-lg font-black text-slate-800 m-0 uppercase tracking-wide">รายการที่ต้องตรวจเช็ค</h4>
