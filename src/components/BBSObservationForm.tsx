@@ -88,28 +88,35 @@ export default function BBSObservationForm({ onSubmit, onCancel, isSubmitting }:
               <Input placeholder="ระบุโซน / แผนก / ตึก" className="rounded-xl h-12 md:h-14 text-sm md:text-base border-slate-200 hover:border-blue-400 focus:border-blue-500" prefix={<EnvironmentOutlined className="text-slate-400 mr-2" />} />
             </Form.Item>
 
-            {/* 🌟 Segmented Control: พนักงาน vs ผู้รับเหมา */}
+            {/* 🌟 Segmented Control: พนักงาน vs ผู้รับเหมา (ดีไซน์ใหม่) */}
             <Form.Item name="observed_group" hidden><Input /></Form.Item>
             <div className="md:col-span-2 mt-2 mb-2">
-              <div className="font-bold text-slate-700 text-xs md:text-sm mb-2">กลุ่มผู้ถูกสังเกต</div>
-              <div className="bg-slate-100 p-1.5 md:p-2 rounded-2xl flex w-full shadow-inner relative">
+              <div className="font-bold text-slate-700 text-xs md:text-sm mb-2.5">กลุ่มผู้ถูกสังเกต</div>
+              
+              <div className="bg-slate-100 p-1.5 md:p-2 rounded-[1.25rem] flex w-full shadow-inner relative overflow-hidden">
+                
+                {/* 🟢 Slider Background (ตัววิ่งดุ๊กดิ๊ก) */}
+                <div 
+                  className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-md transition-all duration-500 ease-out z-0
+                  ${observedGroup === 'EMPLOYEE' ? 'translate-x-0' : 'translate-x-[calc(100%+12px)]'}`}
+                ></div>
                 
                 <div 
                   onClick={() => handleGroupToggle('EMPLOYEE')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-all duration-300 z-10 select-none
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-colors duration-500 z-10 select-none
                     ${observedGroup === 'EMPLOYEE' 
-                      ? 'bg-white text-blue-600 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-[1.02]' 
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                      ? 'text-blue-600' 
+                      : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <IdcardOutlined className="text-lg md:text-xl" /> พนักงานบริษัท
                 </div>
                 
                 <div 
                   onClick={() => handleGroupToggle('CONTRACTOR')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-all duration-300 z-10 select-none
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition-colors duration-500 z-10 select-none
                     ${observedGroup === 'CONTRACTOR' 
-                      ? 'bg-white text-orange-600 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-[1.02]' 
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                      ? 'text-orange-600' 
+                      : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <TeamOutlined className="text-lg md:text-xl" /> ผู้รับเหมา
                 </div>
