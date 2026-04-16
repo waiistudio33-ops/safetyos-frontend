@@ -121,31 +121,45 @@ export function useAuth() {
   };
 
   const handleLineLoginSubmit = async () => {
-    if (!lineProfile) {
-      liff.login();
-      return;
-    }
-    
-    setIsLoggingIn(true);
     try {
+      // 1. ตรวจสอบและ Login LINE LIFF
+      if (!liff.isLoggedIn()) {
+        await liff.login();
+        return;
+      }
+      
+      const profile = await liff.getProfile();
+      setLineProfile(profile); // เก็บข้อมูลโปรไฟล์ไว้เผื่อต้องใช้หน้าสมัคร
+      
+      setIsLoggingIn(true);
+
+      // 2. ยิงไปหา Backend เพื่อเข้าสู่ระบบ
       const response = await axios.post(`${API_URL}/login/line`, {
-        line_id: lineProfile.userId,
-        picture_url: lineProfile.pictureUrl
+        line_id: profile.userId,
+        picture_url: profile.pictureUrl
       });
-      
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token); 
-      localStorage.setItem('currentUser', JSON.stringify(user)); // 🟢 เซฟ User ไว้ด้วย
-      
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      message.success(`ยินดีต้อนรับคุณ ${user.full_name}`);
-      
+
+      // 3. ถ้าสำเร็จ (มีบัญชีแล้ว) ก็เข้าแอปปกติ
+      if (response.data.success || response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('safetyos_token', response.data.token);
+        message.success('เข้าสู่ระบบอัตโนมัติสำเร็จ');
+        
+        // รีเฟรชหน้าเพื่อเข้าสู่ Dashboard
+        window.location.replace('/'); 
+      }
+
     } catch (error: any) {
-      message.error(error.response?.data?.error || 'บัญชี LINE นี้ยังไม่เชื่อมต่อกับระบบ');
-    } finally {
-      setIsLoggingIn(false);
+      // 🟢 4. จุดสำคัญที่แก้: ถ้า Backend ตอบ 401 (ยังไม่มีบัญชี) ให้โยน Error ออกไปที่ LoginScreen!
+      if (error.response && error.response.status === 401) {
+        setIsLoggingIn(false);
+        throw error; // 👈 ตรงนี้แหละครับที่ทำให้ LoginScreen รู้ว่าต้องโชว์หน้ากรอกข้อมูล!
+      } else {
+        // Error อื่นๆ เช่น เน็ตหลุด
+        setIsLoggingIn(false);
+        message.error('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE');
+        throw error;
+      }
     }
   };
 

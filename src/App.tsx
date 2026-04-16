@@ -282,6 +282,41 @@ export default function App() {
     }
   };
 
+  // 🟢 ฟังก์ชันสำหรับผูก LINE (เรียกใช้เมื่อกดปุ่ม "เชื่อมต่อ LINE")
+  const handleBindLine = async () => {
+    try {
+      if (!liff.isLoggedIn()) {
+        await liff.login(); // 👈 ถ้ายังไม่ได้ล็อกอิน LINE ให้ล็อกอินก่อน
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      
+      const token = localStorage.getItem('safetyos_token') || localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/users/bind-line`, {
+        line_id: profile.userId,
+        picture_url: profile.pictureUrl
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        message.success('ผูกบัญชี LINE สำเร็จ! คุณจะได้รับการแจ้งเตือนแล้ว');
+        
+        // อัปเดตข้อมูล currentUser ให้มีรูปภาพและไลน์
+        if (setCurrentUser) {
+           setCurrentUser({
+             ...currentUser, 
+             line_id: profile.userId,
+             ...(profile.pictureUrl && { profile_url: profile.pictureUrl })
+           });
+        }
+      }
+    } catch (error: any) {
+       message.error(error.response?.data?.error || 'ไม่สามารถเชื่อมต่อ LINE ได้');
+    }
+  };
+
   if (isAuthChecking) {
     return <ConfigProvider theme={{ token: { colorPrimary: '#2563eb' } }}><div className="h-screen w-full flex items-center justify-center bg-slate-50"><Spin size="large" /></div></ConfigProvider>;
   }
@@ -405,7 +440,7 @@ export default function App() {
                     lineProfile={lineProfile} 
                     onUpdateProfile={handleUpdateProfile} 
                     onUploadAvatar={handleUploadAvatar}
-                    onToggleLineConnection={handleLineLoginSubmit}
+                    onToggleLineConnection={handleBindLine} // 🟢 เรียกใช้ฟังก์ชันเชื่อมต่อ LINE 
                     userTimelineData={{
                       permits: permits || [], 
                       bbs: bbsRecords || [],  
