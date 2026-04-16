@@ -120,10 +120,18 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
       });
 
       if (response.data.success) {
-        message.success('ลงทะเบียนสำเร็จ! กำลังเข้าสู่ระบบ...');
-        // TODO: นำ Token ไปบันทึกลง localStorage แล้วเข้าสู่ระบบ
-        // localStorage.setItem('token', response.data.token);
-        // window.location.reload();
+        message.success('ลงทะเบียนสำเร็จ! กำลังพาท่านเข้าสู่ระบบ...');
+        
+        // 🟢 บันทึก Token ลงเครื่อง
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('safetyos_token', response.data.token);
+        }
+        
+        // 🟢 สั่งให้หน้าเว็บรีเฟรช หรือเด้งไปหน้าแรก
+        setTimeout(() => {
+          window.location.reload(); // สั่งรีเฟรชหน้า เพื่อให้ App.tsx เช็ค Token แล้วเข้าแอป
+        }, 1500); // หน่วงเวลา 1.5 วินาทีให้ User อ่านข้อความสำเร็จก่อน
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่');
