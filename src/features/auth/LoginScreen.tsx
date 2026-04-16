@@ -7,7 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 interface LoginScreenProps {
   onLogin: (values: any) => Promise<void>;
-  onLineLogin: () => Promise<void>; // เปลี่ยนเป็น Promise เพื่อให้เรารอรับผลลัพธ์ได้
+  onLineLogin: () => Promise<void>; 
   onSSOLogin: () => void;
   isLoggingIn: boolean;
   lineProfile: any;
@@ -16,23 +16,20 @@ interface LoginScreenProps {
 export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggingIn, lineProfile }: LoginScreenProps) {
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
-  const [lineBindingForm] = Form.useForm(); // 🟢 ฟอร์มสำหรับ LINE Progressive Profiling
+  const [lineBindingForm] = Form.useForm();
   
-  // ควบคุมหน้าจอว่าจะโชว์อะไร
   const [viewMode, setViewMode] = useState<'LOGIN' | 'REGISTER' | 'LINE_BINDING'>('LOGIN');
   
-  // States สำหรับระบบ OTP
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // ถ้ามี lineProfile เข้ามา และเรากำลังรอกรอกข้อมูล ให้ตั้งค่าเริ่มต้นลงฟอร์ม
   useEffect(() => {
     if (lineProfile && viewMode === 'LINE_BINDING') {
       lineBindingForm.setFieldsValue({
-        full_name: lineProfile.displayName, // ดึงชื่อ LINE มาเป็นค่าเริ่มต้น (เผื่อขี้เกียจพิมพ์)
+        full_name: lineProfile.displayName, 
       });
     }
   }, [lineProfile, viewMode]);
@@ -45,7 +42,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
     registerForm.resetFields();
   };
 
-  // 🚀 1. ยิง API ขอรหัส OTP (สำหรับสมัครผ่าน Email)
   const handleSendOTP = async () => {
     const email = registerForm.getFieldValue('email');
     if (!email || !email.includes('@')) { message.warning('กรุณากรอกอีเมลที่ถูกต้องก่อนขอรับรหัส OTP'); return; }
@@ -58,7 +54,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
     finally { setIsSendingOtp(false); }
   };
 
-  // 🚀 2. ยิง API ตรวจสอบ OTP
   const handleVerifyOTP = async () => {
     if (otpValue.length !== 6) { message.error('กรุณากรอกรหัส 6 หลักให้ครบ'); return; }
     try {
@@ -69,7 +64,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
     } catch (error: any) { message.error(error.response?.data?.error || 'รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว'); }
   };
 
-  // 🚀 3. ยิง API สมัครสมาชิก (Email)
   const handleRegister = async (values: any) => {
     if (!isOtpVerified) { message.warning('กรุณายืนยันอีเมลด้วยรหัส OTP ก่อนสร้างบัญชี'); return; }
     setIsRegistering(true);
@@ -83,19 +77,10 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
     finally { setIsRegistering(false); }
   };
 
-  // 🚀 4. จัดการปุ่ม "ล็อกอินด้วย LINE"
   const handleLineClick = async () => {
     try {
-      // เรียกฟังก์ชันเชื่อมต่อ LIFF จาก App.tsx
       await onLineLogin();
-      
-      // หมายเหตุ: ตรงนี้ในของจริง ถ้า backend ตอบกลับมา 401 (ยังไม่เคยมีบัญชี)
-      // เฮียต้องดักจับ Error ตรงนี้ แล้วสั่ง `switchView('LINE_BINDING')` ครับ
-      // ตัวอย่าง:
-      // if (userIsNew) { switchView('LINE_BINDING'); }
-      
     } catch (error: any) {
-      // จำลองว่าถ้าหลังบ้านบอกว่า "ยังไม่ได้ผูกบัญชี" ให้พาไปหน้ากรอกข้อมูล
       if (error.message === 'NEW_USER' || error.response?.status === 401) {
         message.info('พบการเข้าใช้งานครั้งแรก กรุณากรอกข้อมูลเพิ่มเติมเพื่อเริ่มใช้งาน');
         switchView('LINE_BINDING');
@@ -105,7 +90,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
     }
   };
 
-  // 🚀 5. บันทึกข้อมูล Progressive Profiling (LINE)
   const handleLineRegisterSubmit = async (values: any) => {
     if (!lineProfile) { message.error('ไม่พบข้อมูลจาก LINE กรุณาลองใหม่อีกครั้ง'); return; }
     
@@ -122,16 +106,14 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
       if (response.data.success) {
         message.success('ลงทะเบียนสำเร็จ! กำลังพาท่านเข้าสู่ระบบ...');
         
-        // 🟢 บันทึก Token ลงเครื่อง
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
           localStorage.setItem('safetyos_token', response.data.token);
         }
         
-        // 🟢 สั่งให้หน้าเว็บรีเฟรช หรือเด้งไปหน้าแรก
         setTimeout(() => {
-          window.location.reload(); // สั่งรีเฟรชหน้า เพื่อให้ App.tsx เช็ค Token แล้วเข้าแอป
-        }, 1500); // หน่วงเวลา 1.5 วินาทีให้ User อ่านข้อความสำเร็จก่อน
+          window.location.replace('/'); 
+        }, 1500); 
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่');
@@ -145,7 +127,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f7f9] p-4 sm:p-8">
         <div className={`w-full ${viewMode !== 'LOGIN' ? 'max-w-[1200px]' : 'max-w-[1000px]'} bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] flex flex-col md:flex-row overflow-hidden relative transition-all duration-500 ease-in-out`}>
           
-          {/* 🌈 Colorful Vibrant Gradient Background (ซ้ายมือ) */}
           <div 
             className="w-full md:w-[45%] lg:w-[40%] min-h-[250px] md:min-h-[600px] relative flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-slate-100/50"
             style={{ backgroundColor: '#ffffff', backgroundImage: `radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.45) 0%, transparent 60%), radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.35) 0%, transparent 60%), radial-gradient(circle at 10% 90%, rgba(244, 63, 94, 0.35) 0%, transparent 60%), radial-gradient(circle at 90% 90%, rgba(234, 179, 8, 0.35) 0%, transparent 60%)` }}
@@ -153,7 +134,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
             <svg className="hidden md:block absolute right-0 top-0 h-full w-[80px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor"><path d="M100,0 L100,100 L0,100 C 60,70 40,30 0,0 Z" /></svg>
             <svg className="md:hidden absolute bottom-[-1px] left-0 w-full h-[40px] text-white z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor"><path d="M0,100 L100,100 L100,0 C 70,60 30,40 0,0 Z" /></svg>
 
-            {/* Glass Hero Card */}
             <div className="z-20 flex flex-col items-center justify-center rounded-[2rem] w-[240px] h-[240px] p-6 text-center border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.06)] transition-transform hover:scale-105 duration-300" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)' }}>
               <div className="bg-white p-3.5 rounded-2xl shadow-sm mb-4 flex items-center justify-center"><SafetyOutlined className="text-4xl text-blue-600" /></div>
               <h1 className="text-3xl font-black text-slate-800 tracking-tight m-0 drop-shadow-sm">Safety<span className="text-[#2563eb]">OS</span></h1>
@@ -161,12 +141,8 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
             </div>
           </div>
 
-          {/* 📝 Content Area (ขวามือ) */}
           <div className="w-full md:w-[55%] lg:w-[60%] p-8 sm:p-12 flex flex-col justify-center bg-white z-20 relative overflow-y-auto max-h-[90vh] md:max-h-none custom-scrollbar">
             
-            {/* =========================================================
-                🔐 1. หน้าต่าง LOGIN
-                ========================================================= */}
             {viewMode === 'LOGIN' && (
               <div className="w-full max-w-[380px] mx-auto text-left animate-fade-in">
                 <h2 className="text-[32px] sm:text-[36px] font-black text-[#1e293b] mb-1 tracking-tight">เข้าสู่ระบบ</h2>
@@ -202,25 +178,15 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
                 <div className="mt-8 text-center text-sm font-bold text-slate-500">
                   ยังไม่มีบัญชีใช่ไหม? <a href="#" onClick={(e) => { e.preventDefault(); switchView('REGISTER'); }} className="text-blue-600 hover:underline">สร้างบัญชีผู้ใช้ใหม่</a>
                 </div>
-                
-                {lineProfile && (
-                  <div className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 py-2 px-4 rounded-2xl border border-emerald-100 w-max mx-auto cursor-pointer hover:bg-emerald-100 transition-colors" onClick={() => switchView('LINE_BINDING')}>
-                    <Avatar src={lineProfile.pictureUrl} size={20} /> ยืนยันตัวตน LINE สำเร็จ (คลิกเพื่อทำต่อ)
-                  </div>
-                )}
               </div>
             )}
 
-            {/* =========================================================
-                🟢 2. หน้าต่าง PROGRESSIVE PROFILING (สมัครง่ายด้วย LINE)
-                ========================================================= */}
             {viewMode === 'LINE_BINDING' && (
               <div className="w-full max-w-[420px] mx-auto text-center animate-fade-in relative pt-4">
                 <button onClick={() => switchView('LOGIN')} className="absolute top-0 left-0 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
                 </button>
 
-                {/* ดึงรูปโปรไฟล์ LINE มาโชว์แบบเท่ๆ */}
                 <div className="relative inline-block mb-4">
                   <Avatar src={lineProfile?.pictureUrl} size={100} className="shadow-[0_8px_24px_rgba(0,195,0,0.3)] border-4 border-[#00C300]/20 object-cover" />
                   <div className="absolute bottom-0 right-0 bg-[#00C300] text-white p-1.5 rounded-full border-2 border-white">
@@ -252,9 +218,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
               </div>
             )}
 
-            {/* =========================================================
-                📝 3. หน้าต่าง REGISTER (Email ปกติ)
-                ========================================================= */}
             {viewMode === 'REGISTER' && (
               <div className="w-full mx-auto text-left animate-fade-in relative pt-4">
                 <button onClick={() => switchView('LOGIN')} className="absolute top-0 left-0 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8">
@@ -283,7 +246,6 @@ export default function LoginScreen({ onLogin, onLineLogin, onSSOLogin, isLoggin
                     </Form.Item>
                   </div>
 
-                  {/* 📧 โซน Email OTP */}
                   <div className="bg-blue-50/50 p-4 md:p-5 rounded-3xl border border-blue-100 mb-6 mt-2">
                     <Form.Item name="email" label={<span className="text-[13px] text-[#1e293b] font-extrabold mb-1 flex items-center gap-1.5"><MailOutlined className="text-blue-500"/> อีเมลยืนยันตัวตน</span>} rules={[{ required: true, message: 'กรุณาระบุอีเมล' }, { type: 'email', message: 'รูปแบบอีเมลไม่ถูกต้อง' }]} className="mb-0">
                       <div className="flex flex-col sm:flex-row gap-3">
