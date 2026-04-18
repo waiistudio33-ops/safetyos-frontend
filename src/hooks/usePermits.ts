@@ -23,8 +23,6 @@ export function usePermits(currentUser: any) {
   const fetchPermits = useCallback(async (page = 1, limit = 10) => {
     setLoading(true);
     try {
-      // 🟢 ไม่บังคับ Token ตอนดึงข้อมูล (เผื่อ Dashboard อยากดึงไปโชว์) 
-      // แต่ถ้ามีก็ส่งไปได้
       const response = await axios.get(`${API_URL}/permits`, { 
         params: { page, limit },
         headers: getAuthHeaders() 
@@ -52,7 +50,6 @@ export function usePermits(currentUser: any) {
       return false;
     }
 
-    // 🟢 ดักทาง Frontend อีกชั้น (กันเหนียว)
     if (currentUser.role === 'SAFETY_ENGINEER' || currentUser.role === 'ADMIN') {
        message.error('บทบาทของคุณไม่มีสิทธิขอใบอนุญาตทำงาน');
        return false;
@@ -62,7 +59,7 @@ export function usePermits(currentUser: any) {
     try {
       let fileUrl = null, fileNameToSave = null;
       
-      // 1. อัปโหลดไฟล์ (ถ้ามี)
+      // 1. อัปโหลดไฟล์ JSA
       if (uploadedFiles && uploadedFiles.length > 0) {
         const file = uploadedFiles[0]?.originFileObj;
         if (file) {
@@ -79,21 +76,35 @@ export function usePermits(currentUser: any) {
       let startTime = values.start_time || new Date().toISOString();
       let endTime = values.end_time || new Date(Date.now() + 2 * 3600000).toISOString();
 
+      // 🟢 สร้าง Payload ตาม Prisma Schema ตัวล่าสุดเป๊ะๆ
       const payload = {
         title: values.title, 
-        description: values.description, 
+        description: values.description || null, 
         permit_type: values.permit_type, 
         location_detail: values.location_detail, 
+        
+        // 🟢 ข้อมูลใหม่จากฟอร์ม Step 1
+        area_owner_name: values.area_owner_name || null,
+        owner_department: values.department || null,
+        machinery_tools: values.machinery_tools || null,
+        jsa_agreement: values.jsa_agreement || false,
+        work_shift: values.work_shift || null,
+        
         start_time: startTime, 
         end_time: endTime, 
-        // 🟢 ไม่ต้องส่ง applicant_id ไปแล้ว เพราะ Backend จะถอดรหัสเอาจาก Token เอง
+        
+        // ข้อมูลไฟล์แนบ
         attachment_url: fileUrl, 
         attachment_name: fileNameToSave, 
-        applicant_phone: values.applicant_phone || null, 
-        contractor_company: values.contractor_company || null, 
-        contractor_supervisor: values.contractor_supervisor || null, 
-        project_manager: values.project_manager || null, 
+        
+        // ลิสต์คนงาน
         workers: values.workers || [], 
+        
+        // ข้อมูลเอกสาร
+        document_checklist: values.document_checklist || [],
+        other_documents_text: values.other_documents_text || null,
+
+        // ข้อมูลความปลอดภัยเฉพาะงาน (Step 2)
         work_sub_type: values.work_sub_type || null, 
         safety_measures: values.safety_measures || null, 
         ppe_required: values.ppe_required || null, 
@@ -111,9 +122,9 @@ export function usePermits(currentUser: any) {
         loto_lock_number: values.loto_lock_number || null,
       };
 
-      // 🟢 2. ส่งข้อมูลพร้อมแนบ Token
+      // 🟢 2. ยิง Request ไปที่ Backend
       await axios.post(`${API_URL}/permits`, payload, {
-        headers: getAuthHeaders() // 🔥 จุดสำคัญที่ทำให้ Backend ยอมรับ Request
+        headers: getAuthHeaders() 
       });
       
       message.success('ส่งคำขอสร้าง Permit สำเร็จ');
@@ -122,7 +133,6 @@ export function usePermits(currentUser: any) {
       
     } catch (error: any) {
       console.error("Create Permit Error:", error);
-      // พยายามดึงข้อความ Error จาก Backend มาโชว์ ถ้าไม่มีให้โชว์ข้อความ Default
       const errorMsg = error.response?.data?.error || 'ระบบขัดข้อง ไม่สามารถส่งคำขอได้ (Token อาจหมดอายุ)';
       message.error(errorMsg);
       throw error;
@@ -138,11 +148,9 @@ export function usePermits(currentUser: any) {
                        action === 'REVOKE' ? 'REVOKED' : 
                        (currentStatus === 'PENDING_AREA_OWNER' ? 'PENDING_SAFETY' : 'APPROVED');
                        
-      // 🟢 ส่ง Token ไปด้วยตอนอัปเดตสถานะ
       await axios.put(`${API_URL}/permits/${permitId}`, { 
         status: nextStatus, 
         action: action, 
-        // Backend จะดึง approver_id จาก Token เอง
       }, {
         headers: getAuthHeaders()
       });
@@ -163,7 +171,6 @@ export function usePermits(currentUser: any) {
       if (error) throw error;
       const { data } = supabase.storage.from('permits').getPublicUrl(uniqueName);
 
-      // 🟢 ส่ง Token ไปด้วย
       await axios.post(`${API_URL}/permits/${permitId}/toolbox-talk`, { 
         image_url: data.publicUrl 
       }, {
